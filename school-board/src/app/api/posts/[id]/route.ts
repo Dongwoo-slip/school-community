@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { createClient as createAuthedClient } from "@/lib/supabase/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 
@@ -8,41 +8,44 @@ function admin() {
   return createAdminClient(url, key, { auth: { persistSession: false } });
 }
 
-type Params = { id: string };
-
-// GET /api/posts/:id
-export async function GET(_req: Request, ctx: { params: Promise<Params> }) {
+// GET /api/posts/:id  (공개 상세 조회)
+export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   const { id } = await ctx.params;
-
   const sb = admin();
-  const { data, error } = await sb
+
+  const { data: post, error } = await sb
     .from("posts")
-    .select("id,board,title,content,created_at,view_count,author_id")
+    .select("id,title,content,created_at,view_count,author_id")
     .eq("id", id)
-    .single();
+    .maybeSingle();
 
-  if (error || !data) return NextResponse.json({ error: "글을 찾을 수 없습니다." }, { status: 404 });
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (!post) return NextResponse.json({ error: "게시물을 찾을 수 없습니다." }, { status: 404 });
 
-  await sb.from("posts").update({ view_count: (data.view_count ?? 0) + 1 }).eq("id", id);
+  // 조회수 +1
+  const nextView = (post.view_count ?? 0) + 1;
+  await sb.from("posts").update({ view_count: nextView }).eq("id", id);
 
-  let author = { username: null as string | null, role: "user" as string };
-  if (data.author_id) {
-    const { data: pr } = await sb
+  // 작성자 프로필 (FK 없어도 됨: 별도 조회)
+  let author: { username: string | null; role: string | null } | null = null;
+  if (post.author_id) {
+    const { data: profile } = await sb
       .from("profiles")
       .select("username,role")
-      .eq("id", data.author_id)
+      .eq("id", post.author_id)
       .maybeSingle();
 
-    author = { username: pr?.username ?? null, role: pr?.role ?? "user" };
+    if (profile) author = profile;
   }
 
-  return NextResponse.json({ data: { ...data, author } });
+  return NextResponse.json({ data: { ...post, view_count: nextView, author } });
 }
 
-// DELETE /api/posts/:id (작성자 or admin)
-export async function DELETE(_req: Request, ctx: { params: Promise<Params> }) {
+// DELETE /api/posts/:id (로그인 + 권한: 작성자 or admin)
+export async function DELETE(_req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   const { id } = await ctx.params;
 
+  // 로그인 체크(쿠키 기반)
   const authed = await createAuthedClient();
   const { data: authData } = await authed.auth.getUser();
   const user = authData.user;
@@ -51,20 +54,22 @@ export async function DELETE(_req: Request, ctx: { params: Promise<Params> }) {
 
   const sb = admin();
 
+  // 글 확인
   const { data: post, error: postErr } = await sb
     .from("posts")
-    .select("author_id")
+    .select("id,author_id")
     .eq("id", id)
-    .single();
+    .maybeSingle();
 
-  if (postErr || !post) return NextResponse.json({ error: "글을 찾을 수 없습니다." }, { status: 404 });
+  if (postErr) return NextResponse.json({ error: postErr.message }, { status: 500 });
+  if (!post) return NextResponse.json({ error: "게시물을 찾을 수 없습니다." }, { status: 404 });
 
-  let isAdmin = false;
+  // 내 role 확인
   const { data: profile } = await sb.from("profiles").select("role").eq("id", user.id).maybeSingle();
-  isAdmin = profile?.role === "admin";
+  const role = profile?.role ?? "user";
 
-  const isOwner = !!post.author_id && post.author_id === user.id;
-  if (!isAdmin && !isOwner) return NextResponse.json({ error: "삭제 권한이 없습니다." }, { status: 403 });
+  const canDelete = role === "admin" || post.author_id === user.id;
+  if (!canDelete) return NextResponse.json({ error: "삭제 권한이 없습니다." }, { status: 403 });
 
   const { error: delErr } = await sb.from("posts").delete().eq("id", id);
   if (delErr) return NextResponse.json({ error: delErr.message }, { status: 500 });

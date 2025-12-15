@@ -8,35 +8,35 @@ function admin() {
   return createAdminClient(url, key, { auth: { persistSession: false } });
 }
 
-type Params = { id: string };
-
-// DELETE /api/comments/:id
-export async function DELETE(_req: Request, ctx: { params: Promise<Params> }) {
+// DELETE /api/comments/:id (작성자 or admin)
+export async function DELETE(_req: Request, ctx: { params: Promise<{ id: string }> }) {
   const { id } = await ctx.params;
 
   const authed = await createAuthedClient();
   const { data: authData } = await authed.auth.getUser();
   const user = authData.user;
+
   if (!user) return NextResponse.json({ error: "로그인이 필요합니다." }, { status: 401 });
 
   const sb = admin();
 
-  const { data: comment, error: cErr } = await sb
+  const { data: cmt, error: cmtErr } = await sb
     .from("comments")
-    .select("author_id")
+    .select("id,author_id")
     .eq("id", id)
-    .single();
+    .maybeSingle();
 
-  if (cErr || !comment) return NextResponse.json({ error: "댓글을 찾을 수 없습니다." }, { status: 404 });
+  if (cmtErr) return NextResponse.json({ error: cmtErr.message }, { status: 500 });
+  if (!cmt) return NextResponse.json({ error: "댓글을 찾을 수 없습니다." }, { status: 404 });
 
   const { data: profile } = await sb.from("profiles").select("role").eq("id", user.id).maybeSingle();
-  const isAdmin = profile?.role === "admin";
-  const isOwner = comment.author_id === user.id;
+  const role = profile?.role ?? "user";
 
-  if (!isAdmin && !isOwner) return NextResponse.json({ error: "삭제 권한이 없습니다." }, { status: 403 });
+  const canDelete = role === "admin" || cmt.author_id === user.id;
+  if (!canDelete) return NextResponse.json({ error: "삭제 권한이 없습니다." }, { status: 403 });
 
-  const { error: dErr } = await sb.from("comments").delete().eq("id", id);
-  if (dErr) return NextResponse.json({ error: dErr.message }, { status: 500 });
+  const { error: delErr } = await sb.from("comments").delete().eq("id", id);
+  if (delErr) return NextResponse.json({ error: delErr.message }, { status: 500 });
 
   return NextResponse.json({ ok: true });
 }
