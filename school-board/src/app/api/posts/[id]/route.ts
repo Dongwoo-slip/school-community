@@ -1,58 +1,72 @@
-export const runtime = "nodejs";
-
 import { NextResponse } from "next/server";
-import { supabaseServer } from "@/lib/supabaseServer";
-import bcrypt from "bcryptjs";
-import { z } from "zod";
+import { createClient as createAuthedClient } from "@/lib/supabase/server";
+import { createClient as createAdminClient } from "@supabase/supabase-js";
 
-type Ctx = { params: Promise<{ id: string }> };
-
-const DeleteSchema = z.object({
-  password: z.string().min(4).max(50),
-});
-
-export async function GET(_: Request, { params }: Ctx) {
-  const { id } = await params;
-  const sb = supabaseServer();
-
-  const { data: post, error } = await sb
-    .from("posts")
-    .select("id,title,content,created_at,view_count,is_deleted")
-    .eq("id", id)
-    .single();
-
-  if (error) return NextResponse.json({ error: error.message }, { status: 404 });
-  if (post.is_deleted) return NextResponse.json({ error: "deleted" }, { status: 404 });
-
-  const nextView = (post.view_count ?? 0) + 1;
-  await sb.from("posts").update({ view_count: nextView }).eq("id", id);
-
-  return NextResponse.json({ data: { ...post, view_count: nextView } });
+function admin() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+  return createAdminClient(url, key, { auth: { persistSession: false } });
 }
 
-export async function DELETE(req: Request, { params }: Ctx) {
-  const { id } = await params;
-  const body = await req.json().catch(() => ({}));
-  const parsed = DeleteSchema.safeParse(body);
+type Params = { id: string };
 
-  if (!parsed.success) {
-    return NextResponse.json({ error: "비밀번호를 확인해줘" }, { status: 400 });
-  }
+// GET /api/posts/:id
+export async function GET(_req: Request, ctx: { params: Promise<Params> }) {
+  const { id } = await ctx.params;
 
-  const sb = supabaseServer();
-  const { data: post, error } = await sb
+  const sb = admin();
+  const { data, error } = await sb
     .from("posts")
-    .select("password_hash,is_deleted")
+    .select("id,board,title,content,created_at,view_count,author_id")
     .eq("id", id)
     .single();
 
-  if (error) return NextResponse.json({ error: "not_found" }, { status: 404 });
-  if (post.is_deleted) return NextResponse.json({ ok: true });
+  if (error || !data) return NextResponse.json({ error: "글을 찾을 수 없습니다." }, { status: 404 });
 
-  const ok = await bcrypt.compare(parsed.data.password, post.password_hash);
-  if (!ok) return NextResponse.json({ error: "wrong_password" }, { status: 403 });
+  await sb.from("posts").update({ view_count: (data.view_count ?? 0) + 1 }).eq("id", id);
 
-  const { error: delErr } = await sb.from("posts").update({ is_deleted: true }).eq("id", id);
+  let author = { username: null as string | null, role: "user" as string };
+  if (data.author_id) {
+    const { data: pr } = await sb
+      .from("profiles")
+      .select("username,role")
+      .eq("id", data.author_id)
+      .maybeSingle();
+
+    author = { username: pr?.username ?? null, role: pr?.role ?? "user" };
+  }
+
+  return NextResponse.json({ data: { ...data, author } });
+}
+
+// DELETE /api/posts/:id (작성자 or admin)
+export async function DELETE(_req: Request, ctx: { params: Promise<Params> }) {
+  const { id } = await ctx.params;
+
+  const authed = await createAuthedClient();
+  const { data: authData } = await authed.auth.getUser();
+  const user = authData.user;
+
+  if (!user) return NextResponse.json({ error: "로그인이 필요합니다." }, { status: 401 });
+
+  const sb = admin();
+
+  const { data: post, error: postErr } = await sb
+    .from("posts")
+    .select("author_id")
+    .eq("id", id)
+    .single();
+
+  if (postErr || !post) return NextResponse.json({ error: "글을 찾을 수 없습니다." }, { status: 404 });
+
+  let isAdmin = false;
+  const { data: profile } = await sb.from("profiles").select("role").eq("id", user.id).maybeSingle();
+  isAdmin = profile?.role === "admin";
+
+  const isOwner = !!post.author_id && post.author_id === user.id;
+  if (!isAdmin && !isOwner) return NextResponse.json({ error: "삭제 권한이 없습니다." }, { status: 403 });
+
+  const { error: delErr } = await sb.from("posts").delete().eq("id", id);
   if (delErr) return NextResponse.json({ error: delErr.message }, { status: 500 });
 
   return NextResponse.json({ ok: true });

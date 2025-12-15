@@ -8,22 +8,22 @@ function admin() {
   return createAdminClient(url, key, { auth: { persistSession: false } });
 }
 
-// GET /api/posts?board=free
+// GET /api/comments?postId=...
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
-  const board = searchParams.get("board") ?? "free";
+  const postId = searchParams.get("postId");
+  if (!postId) return NextResponse.json({ error: "postId가 필요합니다." }, { status: 400 });
 
   const sb = admin();
-
-  const { data: posts, error } = await sb
-    .from("posts")
-    .select("id,title,created_at,view_count,author_id")
-    .eq("board", board)
-    .order("created_at", { ascending: false });
+  const { data: rows, error } = await sb
+    .from("comments")
+    .select("id,post_id,author_id,content,created_at")
+    .eq("post_id", postId)
+    .order("created_at", { ascending: true });
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  const ids = Array.from(new Set((posts ?? []).map((p: any) => p.author_id).filter(Boolean)));
+  const ids = Array.from(new Set((rows ?? []).map((c: any) => c.author_id).filter(Boolean)));
   let profileMap = new Map<string, { username: string | null; role: string | null }>();
 
   if (ids.length > 0) {
@@ -37,15 +37,15 @@ export async function GET(req: Request) {
     });
   }
 
-  const result = (posts ?? []).map((p: any) => ({
-    ...p,
-    author: profileMap.get(p.author_id) ?? { username: null, role: "user" },
+  const result = (rows ?? []).map((c: any) => ({
+    ...c,
+    author: profileMap.get(c.author_id) ?? { username: null, role: "user" },
   }));
 
   return NextResponse.json({ data: result });
 }
 
-// POST /api/posts  (로그인 필요)
+// POST /api/comments
 export async function POST(req: Request) {
   const authed = await createAuthedClient();
   const { data: authData } = await authed.auth.getUser();
@@ -56,23 +56,17 @@ export async function POST(req: Request) {
   const body = await req.json().catch(() => null);
   if (!body) return NextResponse.json({ error: "입력값이 올바르지 않습니다." }, { status: 400 });
 
-  const board = body.board ?? "free";
-  const title = String(body.title ?? "").trim();
+  const postId = String(body.postId ?? "").trim();
   const content = String(body.content ?? "").trim();
 
-  if (title.length < 4) return NextResponse.json({ error: "제목은 4글자 이상" }, { status: 400 });
-  if (content.length < 4) return NextResponse.json({ error: "본문은 4글자 이상" }, { status: 400 });
+  if (!postId) return NextResponse.json({ error: "postId가 필요합니다." }, { status: 400 });
+  if (content.length < 1) return NextResponse.json({ error: "댓글을 입력하세요." }, { status: 400 });
+  if (content.length > 500) return NextResponse.json({ error: "댓글은 500자 이하" }, { status: 400 });
 
   const sb = admin();
   const { data, error } = await sb
-    .from("posts")
-    .insert({
-      board,
-      title,
-      content,
-      author_id: user.id,
-      view_count: 0,
-    })
+    .from("comments")
+    .insert({ post_id: postId, author_id: user.id, content })
     .select("id")
     .single();
 
