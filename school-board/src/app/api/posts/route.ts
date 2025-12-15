@@ -1,3 +1,5 @@
+export const runtime = "nodejs";
+
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
@@ -30,8 +32,9 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   const body = await req.json().catch(() => ({}));
   const parsed = CreateSchema.safeParse(body);
+
   if (!parsed.success) {
-    return NextResponse.json({ error: "입력값이 올바르지 않아요" }, { status: 400 });
+    return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
   }
 
   const { board, title, content, password } = parsed.data;

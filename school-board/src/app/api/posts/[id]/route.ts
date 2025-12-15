@@ -1,3 +1,5 @@
+export const runtime = "nodejs";
+
 import { NextResponse } from "next/server";
 import { supabaseServer } from "@/lib/supabaseServer";
 import bcrypt from "bcryptjs";
@@ -38,7 +40,6 @@ export async function DELETE(req: Request, { params }: Ctx) {
   }
 
   const sb = supabaseServer();
-
   const { data: post, error } = await sb
     .from("posts")
     .select("password_hash,is_deleted")
