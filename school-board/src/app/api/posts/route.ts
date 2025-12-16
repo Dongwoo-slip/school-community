@@ -11,27 +11,26 @@ function admin() {
 // GET /api/posts?board=free
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
-  const board = searchParams.get("board") ?? "free";
+
+  // ✅ 빈 값/undefined/null 방어
+  const raw = (searchParams.get("board") ?? "").trim();
+  const board =
+    !raw || raw === "undefined" || raw === "null" ? "free" : raw;
 
   const sb = admin();
 
-<<<<<<< HEAD
-  const { data: posts, error } = await sb
-    .from("posts")
-    .select("id,title,created_at,view_count,author_id")
-=======
-  // ✅✅✅ 여기만 핵심 변경: content 추가
+  // ✅ content 포함
   const { data: posts, error } = await sb
     .from("posts")
     .select("id,title,content,created_at,view_count,author_id")
->>>>>>> b3138e5 (deploy)
     .eq("board", board)
     .order("created_at", { ascending: false });
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
+  // 작성자 프로필 붙이기
   const ids = Array.from(new Set((posts ?? []).map((p: any) => p.author_id).filter(Boolean)));
-  let profileMap = new Map<string, { username: string | null; role: string | null }>();
+  const profileMap = new Map<string, { username: string | null; role: string | null }>();
 
   if (ids.length > 0) {
     const { data: profiles } = await sb
@@ -49,11 +48,8 @@ export async function GET(req: Request) {
     author: profileMap.get(p.author_id) ?? { username: null, role: "user" },
   }));
 
-<<<<<<< HEAD
-=======
-  // ✅ 원문 유지: 반드시 { data: result } 형태로 반환
->>>>>>> b3138e5 (deploy)
-  return NextResponse.json({ data: result });
+  // ✅ 호환: data도 주고 posts도 같이 줌 (프론트 어떤 형태든 안 깨짐)
+  return NextResponse.json({ data: result, posts: result });
 }
 
 // POST /api/posts  (로그인 필요)

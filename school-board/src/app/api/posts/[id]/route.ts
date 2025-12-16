@@ -1,8 +1,4 @@
-<<<<<<< HEAD
-import { NextRequest, NextResponse } from "next/server";
-=======
 import { NextResponse } from "next/server";
->>>>>>> b3138e5 (deploy)
 import { createClient as createAuthedClient } from "@/lib/supabase/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 
@@ -12,9 +8,10 @@ function admin() {
   return createAdminClient(url, key, { auth: { persistSession: false } });
 }
 
-<<<<<<< HEAD
+type Ctx = { params: Promise<{ id: string }> };
+
 // GET /api/posts/:id  (공개 상세 조회)
-export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
+export async function GET(_req: Request, ctx: Ctx) {
   const { id } = await ctx.params;
   const sb = admin();
 
@@ -31,7 +28,7 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
   const nextView = (post.view_count ?? 0) + 1;
   await sb.from("posts").update({ view_count: nextView }).eq("id", id);
 
-  // 작성자 프로필 (FK 없어도 됨: 별도 조회)
+  // 작성자 프로필
   let author: { username: string | null; role: string | null } | null = null;
   if (post.author_id) {
     const { data: profile } = await sb
@@ -40,17 +37,16 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
       .eq("id", post.author_id)
       .maybeSingle();
 
-    if (profile) author = profile;
+    if (profile) author = { username: profile.username ?? null, role: profile.role ?? "user" };
   }
 
   return NextResponse.json({ data: { ...post, view_count: nextView, author } });
 }
 
 // DELETE /api/posts/:id (로그인 + 권한: 작성자 or admin)
-export async function DELETE(_req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
+export async function DELETE(_req: Request, ctx: Ctx) {
   const { id } = await ctx.params;
 
-  // 로그인 체크(쿠키 기반)
   const authed = await createAuthedClient();
   const { data: authData } = await authed.auth.getUser();
   const user = authData.user;
@@ -73,65 +69,11 @@ export async function DELETE(_req: NextRequest, ctx: { params: Promise<{ id: str
   const { data: profile } = await sb.from("profiles").select("role").eq("id", user.id).maybeSingle();
   const role = profile?.role ?? "user";
 
-  const canDelete = role === "admin" || post.author_id === user.id;
+  const canDelete = role === "admin" || String(post.author_id) === String(user.id);
   if (!canDelete) return NextResponse.json({ error: "삭제 권한이 없습니다." }, { status: 403 });
 
   const { error: delErr } = await sb.from("posts").delete().eq("id", id);
   if (delErr) return NextResponse.json({ error: delErr.message }, { status: 500 });
 
   return NextResponse.json({ ok: true });
-=======
-// Next.js 16: params가 Promise일 수 있음
-type Ctx = { params: Promise<{ id: string }> };
-
-export async function DELETE(req: Request, ctx: Ctx) {
-  try {
-    const { id } = await ctx.params;
-
-    if (!id) {
-      return NextResponse.json({ error: "missing id" }, { status: 400 });
-    }
-
-    // ✅ 로그인(세션) 확인: 글쓰기 POST(/api/posts)와 동일 패턴
-    const authed = await createAuthedClient();
-    const { data: authData } = await authed.auth.getUser();
-    const user = authData.user;
-
-    if (!user) {
-      return NextResponse.json({ error: "로그인이 필요합니다." }, { status: 401 });
-    }
-
-    const sb = admin();
-
-    // ✅ 작성자 확인
-    const { data: post, error: postErr } = await sb
-      .from("posts")
-      .select("id,author_id")
-      .eq("id", id)
-      .single();
-
-    if (postErr) {
-      return NextResponse.json({ error: postErr.message }, { status: 500 });
-    }
-    if (!post) {
-      return NextResponse.json({ error: "not found" }, { status: 404 });
-    }
-
-    if (String(post.author_id) !== String(user.id)) {
-      return NextResponse.json({ error: "forbidden" }, { status: 403 });
-    }
-
-    // ✅ 삭제 (필요하면 댓글도 같이 삭제하고 싶으면 아래 주석 참고)
-    // await sb.from("comments").delete().eq("post_id", id);
-
-    const { error: delErr } = await sb.from("posts").delete().eq("id", id);
-    if (delErr) {
-      return NextResponse.json({ error: delErr.message }, { status: 500 });
-    }
-
-    return NextResponse.json({ ok: true }, { status: 200 });
-  } catch (e: any) {
-    return NextResponse.json({ error: e?.message ?? "unknown error" }, { status: 500 });
-  }
->>>>>>> b3138e5 (deploy)
 }
