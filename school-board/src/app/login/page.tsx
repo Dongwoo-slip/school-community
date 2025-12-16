@@ -41,42 +41,47 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="mx-auto max-w-md p-6 space-y-3">
-      <h1 className="text-2xl font-bold">로그인</h1>
-
-      <input
-        className="w-full rounded border p-2"
-        placeholder="아이디"
-        value={username}
-        onChange={(e) => setUsername(e.target.value)}
-      />
-
-      <input
-        className="w-full rounded border p-2"
-        placeholder="비밀번호"
-        type="password"
-        value={password}
-        onChange={(e) => setPassword(e.target.value)}
-      />
-
-      <button
-        className="w-full rounded bg-black p-2 text-white disabled:opacity-60"
-        onClick={onLogin}
-        disabled={loading}
-      >
-        {loading ? "로그인 중..." : "로그인"}
-      </button>
-
-      <div className="flex gap-2">
-        <a className="flex-1 rounded border p-2 text-center" href="/signup">
-          회원가입
-        </a>
-        <a className="flex-1 rounded border p-2 text-center" href="/community/free">
-          홈으로
-        </a>
+    <main className="mx-auto max-w-md bg-white p-6">
+      <div className="mb-4 rounded-2xl bg-sky-600 px-5 py-4 text-white shadow">
+        <h1 className="text-2xl font-extrabold">로그인</h1>
+        <div className="mt-1 text-sm text-white/85">아이디/비밀번호를 입력하세요</div>
       </div>
 
-      {msg && <div className="text-sm text-red-600">{msg}</div>}
+      <div className="rounded-2xl border border-black/15 bg-white p-5 shadow-sm space-y-3">
+        <input
+          className="w-full rounded-xl border border-black/15 bg-white p-3 text-slate-900 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-sky-400/40"
+          placeholder="아이디"
+          value={username}
+          onChange={(e) => setUsername(e.target.value)}
+        />
+
+        <input
+          className="w-full rounded-xl border border-black/15 bg-white p-3 text-slate-900 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-sky-400/40"
+          placeholder="비밀번호"
+          type="password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+        />
+
+        <button
+          className="w-full rounded-xl bg-sky-600 p-3 font-semibold text-white hover:bg-sky-500 disabled:opacity-60"
+          onClick={onLogin}
+          disabled={loading}
+        >
+          {loading ? "로그인 중..." : "로그인"}
+        </button>
+
+        <div className="flex gap-2">
+          <a className="flex-1 rounded-xl border border-black/15 p-3 text-center text-slate-900 hover:bg-slate-50" href="/signup">
+            회원가입
+          </a>
+          <a className="flex-1 rounded-xl border border-black/15 p-3 text-center text-slate-900 hover:bg-slate-50" href="/community/free">
+            홈으로
+          </a>
+        </div>
+
+        {msg && <div className="text-sm font-semibold text-rose-600">{msg}</div>}
+      </div>
     </main>
   );
 }

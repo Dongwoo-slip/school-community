@@ -77,6 +77,7 @@ export default function FreePostDetailPage() {
 
       setPost(jsonPost?.data ?? null);
 
+      // ✅ API가 post_id를 받는다고 했으니 유지
       const resC = await fetch(`/api/comments?post_id=${encodeURIComponent(id)}`, { cache: "no-store" });
       const jsonC = await resC.json().catch(() => ({}));
       setComments(jsonC?.data ?? []);
@@ -134,6 +135,7 @@ export default function FreePostDetailPage() {
       const res = await fetch("/api/comments", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        // ✅ post_id로 통일
         body: JSON.stringify({ post_id: id, content }),
       });
       const json = await res.json().catch(() => ({}));
@@ -155,63 +157,62 @@ export default function FreePostDetailPage() {
   }, [id]);
 
   return (
-    <main className="mx-auto max-w-4xl px-4 py-5 sm:px-6 sm:py-6">
-      {/* 상단 */}
-      <div className="mb-5 flex items-center justify-between gap-3">
-        <Link href="/community/free" className="text-sm text-slate-200 hover:underline">
-          ← 목록
-        </Link>
+    <main className="mx-auto max-w-5xl bg-white px-3 py-4 sm:px-6 sm:py-6">
+      {/* ✅ 상단: 홈 느낌(파랑 포인트) */}
+      <div className="mb-4 rounded-2xl bg-sky-600 px-4 py-3 text-white shadow">
+        <div className="flex items-center justify-between gap-3">
+          <Link href="/community/free" className="text-sm font-semibold hover:underline">
+            ← 목록
+          </Link>
 
-        <div className="flex items-center gap-2">
-          {!me.userId ? (
-            <>
-              <Link
-                className="rounded-lg border border-slate-700 bg-slate-900/30 px-3 py-2 text-sm hover:bg-slate-900/50"
-                href={`/login?next=/community/free/${encodeURIComponent(id ?? "")}`}
+          <div className="flex items-center gap-2">
+            {!me.userId ? (
+              <>
+                <Link
+                  className="rounded-lg bg-white/15 px-3 py-2 text-sm hover:bg-white/25"
+                  href={`/login?next=/community/free/${encodeURIComponent(id ?? "")}`}
+                >
+                  로그인
+                </Link>
+                <Link className="rounded-lg bg-white/15 px-3 py-2 text-sm hover:bg-white/25" href="/signup">
+                  회원가입
+                </Link>
+              </>
+            ) : (
+              <button
+                type="button"
+                onClick={onLogout}
+                className="rounded-lg bg-white/15 px-3 py-2 text-sm hover:bg-white/25"
               >
-                로그인
-              </Link>
-              <Link
-                className="rounded-lg border border-slate-700 bg-slate-900/30 px-3 py-2 text-sm hover:bg-slate-900/50"
-                href="/signup"
-              >
-                회원가입
-              </Link>
-            </>
-          ) : (
-            <button
-              type="button"
-              onClick={onLogout}
-              className="rounded-lg border border-slate-700 bg-slate-900/30 px-3 py-2 text-sm hover:bg-slate-900/50"
-            >
-              로그아웃
-            </button>
-          )}
+                로그아웃
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
-      {/* 게시글 카드 */}
-      <section className="rounded-xl border border-slate-700/70 bg-slate-900/30 p-4 sm:p-6">
+      {/* ✅ 게시글 카드(흰 배경 + 검정 글씨) */}
+      <section className="rounded-2xl border border-black/15 bg-white p-4 shadow-sm sm:p-6">
         {loading ? (
-          <div className="text-slate-300 text-sm">불러오는 중…</div>
+          <div className="text-slate-700 text-sm">불러오는 중…</div>
         ) : errorMsg ? (
-          <div className="text-rose-300 text-sm">{errorMsg}</div>
+          <div className="text-rose-600 text-sm">{errorMsg}</div>
         ) : !post ? (
-          <div className="text-slate-300 text-sm">게시글이 없습니다.</div>
+          <div className="text-slate-700 text-sm">게시글이 없습니다.</div>
         ) : (
           <>
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
-                <h1 className="text-xl sm:text-2xl font-bold text-slate-100 break-words">
+                <h1 className="break-words text-xl font-extrabold text-slate-950 sm:text-2xl">
                   {post.title ?? "(제목 없음)"}
                 </h1>
 
-                <div className="mt-2 text-xs sm:text-sm text-slate-300 flex flex-wrap gap-x-2 gap-y-1">
+                <div className="mt-2 flex flex-wrap gap-x-2 gap-y-1 text-xs text-slate-600 sm:text-sm">
                   <span>
                     작성자:{" "}
-                    <span className="font-medium text-slate-100">{post.author?.username ?? "unknown"}</span>
+                    <span className="font-semibold text-slate-900">{post.author?.username ?? "unknown"}</span>
                     {post.author?.role === "admin" ? (
-                      <span className="ml-2 font-semibold text-amber-300">★ (Admin)</span>
+                      <span className="ml-2 font-semibold text-amber-600">★ (Admin)</span>
                     ) : null}
                   </span>
                   <span>· {fmt(post.created_at)}</span>
@@ -224,15 +225,15 @@ export default function FreePostDetailPage() {
                   type="button"
                   disabled={busy}
                   onClick={onDeletePost}
-                  className="shrink-0 rounded-lg border border-rose-700/50 bg-rose-900/20 px-3 py-2 text-sm text-rose-200 hover:bg-rose-900/30 disabled:opacity-50"
+                  className="shrink-0 rounded-lg border border-rose-300 bg-rose-50 px-3 py-2 text-sm font-semibold text-rose-700 hover:bg-rose-100 disabled:opacity-50"
                 >
                   삭제
                 </button>
               ) : null}
             </div>
 
-            {/* 본문 */}
-            <div className="mt-5 rounded-xl border border-slate-700/70 bg-slate-950/20 p-4 text-slate-100 whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
+            {/* ✅ 본문(연한 하늘/회색 톤 + 검정 글씨) */}
+            <div className="mt-5 rounded-2xl border border-sky-200 bg-sky-50 p-4 text-slate-900 whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
               {post.content ?? ""}
             </div>
 
@@ -245,14 +246,9 @@ export default function FreePostDetailPage() {
                     href={url}
                     target="_blank"
                     rel="noreferrer"
-                    className="block overflow-hidden rounded-xl border border-slate-700/70 bg-slate-950/10"
+                    className="block overflow-hidden rounded-2xl border border-black/15 bg-white hover:shadow-sm"
                   >
-                    <img
-                      src={url}
-                      alt={`첨부 이미지 ${i + 1}`}
-                      className="h-auto w-full object-cover"
-                      loading="lazy"
-                    />
+                    <img src={url} alt={`첨부 이미지 ${i + 1}`} className="h-auto w-full object-cover" loading="lazy" />
                   </a>
                 ))}
               </div>
@@ -261,21 +257,21 @@ export default function FreePostDetailPage() {
         )}
       </section>
 
-      {/* 댓글 */}
-      <section className="mt-5 rounded-xl border border-slate-700/70 bg-slate-900/20 p-4 sm:p-6">
+      {/* ✅ 댓글(흰 배경 + 검정 글씨) */}
+      <section className="mt-4 rounded-2xl border border-black/15 bg-white p-4 shadow-sm sm:p-6">
         <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-lg font-bold text-slate-100">댓글</h2>
-          <div className="text-sm text-slate-300">{comments.length}개</div>
+          <h2 className="text-lg font-extrabold text-slate-950">댓글</h2>
+          <div className="text-sm text-slate-600">{comments.length}개</div>
         </div>
 
         {/* 입력 */}
-        <div className="rounded-xl border border-slate-700/70 bg-slate-900/30 p-3 sm:p-4">
+        <div className="rounded-2xl border border-black/15 bg-white p-3 sm:p-4">
           <textarea
             value={commentText}
             onChange={(e) => setCommentText(e.target.value)}
             placeholder={me.userId ? "댓글을 입력하세요" : "댓글 작성은 로그인 후 가능합니다"}
             disabled={!me.userId || busy}
-            className="w-full resize-none rounded-lg border border-slate-700 bg-slate-950/30 p-3 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+            className="w-full resize-none rounded-xl border border-black/15 bg-white p-3 text-sm text-slate-900 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-sky-400/40"
             rows={4}
           />
 
@@ -284,7 +280,7 @@ export default function FreePostDetailPage() {
               type="button"
               onClick={onAddComment}
               disabled={!me.userId || busy || commentText.trim().length === 0}
-              className="rounded-lg bg-emerald-500 px-4 py-2 text-sm font-semibold text-black hover:bg-emerald-400 disabled:opacity-50"
+              className="rounded-lg bg-sky-600 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-500 disabled:opacity-50"
             >
               등록
             </button>
@@ -294,24 +290,24 @@ export default function FreePostDetailPage() {
         {/* 목록 */}
         <div className="mt-4 space-y-3">
           {comments.length === 0 ? (
-            <div className="rounded-xl border border-slate-700/70 bg-slate-900/20 p-4 text-sm text-slate-300">
+            <div className="rounded-2xl border border-black/15 bg-white p-4 text-sm text-slate-600">
               아직 댓글이 없습니다.
             </div>
           ) : (
             comments.map((c) => (
-              <div key={c.id} className="rounded-xl border border-slate-700/70 bg-slate-900/30 p-4">
-                <div className="text-xs sm:text-sm text-slate-300 flex flex-wrap gap-x-2 gap-y-1">
+              <div key={c.id} className="rounded-2xl border border-black/15 bg-white p-4">
+                <div className="flex flex-wrap gap-x-2 gap-y-1 text-xs text-slate-600 sm:text-sm">
                   <span>
                     작성자:{" "}
-                    <span className="font-medium text-slate-100">{c.author?.username ?? "unknown"}</span>
+                    <span className="font-semibold text-slate-900">{c.author?.username ?? "unknown"}</span>
                     {c.author?.role === "admin" ? (
-                      <span className="ml-2 font-semibold text-amber-300">★ (Admin)</span>
+                      <span className="ml-2 font-semibold text-amber-600">★ (Admin)</span>
                     ) : null}
                   </span>
                   <span>· {fmt(c.created_at)}</span>
                 </div>
 
-                <div className="mt-2 text-sm text-slate-100 whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
+                <div className="mt-2 whitespace-pre-wrap break-words text-sm text-slate-900 [overflow-wrap:anywhere]">
                   {c.content}
                 </div>
               </div>
