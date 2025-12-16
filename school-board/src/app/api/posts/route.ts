@@ -15,9 +15,16 @@ export async function GET(req: Request) {
 
   const sb = admin();
 
+<<<<<<< HEAD
   const { data: posts, error } = await sb
     .from("posts")
     .select("id,title,created_at,view_count,author_id")
+=======
+  // ✅✅✅ 여기만 핵심 변경: content 추가
+  const { data: posts, error } = await sb
+    .from("posts")
+    .select("id,title,content,created_at,view_count,author_id")
+>>>>>>> b3138e5 (deploy)
     .eq("board", board)
     .order("created_at", { ascending: false });
 
@@ -42,6 +49,10 @@ export async function GET(req: Request) {
     author: profileMap.get(p.author_id) ?? { username: null, role: "user" },
   }));
 
+<<<<<<< HEAD
+=======
+  // ✅ 원문 유지: 반드시 { data: result } 형태로 반환
+>>>>>>> b3138e5 (deploy)
   return NextResponse.json({ data: result });
 }
 
