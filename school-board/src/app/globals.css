@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 :root {
-  --background: lab(94.8% 0.01 -0.01 / 0.9);
+  --background: oklab(99.405% 0 -0.00011 / 0.84);
   --foreground: hsl(0, 0%, 100%);
 }
 
