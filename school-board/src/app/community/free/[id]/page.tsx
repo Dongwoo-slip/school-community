@@ -4,275 +4,316 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 
-type Me = { id: string; email?: string; username?: string };
-type AnyPost = Record<string, any>;
-type AnyComment = Record<string, any>;
+type Me = { userId: string | null; role: string; username: string | null };
 
-function pickParamId(v: string | string[] | undefined) {
-  if (Array.isArray(v)) return v[0];
-  return v;
+type PostDetail = {
+  id: string;
+  title: string | null;
+  content: string | null;
+  created_at: string | null;
+  view_count: number | null;
+  author_id?: string | null;
+  author?: { username: string | null; role: string | null } | null;
+
+  // ✅ 사진 첨부
+  image_urls?: string[] | null;
+};
+
+type Comment = {
+  id: string;
+  post_id: string;
+  content: string;
+  created_at: string;
+  author_id?: string | null;
+  author?: { username: string | null; role: string | null } | null;
+};
+
+function fmt(iso?: string | null) {
+  if (!iso) return "-";
+  try {
+    return new Date(iso).toLocaleString("ko-KR");
+  } catch {
+    return String(iso);
+  }
 }
 
 export default function FreePostDetailPage() {
-  const params = useParams<{ id?: string | string[] }>();
   const router = useRouter();
+  const params = useParams<{ id: string }>();
+  const id = params?.id;
 
-  const postId = useMemo(() => {
-    const raw = pickParamId(params?.id);
-    if (!raw || raw === "undefined") return "";
-    return String(raw);
-  }, [params]);
+  const [me, setMe] = useState<Me>({ userId: null, role: "guest", username: null });
 
-  const [me, setMe] = useState<Me | null>(null);
-  const [post, setPost] = useState<AnyPost | null>(null);
-  const [comments, setComments] = useState<AnyComment[]>([]);
+  const [post, setPost] = useState<PostDetail | null>(null);
+  const [comments, setComments] = useState<Comment[]>([]);
   const [loading, setLoading] = useState(true);
+
   const [commentText, setCommentText] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  const fmt = (iso?: string) => {
-    if (!iso) return "-";
-    try {
-      return new Date(iso).toLocaleString("ko-KR");
-    } catch {
-      return iso;
-    }
-  };
-
-  // ✅ /api/me 가 { user: null }을 내려줘도 로그인으로 착각하지 않게 처리
-  async function fetchMe() {
-    try {
-      const res = await fetch("/api/me", { cache: "no-store" });
-      if (!res.ok) return setMe(null);
-      const json = await res.json().catch(() => null);
-      const user = json?.user ?? null;
-      if (user && user.id) setMe(user);
-      else setMe(null);
-    } catch {
-      setMe(null);
-    }
+  async function loadMe() {
+    const res = await fetch("/api/me", { cache: "no-store" });
+    const json = await res.json().catch(() => ({}));
+    setMe({ userId: json.userId ?? null, role: json.role ?? "guest", username: json.username ?? null });
   }
 
-  async function fetchPostAndComments(validId: string) {
-    setLoading(true);
-    try {
-      // posts API는 { data: [...] } 형태(원문 유지)
-      const listRes = await fetch(`/api/posts?board=free`, { cache: "no-store" });
-      const listJson = await listRes.json().catch(() => null);
-      const posts: AnyPost[] = listJson?.data ?? [];
-      const found = posts.find((p) => String(p?.id) === validId) ?? null;
-      setPost(found);
+  async function loadPostAndComments() {
+    if (!id) return;
 
-      // comments API는 post_id 필요
-      const cRes = await fetch(`/api/comments?post_id=${validId}`, { cache: "no-store" });
-      const cJson = await cRes.json().catch(() => null);
-      setComments(cJson?.data ?? []);
+    setLoading(true);
+    setErrorMsg(null);
+
+    try {
+      const resPost = await fetch(`/api/posts/${encodeURIComponent(id)}`, { cache: "no-store" });
+      const jsonPost = await resPost.json().catch(() => ({}));
+
+      if (!resPost.ok) {
+        setPost(null);
+        setComments([]);
+        setErrorMsg(jsonPost?.error ?? "게시글을 불러오지 못했습니다.");
+        return;
+      }
+
+      setPost(jsonPost?.data ?? null);
+
+      const resC = await fetch(`/api/comments?post_id=${encodeURIComponent(id)}`, { cache: "no-store" });
+      const jsonC = await resC.json().catch(() => ({}));
+      setComments(jsonC?.data ?? []);
     } finally {
       setLoading(false);
     }
   }
 
-  useEffect(() => {
-    fetchMe();
-    if (!postId) {
-      setLoading(false);
-      return;
-    }
-    fetchPostAndComments(postId);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [postId]);
-
-  // ✅ 로그아웃: /logout로 이동하지 말고 API만 호출(405 방지)
   async function onLogout() {
     await fetch("/api/logout", { method: "POST" });
-    setMe(null);
+    setMe({ userId: null, role: "guest", username: null });
     router.refresh();
   }
 
-  async function onDelete() {
-    if (!postId) return;
-    if (!confirm("삭제할까요?")) return;
+  const canDelete = useMemo(() => {
+    if (!me.userId || !post) return false;
+    if (me.role === "admin") return true;
+    if (post.author_id && String(post.author_id) === String(me.userId)) return true;
+    return false;
+  }, [me.userId, me.role, post]);
 
-    const res = await fetch(`/api/posts/${postId}`, { method: "DELETE" });
-    if (res.ok) {
+  async function onDeletePost() {
+    if (!id) return;
+    if (!confirm("정말 삭제할까요?")) return;
+
+    setBusy(true);
+    try {
+      const res = await fetch(`/api/posts/${encodeURIComponent(id)}`, { method: "DELETE" });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        alert(json?.error ?? "삭제 실패");
+        return;
+      }
       router.push("/community/free");
       router.refresh();
-      return;
+    } finally {
+      setBusy(false);
     }
-    const t = await res.text().catch(() => "");
-    console.error("DELETE FAIL:", res.status, t);
-    if (res.status === 401) {
-      alert("로그인 후 삭제할 수 있습니다.");
-      router.push("/login");
-      return;
-    }
-    alert("삭제 실패");
   }
 
   async function onAddComment() {
-    const text = commentText.trim();
-    if (!text) return;
+    if (!id) return;
 
-    // ✅ me로 막지 말고, 서버 응답이 401이면 로그인 유도 (세션 판별 흔들림 방지)
-    const res = await fetch("/api/comments", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ post_id: postId, content: text }),
-    });
+    if (!me.userId) {
+      alert("로그인이 필요합니다.");
+      router.push(`/login?next=/community/free/${encodeURIComponent(id)}`);
+      return;
+    }
 
-    if (res.ok) {
+    const content = commentText.trim();
+    if (!content) return;
+
+    setBusy(true);
+    try {
+      const res = await fetch("/api/comments", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ post_id: id, content }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        alert(json?.error ?? "댓글 등록 실패");
+        return;
+      }
       setCommentText("");
-      await fetchPostAndComments(postId);
-      return;
+      await loadPostAndComments();
+    } finally {
+      setBusy(false);
     }
-
-    const t = await res.text().catch(() => "");
-    console.error("ADD COMMENT FAIL:", res.status, t);
-
-    if (res.status === 401) {
-      alert("댓글 작성은 로그인 후 가능합니다.");
-      router.push("/login");
-      return;
-    }
-    alert("댓글 등록 실패");
   }
 
-  if (!postId) {
-    return (
-      <main className="mx-auto w-full max-w-5xl px-6 py-8">
-        <div className="rounded-lg border bg-white p-6 text-black">
-          잘못된 접근입니다.
-          <div className="mt-4">
-            <Link href="/community/free" className="text-sm hover:underline">
-              ← 목록으로
-            </Link>
-          </div>
-        </div>
-      </main>
-    );
-  }
-
-  if (loading) {
-    return (
-      <main className="mx-auto w-full max-w-5xl px-6 py-8">
-        <div className="rounded-lg border bg-white p-6 text-black">로딩중…</div>
-      </main>
-    );
-  }
-
-  if (!post) {
-    return (
-      <main className="mx-auto w-full max-w-5xl px-6 py-8">
-        <div className="rounded-lg border bg-white p-6 text-black">게시글을 찾을 수 없습니다.</div>
-        <div className="mt-4">
-          <Link href="/community/free" className="text-sm hover:underline">
-            ← 목록
-          </Link>
-        </div>
-      </main>
-    );
-  }
-
-  const title = post.title ?? "(제목 없음)";
-  const content = post.content ?? "";
-
-  const isOwner = me?.id && post.author_id ? String(me.id) === String(post.author_id) : false;
+  useEffect(() => {
+    loadMe();
+    loadPostAndComments();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]);
 
   return (
-    <main className="mx-auto w-full max-w-5xl px-6 py-8">
+    <main className="mx-auto max-w-4xl px-4 py-5 sm:px-6 sm:py-6">
       {/* 상단 */}
-      <div className="mb-6 flex items-center justify-between">
-        <Link href="/community/free" className="text-sm hover:underline text-white">
+      <div className="mb-5 flex items-center justify-between gap-3">
+        <Link href="/community/free" className="text-sm text-slate-200 hover:underline">
           ← 목록
         </Link>
 
         <div className="flex items-center gap-2">
-          {me ? (
-            <>
-              <span className="text-sm text-gray-200">{me.username ?? me.email ?? "로그인됨"}</span>
-              <button
-                onClick={onLogout}
-                className="rounded-md border px-3 py-2 text-sm text-black bg-white hover:bg-gray-50"
-              >
-                로그아웃
-              </button>
-            </>
-          ) : (
+          {!me.userId ? (
             <>
               <Link
-                href="/login"
-                className="rounded-md border px-3 py-2 text-sm text-black bg-white hover:bg-gray-50"
+                className="rounded-lg border border-slate-700 bg-slate-900/30 px-3 py-2 text-sm hover:bg-slate-900/50"
+                href={`/login?next=/community/free/${encodeURIComponent(id ?? "")}`}
               >
                 로그인
               </Link>
               <Link
+                className="rounded-lg border border-slate-700 bg-slate-900/30 px-3 py-2 text-sm hover:bg-slate-900/50"
                 href="/signup"
-                className="rounded-md border px-3 py-2 text-sm text-black bg-white hover:bg-gray-50"
               >
                 회원가입
               </Link>
             </>
+          ) : (
+            <button
+              type="button"
+              onClick={onLogout}
+              className="rounded-lg border border-slate-700 bg-slate-900/30 px-3 py-2 text-sm hover:bg-slate-900/50"
+            >
+              로그아웃
+            </button>
           )}
         </div>
       </div>
 
-      {/* 게시글 */}
-      <section className="rounded-lg border bg-white p-6 text-black">
-        <div className="flex items-start justify-between gap-4">
-          <h1 className="text-2xl font-bold text-black">{title}</h1>
-          {isOwner ? (
-            <button onClick={onDelete} className="text-sm font-medium text-red-600 hover:underline">
-              삭제
-            </button>
-          ) : null}
-        </div>
+      {/* 게시글 카드 */}
+      <section className="rounded-xl border border-slate-700/70 bg-slate-900/30 p-4 sm:p-6">
+        {loading ? (
+          <div className="text-slate-300 text-sm">불러오는 중…</div>
+        ) : errorMsg ? (
+          <div className="text-rose-300 text-sm">{errorMsg}</div>
+        ) : !post ? (
+          <div className="text-slate-300 text-sm">게시글이 없습니다.</div>
+        ) : (
+          <>
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <h1 className="text-xl sm:text-2xl font-bold text-slate-100 break-words">
+                  {post.title ?? "(제목 없음)"}
+                </h1>
 
-        <div className="mt-2 text-sm text-gray-700">
-          작성자: {post.author?.username ?? "unknown"} · {fmt(post.created_at)} · 조회{" "}
-          {post.view_count ?? 0}
-        </div>
+                <div className="mt-2 text-xs sm:text-sm text-slate-300 flex flex-wrap gap-x-2 gap-y-1">
+                  <span>
+                    작성자:{" "}
+                    <span className="font-medium text-slate-100">{post.author?.username ?? "unknown"}</span>
+                    {post.author?.role === "admin" ? (
+                      <span className="ml-2 font-semibold text-amber-300">★ (Admin)</span>
+                    ) : null}
+                  </span>
+                  <span>· {fmt(post.created_at)}</span>
+                  <span>· 조회 {post.view_count ?? 0}</span>
+                </div>
+              </div>
 
-        <div className="mt-6 w-full min-w-0 rounded-md border p-4 text-black whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
-          {content}
-        </div>
+              {canDelete ? (
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={onDeletePost}
+                  className="shrink-0 rounded-lg border border-rose-700/50 bg-rose-900/20 px-3 py-2 text-sm text-rose-200 hover:bg-rose-900/30 disabled:opacity-50"
+                >
+                  삭제
+                </button>
+              ) : null}
+            </div>
+
+            {/* 본문 */}
+            <div className="mt-5 rounded-xl border border-slate-700/70 bg-slate-950/20 p-4 text-slate-100 whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
+              {post.content ?? ""}
+            </div>
+
+            {/* ✅ 첨부 이미지 */}
+            {Array.isArray(post.image_urls) && post.image_urls.length > 0 ? (
+              <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                {post.image_urls.map((url, i) => (
+                  <a
+                    key={url + i}
+                    href={url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="block overflow-hidden rounded-xl border border-slate-700/70 bg-slate-950/10"
+                  >
+                    <img
+                      src={url}
+                      alt={`첨부 이미지 ${i + 1}`}
+                      className="h-auto w-full object-cover"
+                      loading="lazy"
+                    />
+                  </a>
+                ))}
+              </div>
+            ) : null}
+          </>
+        )}
       </section>
 
       {/* 댓글 */}
-      <section className="mt-8 rounded-lg border bg-white p-6 text-black">
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-semibold">댓글</h2>
-          <span className="text-sm text-gray-600">{comments.length}개</span>
+      <section className="mt-5 rounded-xl border border-slate-700/70 bg-slate-900/20 p-4 sm:p-6">
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="text-lg font-bold text-slate-100">댓글</h2>
+          <div className="text-sm text-slate-300">{comments.length}개</div>
         </div>
 
-        <div className="space-y-3">
+        {/* 입력 */}
+        <div className="rounded-xl border border-slate-700/70 bg-slate-900/30 p-3 sm:p-4">
           <textarea
             value={commentText}
             onChange={(e) => setCommentText(e.target.value)}
-            className="h-28 w-full resize-none rounded-md border p-3 outline-none"
-            placeholder="댓글을 입력하세요"
+            placeholder={me.userId ? "댓글을 입력하세요" : "댓글 작성은 로그인 후 가능합니다"}
+            disabled={!me.userId || busy}
+            className="w-full resize-none rounded-lg border border-slate-700 bg-slate-950/30 p-3 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+            rows={4}
           />
-          <div className="flex justify-end">
+
+          <div className="mt-3 flex justify-end">
             <button
               type="button"
               onClick={onAddComment}
-              disabled={!commentText.trim()}
-              className="rounded-md bg-gray-800 px-4 py-2 text-sm text-white disabled:opacity-40"
+              disabled={!me.userId || busy || commentText.trim().length === 0}
+              className="rounded-lg bg-emerald-500 px-4 py-2 text-sm font-semibold text-black hover:bg-emerald-400 disabled:opacity-50"
             >
               등록
             </button>
           </div>
         </div>
 
-        <div className="mt-6 space-y-3">
+        {/* 목록 */}
+        <div className="mt-4 space-y-3">
           {comments.length === 0 ? (
-            <div className="rounded-md border p-3 text-sm text-gray-600">아직 댓글이 없습니다.</div>
+            <div className="rounded-xl border border-slate-700/70 bg-slate-900/20 p-4 text-sm text-slate-300">
+              아직 댓글이 없습니다.
+            </div>
           ) : (
             comments.map((c) => (
-              <div key={String(c.id)} className="rounded-md border p-3">
-                <div className="text-sm font-medium">{c.author?.username ?? "unknown"}</div>
-                <div className="mt-1 text-sm text-gray-800 whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
-                  {c.content ?? ""}
+              <div key={c.id} className="rounded-xl border border-slate-700/70 bg-slate-900/30 p-4">
+                <div className="text-xs sm:text-sm text-slate-300 flex flex-wrap gap-x-2 gap-y-1">
+                  <span>
+                    작성자:{" "}
+                    <span className="font-medium text-slate-100">{c.author?.username ?? "unknown"}</span>
+                    {c.author?.role === "admin" ? (
+                      <span className="ml-2 font-semibold text-amber-300">★ (Admin)</span>
+                    ) : null}
+                  </span>
+                  <span>· {fmt(c.created_at)}</span>
                 </div>
-                <div className="mt-1 text-xs text-gray-500">{fmt(c.created_at)}</div>
+
+                <div className="mt-2 text-sm text-slate-100 whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
+                  {c.content}
+                </div>
               </div>
             ))
           )}

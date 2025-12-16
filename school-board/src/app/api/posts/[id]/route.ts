@@ -10,25 +10,22 @@ function admin() {
 
 type Ctx = { params: Promise<{ id: string }> };
 
-// GET /api/posts/:id  (공개 상세 조회)
 export async function GET(_req: Request, ctx: Ctx) {
   const { id } = await ctx.params;
   const sb = admin();
 
   const { data: post, error } = await sb
     .from("posts")
-    .select("id,title,content,created_at,view_count,author_id")
+    .select("id,title,content,created_at,view_count,author_id,image_urls")
     .eq("id", id)
     .maybeSingle();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   if (!post) return NextResponse.json({ error: "게시물을 찾을 수 없습니다." }, { status: 404 });
 
-  // 조회수 +1
   const nextView = (post.view_count ?? 0) + 1;
   await sb.from("posts").update({ view_count: nextView }).eq("id", id);
 
-  // 작성자 프로필
   let author: { username: string | null; role: string | null } | null = null;
   if (post.author_id) {
     const { data: profile } = await sb
@@ -43,7 +40,6 @@ export async function GET(_req: Request, ctx: Ctx) {
   return NextResponse.json({ data: { ...post, view_count: nextView, author } });
 }
 
-// DELETE /api/posts/:id (로그인 + 권한: 작성자 or admin)
 export async function DELETE(_req: Request, ctx: Ctx) {
   const { id } = await ctx.params;
 
@@ -55,7 +51,6 @@ export async function DELETE(_req: Request, ctx: Ctx) {
 
   const sb = admin();
 
-  // 글 확인
   const { data: post, error: postErr } = await sb
     .from("posts")
     .select("id,author_id")
@@ -65,7 +60,6 @@ export async function DELETE(_req: Request, ctx: Ctx) {
   if (postErr) return NextResponse.json({ error: postErr.message }, { status: 500 });
   if (!post) return NextResponse.json({ error: "게시물을 찾을 수 없습니다." }, { status: 404 });
 
-  // 내 role 확인
   const { data: profile } = await sb.from("profiles").select("role").eq("id", user.id).maybeSingle();
   const role = profile?.role ?? "user";
 

@@ -1,16 +1,23 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 
-async function signOutAndRedirect(req: Request) {
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
+async function signOut() {
   const supabase = await createClient();
   await supabase.auth.signOut();
-  return NextResponse.redirect(new URL("/community/free", req.url));
 }
 
 export async function GET(req: Request) {
-  return signOutAndRedirect(req);
+  await signOut();
+  return NextResponse.redirect(new URL("/community/free", req.url));
 }
 
-export async function POST(req: Request) {
-  return signOutAndRedirect(req);
+export async function POST() {
+  await signOut();
+  return NextResponse.json(
+    { ok: true },
+    { status: 200, headers: { "Cache-Control": "no-store, max-age=0" } }
+  );
 }
