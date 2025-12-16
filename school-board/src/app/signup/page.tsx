@@ -7,21 +7,22 @@ function toEmail(username: string) {
   return `${username.trim().toLowerCase()}@school-board.test`;
 }
 
-export default function SignUpPage() {
+export default function SignupPage() {
   const supabase = createClient();
+
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [password2, setPassword2] = useState("");
   const [msg, setMsg] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  async function onSignUp() {
+  async function onSignup() {
     setMsg(null);
 
     const u = username.trim().toLowerCase();
-    if (!/^[a-z0-9_]{3,20}$/.test(u)) {
-      return setMsg("아이디는 영문/숫자/_ 만 가능 (3~20자)");
-    }
-    if (password.length < 6) return setMsg("비밀번호는 6자 이상 권장");
+    if (!/^[a-z0-9_]{3,20}$/.test(u)) return setMsg("아이디는 영문/숫자/_ 만 가능 (3~20자)");
+    if (password.length < 4) return setMsg("비밀번호는 4글자 이상");
+    if (password !== password2) return setMsg("비밀번호가 일치하지 않습니다.");
 
     setLoading(true);
     try {
@@ -30,52 +31,79 @@ export default function SignUpPage() {
         password,
       });
 
-      if (error) return setMsg("회원가입에 실패했습니다. (이미 사용 중일 수 있어요)");
+      if (error) return setMsg(error.message);
 
-      // 이메일 확인 OFF면 보통 바로 세션이 잡히거나, 바로 로그인 가능
-      location.href = "/community/free";
+      // 가입 후 바로 로그인되게(대부분 자동 세션 생성됨)
+      const params = new URLSearchParams(location.search);
+      const next = params.get("next") ?? "/community/free";
+      location.href = next;
     } finally {
       setLoading(false);
     }
   }
 
   return (
-    <main className="mx-auto max-w-md p-6 space-y-3">
-      <h1 className="text-2xl font-bold">회원가입</h1>
+    <main className="mx-auto max-w-md px-4 py-8 text-slate-900">
+      <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+        <h1 className="text-2xl font-extrabold">회원가입</h1>
+        <p className="mt-1 text-sm text-slate-600">아이디/비밀번호로 가입합니다.</p>
 
-      <input
-        className="w-full rounded border p-2"
-        placeholder="아이디 (영문/숫자/_ , 3~20자)"
-        value={username}
-        onChange={(e) => setUsername(e.target.value)}
-      />
+        <div className="mt-5 space-y-3">
+          <div>
+            <label className="text-sm font-semibold text-slate-700">아이디</label>
+            <input
+              className="mt-1 w-full rounded-lg border border-slate-300 bg-white p-2.5 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-300"
+              placeholder="영문/숫자/_ (3~20자)"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              autoComplete="username"
+            />
+          </div>
 
-      <input
-        className="w-full rounded border p-2"
-        placeholder="비밀번호 (6자 이상 권장)"
-        type="password"
-        value={password}
-        onChange={(e) => setPassword(e.target.value)}
-      />
+          <div>
+            <label className="text-sm font-semibold text-slate-700">비밀번호</label>
+            <input
+              className="mt-1 w-full rounded-lg border border-slate-300 bg-white p-2.5 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-300"
+              placeholder="4글자 이상"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              autoComplete="new-password"
+            />
+          </div>
 
-      <button
-        className="w-full rounded bg-black p-2 text-white disabled:opacity-60"
-        onClick={onSignUp}
-        disabled={loading}
-      >
-        {loading ? "가입 중..." : "가입"}
-      </button>
+          <div>
+            <label className="text-sm font-semibold text-slate-700">비밀번호 확인</label>
+            <input
+              className="mt-1 w-full rounded-lg border border-slate-300 bg-white p-2.5 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-300"
+              placeholder="한 번 더 입력"
+              type="password"
+              value={password2}
+              onChange={(e) => setPassword2(e.target.value)}
+              autoComplete="new-password"
+            />
+          </div>
 
-      <div className="flex gap-2">
-        <a className="flex-1 rounded border p-2 text-center" href="/login">
-          로그인
-        </a>
-        <a className="flex-1 rounded border p-2 text-center" href="/community/free">
-          홈으로
-        </a>
+          <button
+            className="mt-2 w-full rounded-lg bg-sky-600 p-2.5 font-bold text-white hover:bg-sky-500 disabled:opacity-60"
+            onClick={onSignup}
+            disabled={loading}
+          >
+            {loading ? "가입 중..." : "회원가입"}
+          </button>
+
+          <div className="flex gap-2 pt-1">
+            <a className="flex-1 rounded-lg border border-slate-300 bg-white p-2 text-center text-sm hover:bg-slate-50" href="/login">
+              로그인
+            </a>
+            <a className="flex-1 rounded-lg border border-slate-300 bg-white p-2 text-center text-sm hover:bg-slate-50" href="/community/free">
+              홈으로
+            </a>
+          </div>
+
+          {msg && <div className="text-sm text-rose-600">{msg}</div>}
+        </div>
       </div>
-
-      {msg && <div className="text-sm text-red-600">{msg}</div>}
     </main>
   );
 }
