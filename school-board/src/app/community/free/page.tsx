@@ -4,11 +4,14 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
+type Poll = { question?: string; options?: { id: string; text: string }[] };
+
 type Post = {
   id: string;
   title: string;
   created_at: string;
   view_count: number;
+  poll?: Poll | null;
   author?: { username: string | null; role: string | null };
 };
 
@@ -41,13 +44,8 @@ function NoticeBadge() {
   );
 }
 
-/** ✅ 화면 양쪽 끝까지 “쫙” 펴지는 바(풀-블리드) */
 function FullBleed({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="relative left-1/2 right-1/2 -mx-[50vw] w-screen">
-      {children}
-    </div>
-  );
+  return <div className="relative left-1/2 right-1/2 -mx-[50vw] w-screen">{children}</div>;
 }
 
 export default function FreeBoardPage() {
@@ -61,11 +59,7 @@ export default function FreeBoardPage() {
   async function loadMe() {
     const res = await fetch("/api/me", { cache: "no-store" });
     const json = await res.json().catch(() => ({}));
-    setMe({
-      userId: json.userId ?? null,
-      role: json.role ?? "guest",
-      username: json.username ?? null,
-    });
+    setMe({ userId: json.userId ?? null, role: json.role ?? "guest", username: json.username ?? null });
   }
 
   async function loadPosts() {
@@ -95,18 +89,14 @@ export default function FreeBoardPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // ✅ admin 글 고정(공지) + 일반글 최신순
   const orderedPosts = useMemo(() => {
     const admin = posts.filter((p) => p.author?.role === "admin");
     const normal = posts.filter((p) => p.author?.role !== "admin");
-
     admin.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
     normal.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-
     return [...admin, ...normal];
   }, [posts]);
 
-  // ✅ "옛날 글이 1" 번호 매핑(공지 제외 일반글만)
   const numberMap = useMemo(() => {
     const normal = posts
       .filter((p) => p.author?.role !== "admin")
@@ -119,7 +109,6 @@ export default function FreeBoardPage() {
     return map;
   }, [posts]);
 
-  // TOP3(조회수 기준)
   const top3 = useMemo(() => {
     const arr = [...posts].filter((p) => typeof p.id === "string" && p.id.length > 0);
     arr.sort((a, b) => (b.view_count ?? 0) - (a.view_count ?? 0));
@@ -128,122 +117,90 @@ export default function FreeBoardPage() {
 
   return (
     <main className="mx-auto max-w-5xl px-4 py-3 sm:px-6 sm:py-5">
-      {/* ✅ 1) “자유게시판” 제목: 배경 없이 글자만 */}
+      {/* 상단: 로고 + (작은)자유게시판 + 로그인정보 + 버튼 */}
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <h1 className="text-2xl font-extrabold text-slate-900">자유게시판</h1>
-          {me.userId ? (
-            <div className="mt-1 text-[12px] text-slate-600">
-              로그인: <span className="font-semibold text-emerald-700">{me.username ?? "unknown"}</span>
-              {me.role === "admin" ? <span className="ml-1 font-semibold text-amber-700">★ (Admin)</span> : null}
-            </div>
-          ) : (
-            <div className="mt-1 text-[12px] text-slate-500">로그인되지 않음</div>
-          )}
+          {/* ✅ 로고(886x282): 전체 보이게 object-contain + 큰 max-width */}
+          <img
+            src="/logo.png"
+            alt="logo"
+            className="h-10 sm:h-12 md:h-14 w-auto object-contain max-w-[360px] sm:max-w-[460px] md:max-w-[520px]"
+          />
+          <div className="mt-1 text-[12px] font-bold text-slate-900">자유게시판</div>
         </div>
 
-        {/* ✅ 2) 버튼들: 작게 + 맨위 느낌(붙어있게) */}
-        <div className="flex items-center gap-1.5">
-          {!me.userId ? (
-            <>
-              <Link
-                className="border border-slate-300 bg-white px-2 py-1 text-[11px] text-slate-800 hover:bg-slate-50"
-                href="/login?next=/community/free"
-              >
-                로그인
-              </Link>
-              <Link
-                className="border border-slate-300 bg-white px-2 py-1 text-[11px] text-slate-800 hover:bg-slate-50"
-                href="/signup"
-              >
-                회원가입
-              </Link>
-            </>
-          ) : (
-            <button
-              type="button"
-              onClick={onLogout}
-              className="border border-slate-300 bg-white px-2 py-1 text-[11px] text-slate-800 hover:bg-slate-50"
-            >
-              로그아웃
-            </button>
-          )}
+        <div className="flex items-start gap-2">
+          {/* 로그인 표시를 약간 더 오른쪽 느낌(버튼쪽에 붙임) */}
+          <div className="hidden sm:block text-right text-[12px] text-slate-600 pt-1 mr-2">
+            {me.userId ? (
+              <>
+                로그인: <span className="font-semibold text-emerald-700">{me.username ?? "unknown"}</span>
+                {me.role === "admin" ? <span className="ml-1 font-semibold text-amber-700">★</span> : null}
+              </>
+            ) : (
+              "로그인되지 않음"
+            )}
+          </div>
 
-          <Link
-            className="border border-emerald-400 bg-emerald-300 px-2 py-1 text-[11px] font-semibold text-black hover:bg-emerald-200"
-            href="/community/free/new"
-          >
-            글쓰기
-          </Link>
+          <div className="flex items-center gap-1.5">
+            {!me.userId ? (
+              <>
+                <Link className="border border-slate-300 bg-white px-2 py-1 text-[11px] text-slate-800 hover:bg-slate-50" href="/login?next=/community/free">
+                  로그인
+                </Link>
+                <Link className="border border-slate-300 bg-white px-2 py-1 text-[11px] text-slate-800 hover:bg-slate-50" href="/signup">
+                  회원가입
+                </Link>
+              </>
+            ) : (
+              <button type="button" onClick={onLogout} className="border border-slate-300 bg-white px-2 py-1 text-[11px] text-slate-800 hover:bg-slate-50">
+                로그아웃
+              </button>
+            )}
+
+            <Link className="border border-emerald-400 bg-emerald-300 px-2 py-1 text-[11px] font-semibold text-black hover:bg-emerald-200" href="/community/free/new">
+              글쓰기
+            </Link>
+          </div>
         </div>
       </div>
 
-      {/* ✅ 3) “항목란(탭 바)” : 파란색 바를 아래로 내리고, 화면 양끝까지 풀로 */}
+      {/* 항목란 */}
       <div className="mt-3">
         <FullBleed>
           <div className="border-t-2 border-b-2 border-sky-700 bg-white">
             <div className="mx-auto max-w-5xl px-4 sm:px-6">
               <div className="flex items-center gap-2 py-2">
-                {/* 사진처럼 ‘항목 버튼’ 느낌만. (기능은 나중에 연결 가능) */}
-                <button className="border border-sky-700 bg-sky-700 px-3 py-1 text-[12px] font-semibold text-white hover:bg-sky-600">
-                  전체글
-                </button>
-                <button className="border border-slate-300 bg-white px-3 py-1 text-[12px] font-semibold text-slate-800 hover:bg-slate-50">
-                  공지
-                </button>
-                <button className="border border-slate-300 bg-white px-3 py-1 text-[12px] font-semibold text-slate-800 hover:bg-slate-50">
-                  인기글
-                </button>
-
-                <div className="ml-auto text-[12px] text-slate-500">
-                  {/* 자리만 잡아둠 */}
-                  정렬/필터 자리
-                </div>
+                <button className="border border-sky-700 bg-sky-700 px-3 py-1 text-[12px] font-semibold text-white hover:bg-sky-600">전체글</button>
+                <button className="border border-slate-300 bg-white px-3 py-1 text-[12px] font-semibold text-slate-800 hover:bg-slate-50">공지</button>
+                <button className="border border-slate-300 bg-white px-3 py-1 text-[12px] font-semibold text-slate-800 hover:bg-slate-50">인기글</button>
+                <div className="ml-auto text-[12px] text-slate-500">정렬/필터 자리</div>
               </div>
             </div>
           </div>
         </FullBleed>
       </div>
 
-      {/* ✅ md(패드)부터는 글목록 + 인기글을 옆으로 */}
       <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-12 md:gap-5">
-        {/* ✅ 왼쪽(게시글 영역) */}
+        {/* 게시글 영역 */}
         <section className="md:col-span-7 lg:col-span-8 md:max-w-[560px] md:justify-self-start">
-          {/* ✅ 4) 설명 배너: 더 두껍게(높이/패딩 크게) + 왼쪽 가로만 */}
+          {/* 배너(네가 문구 넣을 자리) */}
           <div className="mb-4 border border-sky-700 bg-white">
             <div className="border-b border-sky-700 bg-sky-50 px-4 py-2 text-[12px] font-semibold text-sky-900">
               사이트 배너
             </div>
-
-            {/* 두껍게 */}
             <div className="px-4 py-6">
-              <div className="flex items-center gap-4">
-                {/* 로고 자리 */}
-                <div className="h-16 w-16 border border-slate-300 bg-white flex items-center justify-center text-[11px] font-semibold text-slate-700">
-                  LOGO
-                </div>
-
-                {/* 설명 */}
-                <div className="min-w-0">
-                  <div className="text-[15px] font-extrabold text-slate-900">
-                    여기에 로고/설명/공지 문구 넣는 영역
-                  </div>
-                  <div className="mt-1 text-[12px] text-slate-600 leading-relaxed">
-                    예) 학교 커뮤니티입니다. 욕설/비방 금지, 공지 필독. (문구는 네가 원하는대로 바꾸면 됨)
-                  </div>
-                </div>
-              </div>
+              <div className="text-[15px] font-extrabold text-slate-900">여기에 설명/공지 문구</div>
+              <div className="mt-1 text-[12px] text-slate-600">원하는 문구로 바꿔서 쓰면 됨</div>
             </div>
           </div>
 
-          {/* ✅ 글 목록(표) - 사각형 + 선명하게 */}
           {loading ? (
             <div className="text-slate-600 text-sm">불러오는 중…</div>
           ) : orderedPosts.length === 0 ? (
             <div className="border border-slate-300 bg-white p-4 text-slate-700 text-sm">아직 글이 없습니다.</div>
           ) : (
             <div className="overflow-hidden border border-slate-400 bg-white">
-              {/* table header */}
               <div className="border-b border-slate-400 bg-white">
                 <div className="grid grid-cols-12 items-center px-3 py-2 text-[11px] font-semibold text-slate-900">
                   <div className="col-span-2">번호</div>
@@ -254,7 +211,6 @@ export default function FreeBoardPage() {
                 </div>
               </div>
 
-              {/* rows */}
               <ul className="divide-y divide-slate-200">
                 {orderedPosts.map((p) => {
                   const isAdmin = p.author?.role === "admin";
@@ -265,13 +221,11 @@ export default function FreeBoardPage() {
                   const username = p.author?.username ?? "unknown";
                   const date = fmtCompactDate(p.created_at);
 
+                  const hasPoll = !!p.poll && Array.isArray(p.poll.options) && p.poll.options.length >= 2;
+
                   return (
-                    <li
-                      key={p.id ?? crypto.randomUUID()}
-                      className={isAdmin ? "bg-amber-50" : "hover:bg-slate-50"}
-                    >
+                    <li key={p.id ?? crypto.randomUUID()} className={isAdmin ? "bg-amber-50" : "hover:bg-slate-50"}>
                       <div className="grid grid-cols-12 items-center gap-2 px-3 py-2.5 text-sm">
-                        {/* 번호 */}
                         <div className="col-span-2 text-[12px] text-slate-900">
                           {isAdmin ? (
                             <NoticeBadge />
@@ -282,32 +236,26 @@ export default function FreeBoardPage() {
                           )}
                         </div>
 
-                        {/* 제목 */}
                         <div className="col-span-6 sm:col-span-5 min-w-0">
                           <Link
                             href={href}
                             className={"block min-w-0 truncate font-medium " + (isAdmin ? "text-amber-800" : "text-slate-900")}
                             title={p.title}
                           >
-                            {p.title}
+                            {p.title}{" "}
+                            {/* ✅ 제목 끝에 [조회수] 빨간색 + 투표 있으면 🗳️ */}
+                            <span className="ml-1 font-semibold text-rose-600">[{p.view_count ?? 0}]</span>
+                            {hasPoll ? <span className="ml-1">🗳️</span> : null}
                           </Link>
                         </div>
 
-                        {/* 글쓴이 */}
                         <div className="hidden sm:block sm:col-span-2 min-w-0 truncate text-slate-800 text-[12px]">
                           {username}
                           {isAdmin ? <span className="ml-1 text-amber-600 font-semibold">★</span> : null}
                         </div>
 
-                        {/* 작성일 */}
-                        <div className="col-span-2 sm:col-span-2 text-right text-[12px] text-slate-700">
-                          {date}
-                        </div>
-
-                        {/* 조회 */}
-                        <div className="col-span-2 sm:col-span-1 text-right text-[12px] text-slate-700">
-                          {p.view_count ?? 0}
-                        </div>
+                        <div className="col-span-2 sm:col-span-2 text-right text-[12px] text-slate-700">{date}</div>
+                        <div className="col-span-2 sm:col-span-1 text-right text-[12px] text-slate-700">{p.view_count ?? 0}</div>
                       </div>
                     </li>
                   );
@@ -317,7 +265,7 @@ export default function FreeBoardPage() {
           )}
         </section>
 
-        {/* ✅ 오른쪽(인기글) - 침범 안함 */}
+        {/* 인기글 */}
         <aside className="hidden md:block md:col-span-5 lg:col-span-4 md:max-w-[360px] md:justify-self-end">
           <div className="sticky top-6 border border-slate-300 bg-white p-4">
             <div className="mb-3 flex items-center gap-2">
@@ -333,17 +281,10 @@ export default function FreeBoardPage() {
               <ul className="space-y-2">
                 {top3.map((p, idx) => (
                   <li key={p.id}>
-                    <Link
-                      href={`/community/free/${encodeURIComponent(p.id)}`}
-                      className="block border border-slate-300 bg-white px-3 py-2 hover:bg-slate-50"
-                    >
+                    <Link href={`/community/free/${encodeURIComponent(p.id)}`} className="block border border-slate-300 bg-white px-3 py-2 hover:bg-slate-50">
                       <div className="flex items-center justify-between gap-2">
-                        <div className="min-w-0 truncate font-semibold text-[13px] text-slate-900">
-                          #{idx + 1} {p.title}
-                        </div>
-                        <div className="shrink-0 text-[11px] text-slate-500 whitespace-nowrap">
-                          조회 {p.view_count}
-                        </div>
+                        <div className="min-w-0 truncate font-semibold text-[13px] text-slate-900">#{idx + 1} {p.title}</div>
+                        <div className="shrink-0 text-[11px] text-slate-500 whitespace-nowrap">조회 {p.view_count}</div>
                       </div>
                     </Link>
                   </li>
@@ -354,42 +295,6 @@ export default function FreeBoardPage() {
             <VisitorsBox count={visitors} />
           </div>
         </aside>
-
-        {/* 모바일 인기글 아래 */}
-        <section className="md:hidden border border-slate-300 bg-white p-3">
-          <div className="mb-2 flex items-center gap-2">
-            <span className="text-base font-bold text-slate-900">🔥 인기글 TOP 3</span>
-            <span className="text-xs text-slate-500">(조회수)</span>
-          </div>
-
-          {loading ? (
-            <div className="text-slate-500 text-sm">불러오는 중…</div>
-          ) : top3.length === 0 ? (
-            <div className="text-slate-500 text-sm">아직 데이터가 없습니다.</div>
-          ) : (
-            <ul className="space-y-1.5">
-              {top3.map((p, idx) => (
-                <li key={p.id}>
-                  <Link
-                    href={`/community/free/${encodeURIComponent(p.id)}`}
-                    className="block border border-slate-300 bg-white px-3 py-2 hover:bg-slate-50"
-                  >
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="min-w-0 truncate font-semibold text-[13px] text-slate-900">
-                        #{idx + 1} {p.title}
-                      </div>
-                      <div className="shrink-0 text-[11px] text-slate-500 whitespace-nowrap">
-                        조회 {p.view_count}
-                      </div>
-                    </div>
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          )}
-
-          <VisitorsBox count={visitors} />
-        </section>
       </div>
     </main>
   );

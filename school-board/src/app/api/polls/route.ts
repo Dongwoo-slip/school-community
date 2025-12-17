@@ -8,50 +8,69 @@ function admin() {
   return createAdminClient(url, key, { auth: { persistSession: false } });
 }
 
-// POST /api/polls  { post_id, option_id }
+// GET /api/polls?post_id=...
+// -> { counts: { [optionId]: number }, total: number, myVote: optionId|null }
+export async function GET(req: Request) {
+  const { searchParams } = new URL(req.url);
+  const post_id = searchParams.get("post_id");
+
+  if (!post_id) return NextResponse.json({ error: "missing post_id" }, { status: 400 });
+
+  const sb = admin();
+
+  const { data: votes, error } = await sb
+    .from("poll_votes")
+    .select("option_id,voter_id")
+    .eq("post_id", post_id);
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  const counts: Record<string, number> = {};
+  for (const v of votes ?? []) {
+    const k = String((v as any).option_id);
+    counts[k] = (counts[k] ?? 0) + 1;
+  }
+
+  const total = (votes ?? []).length;
+
+  // 내 투표(로그인 되어 있으면)
+  const authed = await createAuthedClient();
+  const { data: authData } = await authed.auth.getUser();
+  const user = authData.user;
+
+  let myVote: string | null = null;
+  if (user) {
+    const mine = (votes ?? []).find((v: any) => String(v.voter_id) === String(user.id));
+    myVote = mine ? String(mine.option_id) : null;
+  }
+
+  return NextResponse.json({ counts, total, myVote });
+}
+
+// POST /api/polls  body: { post_id, option_id }
+// -> 한 사람 1표(다시 누르면 변경되게 upsert)
 export async function POST(req: Request) {
   const authed = await createAuthedClient();
   const { data: authData } = await authed.auth.getUser();
   const user = authData.user;
+
   if (!user) return NextResponse.json({ error: "로그인이 필요합니다." }, { status: 401 });
 
   const body = await req.json().catch(() => null);
   const post_id = String(body?.post_id ?? "").trim();
   const option_id = String(body?.option_id ?? "").trim();
-  if (!post_id) return NextResponse.json({ error: "post_id가 필요합니다." }, { status: 400 });
-  if (!option_id) return NextResponse.json({ error: "option_id가 필요합니다." }, { status: 400 });
+
+  if (!post_id || !option_id) return NextResponse.json({ error: "missing post_id/option_id" }, { status: 400 });
 
   const sb = admin();
 
-  // 게시글의 poll 확인 + option_id 유효성 확인
-  const { data: post, error: pErr } = await sb.from("posts").select("id,poll").eq("id", post_id).maybeSingle();
-  if (pErr) return NextResponse.json({ error: pErr.message }, { status: 500 });
-  if (!post) return NextResponse.json({ error: "not found" }, { status: 404 });
-
-  const poll = post.poll as any;
-  const optionIds: string[] = Array.isArray(poll?.options) ? poll.options.map((o: any) => String(o?.id ?? "")) : [];
-  if (optionIds.length < 2) return NextResponse.json({ error: "투표가 없는 글입니다." }, { status: 400 });
-  if (!optionIds.includes(option_id)) return NextResponse.json({ error: "잘못된 투표 항목입니다." }, { status: 400 });
-
-  // 이미 투표했는지(1인 1표)
-  const { data: existed, error: eErr } = await sb
+  const { error } = await sb
     .from("poll_votes")
-    .select("id")
-    .eq("post_id", post_id)
-    .eq("voter_id", user.id)
-    .maybeSingle();
+    .upsert(
+      { post_id, voter_id: user.id, option_id },
+      { onConflict: "post_id,voter_id" }
+    );
 
-  if (eErr) return NextResponse.json({ error: eErr.message }, { status: 500 });
-  if (existed) return NextResponse.json({ error: "이미 투표했습니다." }, { status: 409 });
-
-  // 투표 등록
-  const { error: iErr } = await sb.from("poll_votes").insert({
-    post_id,
-    option_id,
-    voter_id: user.id,
-  });
-
-  if (iErr) return NextResponse.json({ error: iErr.message }, { status: 500 });
-
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ ok: true });
 }

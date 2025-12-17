@@ -1,282 +1,292 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
-type Me = { userId: string | null; role: string; username: string | null };
+type PollDraft = { enabled: boolean; question: string; options: string[] };
 
-type PollDraft = {
-  enabled: boolean;
-  question: string;
-  options: { key: string; text: string }[];
-};
-
-function newKey() {
-  return crypto.randomUUID();
+function keyOfFile(f: File) {
+  return `${f.name}-${f.size}-${f.lastModified}`;
 }
 
 export default function NewFreePostPage() {
   const router = useRouter();
 
-  const [me, setMe] = useState<Me>({ userId: null, role: "guest", username: null });
-
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
 
-  // 기존 사진 기능(URL 방식 유지)
-  const [imageUrls, setImageUrls] = useState<string[]>([]);
+  const [files, setFiles] = useState<File[]>([]);
+  const [uploading, setUploading] = useState(false);
 
-  // ✅ 투표
   const [poll, setPoll] = useState<PollDraft>({
     enabled: false,
     question: "투표",
-    options: [
-      { key: newKey(), text: "" },
-      { key: newKey(), text: "" },
-    ],
+    options: ["", ""],
   });
 
-  const [msg, setMsg] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
-
-  async function loadMe() {
-    const res = await fetch("/api/me", { cache: "no-store" });
-    const json = await res.json().catch(() => ({}));
-    setMe({ userId: json.userId ?? null, role: json.role ?? "guest", username: json.username ?? null });
-  }
-
-  useEffect(() => {
-    loadMe();
-  }, []);
-
-  useEffect(() => {
-    if (me.userId === null) return;
-    if (!me.userId) router.push("/login?next=/community/free/new");
-  }, [me.userId, router]);
-
   const canSubmit = useMemo(() => {
-    if (!me.userId) return false;
-    if (title.trim().length < 4) return false;
-    if (content.trim().length < 4) return false;
+    if (title.trim().length < 2) return false;
+    if (content.trim().length < 2) return false;
 
     if (poll.enabled) {
-      const opts = poll.options.map((o) => o.text.trim()).filter(Boolean);
+      const opts = poll.options.map((s) => s.trim()).filter(Boolean);
       if (opts.length < 2) return false;
-      if (opts.some((t) => t.length > 30)) return false;
-      if (poll.question.trim().length > 50) return false;
     }
-
     return true;
-  }, [me.userId, title, content, poll]);
+  }, [title, content, poll]);
 
-  function addImageUrl() {
-    setImageUrls((prev) => [...prev, ""]);
-  }
-  function removeImageUrl(i: number) {
-    setImageUrls((prev) => prev.filter((_, idx) => idx !== i));
-  }
-
-  function addOption() {
-    setPoll((p) => {
-      if (p.options.length >= 10) return p;
-      return { ...p, options: [...p.options, { key: newKey(), text: "" }] };
+  function addFiles(picked: File[]) {
+    setFiles((prev) => {
+      const map = new Map<string, File>();
+      [...prev, ...picked].forEach((f) => map.set(keyOfFile(f), f)); // 중복 제거
+      return Array.from(map.values());
     });
   }
-  function removeOption(key: string) {
-    setPoll((p) => {
-      if (p.options.length <= 2) return p;
-      return { ...p, options: p.options.filter((o) => o.key !== key) };
-    });
+
+  function removeFile(target: File) {
+    const k = keyOfFile(target);
+    setFiles((prev) => prev.filter((x) => keyOfFile(x) !== k));
+  }
+
+  function clearFiles() {
+    setFiles([]);
+  }
+
+  async function uploadFilesIfAny(): Promise<string[]> {
+    if (files.length === 0) return [];
+
+    const fd = new FormData();
+    files.forEach((f) => fd.append("files", f));
+
+    const res = await fetch("/api/upload", { method: "POST", body: fd });
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(json?.error ?? "업로드 실패");
+
+    return Array.isArray(json.urls) ? json.urls : [];
   }
 
   async function onSubmit() {
-    setMsg(null);
-    if (!canSubmit) return;
+    if (!canSubmit || uploading) return;
 
-    setBusy(true);
+    setUploading(true);
     try {
-      const cleanImages = imageUrls.map((u) => u.trim()).filter(Boolean);
+      const image_urls = await uploadFilesIfAny();
 
-      const payload: any = {
+      const body: any = {
         board: "free",
         title: title.trim(),
         content: content.trim(),
-        image_urls: cleanImages,
+        image_urls,
       };
 
       if (poll.enabled) {
-        const options = poll.options.map((o) => o.text.trim()).filter(Boolean);
-        payload.poll = {
+        body.poll = {
           question: poll.question.trim() || "투표",
-          options, // 서버에서 id 붙여서 저장
+          options: poll.options.map((s) => s.trim()).filter(Boolean),
         };
       }
 
       const res = await fetch("/api/posts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+        body: JSON.stringify(body),
       });
 
       const json = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setMsg(json?.error ?? "등록 실패");
+        alert(json?.error ?? "등록 실패");
         return;
       }
 
-      const id = json?.id;
-      if (id) router.push(`/community/free/${encodeURIComponent(id)}`);
-      else router.push("/community/free");
+      router.push(`/community/free/${encodeURIComponent(json.id)}`);
+      router.refresh();
+    } catch (e: any) {
+      alert(e?.message ?? "등록 실패");
     } finally {
-      setBusy(false);
+      setUploading(false);
     }
   }
 
+  function addOption() {
+    setPoll((p) => ({ ...p, options: [...p.options, ""] }));
+  }
+
+  function removeOption(i: number) {
+    setPoll((p) => ({ ...p, options: p.options.filter((_, idx) => idx !== i) }));
+  }
+
   return (
-    <main className="mx-auto max-w-3xl px-4 py-6 text-slate-900">
+    <main className="mx-auto max-w-3xl px-4 py-6">
       <div className="mb-4 flex items-center justify-between">
-        <button className="text-sm text-slate-600 hover:underline" onClick={() => router.push("/community/free")}>
-          ← 목록
+        <div className="text-xl font-extrabold text-slate-900">글쓰기</div>
+        <button
+          className="border border-slate-300 bg-white px-3 py-1 text-[12px] hover:bg-slate-50"
+          onClick={() => router.push("/community/free")}
+          type="button"
+        >
+          목록
         </button>
       </div>
 
-      <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-        <h1 className="text-xl font-extrabold">글쓰기</h1>
+      <div className="space-y-3 border border-slate-300 bg-white p-4">
+        <input
+          className="w-full border border-slate-300 bg-white p-2 text-slate-900"
+          placeholder="제목"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+        />
 
-        <div className="mt-4 space-y-3">
-          <input
-            className="w-full rounded-xl border border-slate-300 bg-white p-3 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-300"
-            placeholder="제목(4글자 이상)"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-          />
+        <textarea
+          className="w-full border border-slate-300 bg-white p-2 text-slate-900"
+          placeholder="본문"
+          rows={10}
+          value={content}
+          onChange={(e) => setContent(e.target.value)}
+        />
 
-          <textarea
-            className="min-h-[180px] w-full resize-none rounded-xl border border-slate-300 bg-white p-3 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-300"
-            placeholder="본문(4글자 이상)"
-            value={content}
-            onChange={(e) => setContent(e.target.value)}
-          />
-
-          {/* 이미지 URL (기존 방식 유지) */}
-          <div className="rounded-xl border border-slate-200 p-3">
-            <div className="flex items-center justify-between">
-              <div className="font-bold">사진(URL)</div>
-              <button
-                type="button"
-                onClick={addImageUrl}
-                className="rounded-lg bg-slate-900 px-3 py-1.5 text-sm font-semibold text-white hover:bg-slate-800"
-              >
-                + 추가
-              </button>
+        {/* ✅ 파일 업로드(여러 개 + 누적 선택) */}
+        <div className="border border-slate-200 bg-slate-50 p-3">
+          <div className="flex items-center justify-between gap-2">
+            <div className="text-[12px] font-semibold text-slate-800">
+              사진 첨부 (파일)
             </div>
 
+            {files.length > 0 ? (
+              <button
+                type="button"
+                className="border border-slate-300 bg-white px-2 py-1 text-[11px] hover:bg-slate-50"
+                onClick={clearFiles}
+              >
+                전체 삭제
+              </button>
+            ) : null}
+          </div>
+
+          <input
+            className="mt-2 block w-full text-[12px]"
+            type="file"
+            accept="image/*"
+            multiple
+            onChange={(e) => {
+              const picked = Array.from(e.target.files ?? []);
+              addFiles(picked);
+              // ✅ 같은 파일을 다시 선택해도 onChange가 뜨도록 리셋
+              e.currentTarget.value = "";
+            }}
+          />
+
+          {files.length > 0 ? (
             <div className="mt-2 space-y-2">
-              {imageUrls.length === 0 ? (
-                <div className="text-sm text-slate-500">첨부할 이미지 URL이 있으면 +추가</div>
-              ) : (
-                imageUrls.map((u, i) => (
-                  <div key={i} className="flex gap-2">
-                    <input
-                      className="flex-1 rounded-lg border border-slate-300 bg-white p-2 text-sm"
-                      placeholder="https://..."
-                      value={u}
-                      onChange={(e) => {
-                        const v = e.target.value;
-                        setImageUrls((prev) => prev.map((x, idx) => (idx === i ? v : x)));
-                      }}
-                    />
+              <div className="text-[12px] text-slate-600">
+                선택됨: {files.length}개
+              </div>
+
+              <ul className="space-y-1">
+                {files.map((f) => (
+                  <li
+                    key={keyOfFile(f)}
+                    className="flex items-center justify-between gap-2 text-[12px]"
+                  >
+                    <span className="min-w-0 truncate text-slate-700">
+                      {f.name}
+                    </span>
                     <button
                       type="button"
-                      onClick={() => removeImageUrl(i)}
-                      className="rounded-lg border border-rose-300 bg-rose-50 px-3 text-sm font-semibold text-rose-700 hover:bg-rose-100"
+                      className="shrink-0 text-rose-600 underline"
+                      onClick={() => removeFile(f)}
                     >
                       삭제
                     </button>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
+                  </li>
+                ))}
+              </ul>
 
-          {/* ✅ 투표 */}
-          <div className="rounded-xl border border-slate-200 p-3">
-            <div className="flex items-center justify-between">
-              <label className="flex items-center gap-2 font-bold">
-                <input
-                  type="checkbox"
-                  checked={poll.enabled}
-                  onChange={(e) => setPoll((p) => ({ ...p, enabled: e.target.checked }))}
-                />
-                투표 추가
-              </label>
-            </div>
-
-            {poll.enabled && (
-              <div className="mt-3 space-y-2">
-                <input
-                  className="w-full rounded-lg border border-slate-300 bg-white p-2 text-sm"
-                  value={poll.question}
-                  onChange={(e) => setPoll((p) => ({ ...p, question: e.target.value }))}
-                  placeholder="투표 제목(예: 점심 뭐 먹을래?)"
-                />
-
-                <div className="space-y-2">
-                  {poll.options.map((o, idx) => (
-                    <div key={o.key} className="flex gap-2">
-                      <input
-                        className="flex-1 rounded-lg border border-slate-300 bg-white p-2 text-sm"
-                        value={o.text}
-                        onChange={(e) => {
-                          const v = e.target.value;
-                          setPoll((p) => ({
-                            ...p,
-                            options: p.options.map((x) => (x.key === o.key ? { ...x, text: v } : x)),
-                          }));
-                        }}
-                        placeholder={`항목 ${idx + 1}`}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => removeOption(o.key)}
-                        className="rounded-lg border border-slate-300 bg-white px-3 text-sm hover:bg-slate-50"
-                        disabled={poll.options.length <= 2}
-                      >
-                        -
-                      </button>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="flex items-center justify-between pt-1">
-                  <div className="text-xs text-slate-500">최소 2개 / 최대 10개 (항목명 30자 이하)</div>
-                  <button
-                    type="button"
-                    onClick={addOption}
-                    className="rounded-lg bg-slate-900 px-3 py-1.5 text-sm font-semibold text-white hover:bg-slate-800"
-                    disabled={poll.options.length >= 10}
-                  >
-                    + 항목 추가
-                  </button>
-                </div>
+              <div className="text-[11px] text-slate-500">
+                * 파일 선택을 여러 번 눌러서 사진을 계속 추가할 수 있어요.
               </div>
-            )}
-          </div>
-
-          {msg && <div className="text-sm text-rose-600">{msg}</div>}
-
-          <div className="flex justify-end">
-            <button
-              type="button"
-              disabled={!canSubmit || busy}
-              onClick={onSubmit}
-              className="rounded-xl bg-sky-600 px-5 py-2.5 font-bold text-white hover:bg-sky-500 disabled:opacity-60"
-            >
-              {busy ? "등록 중..." : "등록"}
-            </button>
-          </div>
+            </div>
+          ) : (
+            <div className="mt-2 text-[12px] text-slate-500">선택 안 함</div>
+          )}
         </div>
-      </section>
+
+        {/* 투표 */}
+        <div className="border border-slate-200 bg-white p-3">
+          <label className="flex items-center gap-2 text-[12px] font-semibold text-slate-800">
+            <input
+              type="checkbox"
+              checked={poll.enabled}
+              onChange={(e) =>
+                setPoll((p) => ({ ...p, enabled: e.target.checked }))
+              }
+            />
+            투표 추가
+          </label>
+
+          {poll.enabled ? (
+            <div className="mt-3 space-y-2">
+              <input
+                className="w-full border border-slate-300 bg-white p-2 text-[13px] text-slate-900"
+                placeholder="투표 질문(선택)"
+                value={poll.question}
+                onChange={(e) =>
+                  setPoll((p) => ({ ...p, question: e.target.value }))
+                }
+              />
+
+              <div className="space-y-2">
+                {poll.options.map((v, i) => (
+                  <div key={i} className="flex items-center gap-2">
+                    <input
+                      className="flex-1 border border-slate-300 bg-white p-2 text-[13px] text-slate-900"
+                      placeholder={`항목 ${i + 1}`}
+                      value={v}
+                      onChange={(e) =>
+                        setPoll((p) => ({
+                          ...p,
+                          options: p.options.map((x, idx) =>
+                            idx === i ? e.target.value : x
+                          ),
+                        }))
+                      }
+                    />
+                    {poll.options.length > 2 ? (
+                      <button
+                        className="border border-slate-300 bg-white px-2 py-2 text-[12px] hover:bg-slate-50"
+                        onClick={() => removeOption(i)}
+                        type="button"
+                      >
+                        삭제
+                      </button>
+                    ) : null}
+                  </div>
+                ))}
+              </div>
+
+              <button
+                className="border border-slate-300 bg-white px-3 py-2 text-[12px] hover:bg-slate-50"
+                onClick={addOption}
+                type="button"
+              >
+                + 항목 추가
+              </button>
+
+              <div className="text-[12px] text-slate-500">
+                ※ 항목은 최소 2개 필요
+              </div>
+            </div>
+          ) : null}
+        </div>
+
+        <button
+          disabled={!canSubmit || uploading}
+          onClick={onSubmit}
+          className="w-full border border-sky-600 bg-sky-600 px-4 py-2 font-semibold text-white hover:bg-sky-700 disabled:opacity-50"
+          type="button"
+        >
+          {uploading ? "등록 중..." : "등록"}
+        </button>
+      </div>
     </main>
   );
 }
