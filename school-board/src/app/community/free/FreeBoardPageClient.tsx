@@ -1,0 +1,156 @@
+"use client";
+
+import Link from "next/link";
+import { useMemo } from "react";
+import { useSearchParams } from "next/navigation";
+import { useFreeBoard } from "./layout";
+
+function fmtCompactDate(iso: string) {
+  const d = new Date(iso);
+  const yy = String(d.getFullYear()).slice(2);
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${yy}/${mm}/${dd}`;
+}
+
+function NoticeBadge() {
+  return (
+    <span className="inline-flex items-center justify-center bg-amber-500/15 px-2 py-1 text-[11px] font-semibold text-amber-800 ring-1 ring-amber-400/40">
+      공지
+    </span>
+  );
+}
+
+export default function FreeBoardPageClient() {
+  const { loading, orderedPosts, numberMap, query, me } = useFreeBoard();
+  const sp = useSearchParams();
+  const mine = sp.get("mine") === "1";
+
+  const visiblePosts = useMemo(() => {
+    let arr = orderedPosts;
+
+    // ✅ 내가 쓴 글 필터
+    if (mine && me.userId) {
+      arr = arr.filter((p: any) => (p?.author_id ?? null) === me.userId);
+    }
+
+    // ✅ 제목 검색 필터
+    const q = query.trim().toLowerCase();
+    if (!q) return arr;
+    return arr.filter((p: any) => (p.title ?? "").toLowerCase().includes(q));
+  }, [orderedPosts, query, mine, me.userId]);
+
+  return (
+    <>
+      {/* 배너(네가 쓰던 그대로 유지) */}
+      <div className="mb-4 border-y-2 border-sky-700 bg-white">
+        <div className="border-b border-sky-700 bg-sky-50 px-4 py-2 text-[12px] font-semibold text-sky-900">
+          CheongJu High School Community - CONNECT
+        </div>
+
+        <div className="px-5 py-4 sm:px-6">
+          <div className="flex flex-col gap-4 md:flex-row md:items-start">
+            <div className="min-w-0 flex-1">
+              <div className="w-full overflow-hidden border border-slate-300 bg-slate-100">
+                <img
+                  src="/imagebanner.jpg"
+                  alt="imagebanner"
+                  className="h-[150px] w-full object-cover sm:h-[180px]"
+                  loading="lazy"
+                />
+              </div>
+            </div>
+
+            <div className="md:w-[260px] md:shrink-0 md:border-l md:border-slate-200 md:pl-4">
+              <div className="text-[12px] font-bold text-slate-900">문의 이메일</div>
+              <div className="mt-1 text-[12px] text-slate-700">
+                <a href="mailto:admin@school-board.test" className="text-sky-700 underline underline-offset-2">
+                  admin@school-board.test
+                </a>
+              </div>
+
+              <div className="mt-2 text-[12px] text-slate-600">
+                운영팀: <span className="font-semibold text-slate-900">운영자</span>
+              </div>
+
+              <button className="mt-3 w-full border border-sky-700 bg-sky-700 px-3 py-2 text-[12px] font-semibold text-white hover:bg-sky-600">
+                공지 보기 (자리)
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* 글 목록 */}
+      {loading ? (
+        <div className="text-slate-600 text-sm">불러오는 중…</div>
+      ) : visiblePosts.length === 0 ? (
+        <div className="border border-slate-300 bg-white p-4 text-slate-700 text-sm">
+          {mine ? "내가 쓴 글이 없습니다." : query.trim() ? "검색 결과가 없습니다." : "아직 글이 없습니다."}
+        </div>
+      ) : (
+        <div className="overflow-hidden border border-slate-400 bg-white">
+          <div className="border-b border-slate-400 bg-white">
+            <div className="grid grid-cols-12 items-center px-3 py-2 text-[11px] font-semibold text-slate-900">
+              <div className="col-span-2">번호</div>
+              <div className="col-span-6 sm:col-span-5">제목</div>
+              <div className="hidden sm:block sm:col-span-2">작성자</div>
+              <div className="col-span-2 sm:col-span-2 text-right">작성일</div>
+              <div className="col-span-2 sm:col-span-1 text-right">조회</div>
+            </div>
+          </div>
+
+          <ul className="divide-y divide-slate-200">
+            {visiblePosts.map((p: any) => {
+              const isAdmin = p.author?.role === "admin";
+              const idOk = typeof p.id === "string" && p.id.length > 0;
+              const href = idOk ? `/community/free/${encodeURIComponent(p.id)}` : "/community/free";
+              const num = !isAdmin && idOk ? numberMap.get(p.id) : undefined;
+
+              const username = p.author?.username ?? "unknown";
+              const date = fmtCompactDate(p.created_at);
+              const hasPoll = !!p.poll && Array.isArray(p.poll.options) && p.poll.options.length >= 2;
+
+              return (
+                <li key={p.id ?? crypto.randomUUID()} className={isAdmin ? "bg-amber-50" : "hover:bg-slate-50"}>
+                  <div className="grid grid-cols-12 items-center gap-2 px-3 py-2.5 text-sm">
+                    <div className="col-span-2 text-[12px] text-slate-900">
+                      {isAdmin ? (
+                        <NoticeBadge />
+                      ) : (
+                        <span className="inline-flex min-w-8 items-center justify-center border border-slate-300 bg-white px-2 py-1 text-[11px] text-slate-800">
+                          {typeof num === "number" ? num : "-"}
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="col-span-6 sm:col-span-5 min-w-0">
+                      <Link
+                        href={href}
+                        className={"block min-w-0 truncate font-medium " + (isAdmin ? "text-amber-800" : "text-slate-900")}
+                        title={p.title}
+                      >
+                        {p.title} <span className="ml-1 font-semibold text-rose-600">[{p.view_count ?? 0}]</span>
+                        {hasPoll ? <span className="ml-1">🗳️</span> : null}
+                      </Link>
+                    </div>
+
+                    <div className="hidden sm:block sm:col-span-2 min-w-0 truncate text-slate-800 text-[12px]">
+                      {username}
+                      {isAdmin ? <span className="ml-1 text-amber-600 font-semibold">★</span> : null}
+                    </div>
+
+                    <div className="col-span-2 sm:col-span-2 text-right text-[12px] text-slate-700">{date}</div>
+                    <div className="col-span-2 sm:col-span-1 text-right text-[12px] text-slate-700">
+                      {p.view_count ?? 0}
+                    </div>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      )}
+    </>
+  );
+}
