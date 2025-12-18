@@ -21,7 +21,7 @@ function NoticeBadge() {
   );
 }
 
-export default function FreeBoardPageClient() {
+export default function FreeBoardClient() {
   const { loading, orderedPosts, numberMap, query, me } = useFreeBoard();
   const sp = useSearchParams();
   const mine = sp.get("mine") === "1";
@@ -42,7 +42,7 @@ export default function FreeBoardPageClient() {
 
   return (
     <>
-      {/* 배너(네가 쓰던 그대로 유지) */}
+      {/* 배너 */}
       <div className="mb-4 border-y-2 border-sky-700 bg-white">
         <div className="border-b border-sky-700 bg-sky-50 px-4 py-2 text-[12px] font-semibold text-sky-900">
           CheongJu High School Community - CONNECT
@@ -61,6 +61,7 @@ export default function FreeBoardPageClient() {
               </div>
             </div>
 
+            {/* 문의 이메일 영역 유지 */}
             <div className="md:w-[260px] md:shrink-0 md:border-l md:border-slate-200 md:pl-4">
               <div className="text-[12px] font-bold text-slate-900">문의 이메일</div>
               <div className="mt-1 text-[12px] text-slate-700">
@@ -79,6 +80,16 @@ export default function FreeBoardPageClient() {
             </div>
           </div>
         </div>
+      </div>
+
+      {/* ✅ 배너 아래 / 목록 위: 글쓰기 버튼 */}
+      <div className="mb-3 flex items-center justify-end">
+        <Link
+          href="/community/free/new"
+          className="border border-emerald-400 bg-emerald-300 px-3 py-2 text-[12px] font-semibold text-black hover:bg-emerald-200"
+        >
+          글쓰기
+        </Link>
       </div>
 
       {/* 글 목록 */}
@@ -111,8 +122,11 @@ export default function FreeBoardPageClient() {
               const date = fmtCompactDate(p.created_at);
               const hasPoll = !!p.poll && Array.isArray(p.poll.options) && p.poll.options.length >= 2;
 
+              // ✅ key는 id 고정(중복/랜덤 key 방지)
+              const key = idOk ? p.id : `${p.created_at ?? "x"}-${p.title ?? "y"}`;
+
               return (
-                <li key={p.id ?? crypto.randomUUID()} className={isAdmin ? "bg-amber-50" : "hover:bg-slate-50"}>
+                <li key={key} className={isAdmin ? "bg-amber-50" : "hover:bg-slate-50"}>
                   <div className="grid grid-cols-12 items-center gap-2 px-3 py-2.5 text-sm">
                     <div className="col-span-2 text-[12px] text-slate-900">
                       {isAdmin ? (
@@ -141,9 +155,7 @@ export default function FreeBoardPageClient() {
                     </div>
 
                     <div className="col-span-2 sm:col-span-2 text-right text-[12px] text-slate-700">{date}</div>
-                    <div className="col-span-2 sm:col-span-1 text-right text-[12px] text-slate-700">
-                      {p.view_count ?? 0}
-                    </div>
+                    <div className="col-span-2 sm:col-span-1 text-right text-[12px] text-slate-700">{p.view_count ?? 0}</div>
                   </div>
                 </li>
               );

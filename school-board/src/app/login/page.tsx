@@ -21,7 +21,7 @@ export default function LoginPage() {
     if (!/^[a-z0-9_]{3,20}$/.test(u)) {
       return setMsg("아이디는 영문/숫자/_ 만 가능 (3~20자)");
     }
-    if (password.length < 4) return setMsg("비밀번호는 4글자 이상");
+    if (password.length < 4) return setMsg("비밀번호는 6글자 이상");
 
     setLoading(true);
     try {

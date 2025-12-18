@@ -64,7 +64,7 @@ export default function SignupPage() {
             <label className="text-sm font-semibold text-slate-700">비밀번호</label>
             <input
               className="mt-1 w-full rounded-lg border border-slate-300 bg-white p-2.5 text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-300"
-              placeholder="4글자 이상"
+              placeholder="6글자 이상"
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
