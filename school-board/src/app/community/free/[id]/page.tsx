@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import PostActionsBar from "@/components/PostActionsBar";
 
 type Me = { userId: string | null; role: string; username: string | null };
 
@@ -42,7 +43,6 @@ export default function FreePostDetailPage() {
   const router = useRouter();
   const params = useParams();
 
-  // ✅ 핵심: params.id가 준비되기 전(첫 렌더)에는 undefined일 수 있음
   const raw = (params as any)?.id as string | string[] | undefined;
   const id = Array.isArray(raw) ? raw[0] : raw;
 
@@ -56,7 +56,6 @@ export default function FreePostDetailPage() {
   const [busy, setBusy] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  // (옵션) 투표 UI도 보여주고 싶으면 API가 있을 때만 동작
   const [pollCounts, setPollCounts] = useState<Record<string, number>>({});
   const [pollTotal, setPollTotal] = useState(0);
   const [myVote, setMyVote] = useState<string | null>(null);
@@ -103,7 +102,6 @@ export default function FreePostDetailPage() {
       const jsonC = await resC.json().catch(() => ({}));
       setComments(jsonC?.data ?? []);
 
-      // ✅ poll이 있으면 결과도 같이 로드(있어도 되고 없어도 됨)
       if (p?.poll && Array.isArray(p.poll.options) && p.poll.options.length >= 2) {
         await loadPoll(postId);
       } else {
@@ -204,7 +202,6 @@ export default function FreePostDetailPage() {
 
   useEffect(() => {
     loadMe();
-    // ✅ 여기서 id 없으면 절대 호출 안 함 (missing id 방지)
     if (!id || typeof id !== "string" || id.length === 0) return;
     loadPostAndComments(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -284,7 +281,7 @@ export default function FreePostDetailPage() {
               ) : null}
             </div>
 
-            {/* 본문 (흰 배경 + 검은 글씨) */}
+            {/* 본문 */}
             <div className="mt-4 border border-slate-200 bg-white p-4 text-slate-900 whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
               {post.content ?? ""}
             </div>
@@ -338,16 +335,17 @@ export default function FreePostDetailPage() {
             {Array.isArray(post.image_urls) && post.image_urls.length > 0 ? (
               <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
                 {post.image_urls.map((url, i) => (
-                  <a
-                    key={url + i}
-                    href={url}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="block overflow-hidden border border-slate-200 bg-white"
-                  >
+                  <a key={url + i} href={url} target="_blank" rel="noreferrer" className="block overflow-hidden border border-slate-200 bg-white">
                     <img src={url} alt={`첨부 이미지 ${i + 1}`} className="h-auto w-full object-cover" loading="lazy" />
                   </a>
                 ))}
+              </div>
+            ) : null}
+
+            {/* ✅ 여기! 게시글 아래 액션바 */}
+            {id ? (
+              <div className="mt-4">
+                <PostActionsBar postId={id} />
               </div>
             ) : null}
           </>

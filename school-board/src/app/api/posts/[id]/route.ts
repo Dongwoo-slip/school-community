@@ -14,14 +14,12 @@ async function getParamId(ctx: any): Promise<string | null> {
     const p = ctx?.params;
     if (!p) return null;
 
-    // params가 Promise인 경우
     if (typeof p?.then === "function") {
       const awaited = await p;
       const id = awaited?.id;
       return typeof id === "string" && id.length > 0 ? id : null;
     }
 
-    // params가 객체인 경우
     const id = p?.id;
     return typeof id === "string" && id.length > 0 ? id : null;
   } catch {
@@ -38,7 +36,7 @@ export async function GET(_req: Request, ctx: any) {
 
   const { data: post, error } = await sb
     .from("posts")
-    .select("id,title,content,created_at,view_count,author_id,image_urls,poll")
+    .select("id,title,content,created_at,view_count,author_id,image_urls,poll,like_count,dislike_count,report_count")
     .eq("id", id)
     .maybeSingle();
 
@@ -65,6 +63,9 @@ export async function GET(_req: Request, ctx: any) {
       ...post,
       view_count: nextView,
       author,
+      like_count: post.like_count ?? 0,
+      dislike_count: post.dislike_count ?? 0,
+      report_count: post.report_count ?? 0,
     },
   });
 }
@@ -74,7 +75,6 @@ export async function DELETE(_req: Request, ctx: any) {
   const id = await getParamId(ctx);
   if (!id) return NextResponse.json({ error: "missing id" }, { status: 400 });
 
-  // 로그인 체크(쿠키 기반)
   const authed = await createAuthedClient();
   const { data: authData } = await authed.auth.getUser();
   const user = authData.user;
@@ -82,7 +82,6 @@ export async function DELETE(_req: Request, ctx: any) {
 
   const sb = admin();
 
-  // 글 확인
   const { data: post, error: postErr } = await sb
     .from("posts")
     .select("id,author_id")
@@ -92,7 +91,6 @@ export async function DELETE(_req: Request, ctx: any) {
   if (postErr) return NextResponse.json({ error: postErr.message }, { status: 500 });
   if (!post) return NextResponse.json({ error: "게시물을 찾을 수 없습니다." }, { status: 404 });
 
-  // 내 role 확인
   const { data: profile } = await sb.from("profiles").select("role").eq("id", user.id).maybeSingle();
   const role = profile?.role ?? "user";
 

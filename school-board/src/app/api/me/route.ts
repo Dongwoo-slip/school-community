@@ -10,7 +10,7 @@ function admin() {
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY!;
   return createAdminClient(url, key, { auth: { persistSession: false } });
 }
-
+ 
 function usernameFromEmail(email: string | null | undefined) {
   if (!email) return null;
   const at = email.indexOf("@");
