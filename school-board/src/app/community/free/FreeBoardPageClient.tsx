@@ -65,7 +65,7 @@ export default function FreeBoardClient() {
             <div className="md:w-[260px] md:shrink-0 md:border-l md:border-slate-200 md:pl-4">
               <div className="text-[12px] font-bold text-slate-900">문의 이메일</div>
               <div className="mt-1 text-[12px] text-slate-700">
-                <a href="mailto:admin@school-board.test" className="text-sky-700 underline underline-offset-2">
+                <a href="ryudongu17@gmail.com" className="text-sky-700 underline underline-offset-2">
                   ryudongu17@gmail.com
                 </a>
               </div>
