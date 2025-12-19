@@ -71,7 +71,7 @@ export default function FreeBoardClient() {
               </div>
 
               <div className="mt-2 text-[12px] text-slate-600">
-                운영팀: <span className="font-semibold text-slate-900">운영자</span>
+                운영팀: <span className="font-semibold text-slate-900">모든 관리자 계정</span>
               </div>
 
               <button className="mt-3 w-full border border-sky-700 bg-sky-700 px-3 py-2 text-[12px] font-semibold text-white hover:bg-sky-600">

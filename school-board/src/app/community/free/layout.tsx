@@ -592,6 +592,7 @@ export default function FreeLayout({ children }: { children: ReactNode }) {
                 <div className="mx-auto max-w-5xl px-4 sm:px-6">
                   <div className="flex items-center gap-2 py-2">
                     <TabLink href="/community/free">전체글</TabLink>
+                    <TabLink href="/community/free/best">개념글</TabLink>
                     <TabLink href="/community/free/notice">공지</TabLink>
                     <TabLink href="/community/free/stats">통계</TabLink>
                     <TabLink href="/community/free/meal">오늘의 급식</TabLink>
