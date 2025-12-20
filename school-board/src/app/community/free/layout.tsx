@@ -479,30 +479,24 @@ export default function FreeLayout({ children }: { children: ReactNode }) {
             </div>
           </div>
 
-          {/* 탭: 메인 / 전체글 / 급식 */}
-          <div className="mt-3">
-            <FullBleed>
-              <div className="border-t-2 border-b-2 border-sky-700 bg-white">
-                <div className="mx-auto max-w-5xl px-4 sm:px-6">
-                  <div className="flex items-center gap-2 py-2">
-  {/* ✅ 모바일: 가로 스크롤 탭 */}
-  <div className="flex flex-1 items-center gap-2 overflow-x-auto whitespace-nowrap pr-2 no-scrollbar">
-    <TabLink href="/community/free">메인</TabLink>
-    <TabLink href="/community/free/all">전체글</TabLink>
-    <TabLink href="/community/free/meal">오늘의 급식</TabLink>
-    {/* (기존에 남아있는 탭들 쓰는 경우 여기에 그대로 추가) */}
-  </div>
+          {/* 탭 */}
+<div className="mt-3 xmas-tabs">
+  <FullBleed>
+    <div className="border-t-2 border-b-2 border-sky-700 bg-white">
+      <div className="mx-auto max-w-5xl px-4 sm:px-6">
+        {/* ✅ 모바일 줄바꿈 방지 + 가로 스크롤 */}
+        <div className="flex items-center gap-2 py-2 overflow-x-auto whitespace-nowrap [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <TabLink href="/community/free">메인</TabLink>
+          <TabLink href="/community/free/all">전체글</TabLink>
+          <TabLink href="/community/free/meal">오늘의 급식</TabLink>
 
-  {/* ✅ 정렬/필터 자리는 PC에서만 보여주기 */}
-  <div className="hidden sm:block text-[12px] text-slate-500 whitespace-nowrap">
-    정렬/필터 자리
-  </div>
+          <div className="ml-auto text-[12px] text-slate-500 shrink-0">정렬/필터 자리</div>
+        </div>
+      </div>
+    </div>
+  </FullBleed>
 </div>
 
-                </div>
-              </div>
-            </FullBleed>
-          </div>
 
           <div className="border-b border-slate-200 mt-3" />
         </div>
