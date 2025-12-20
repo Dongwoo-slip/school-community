@@ -485,11 +485,20 @@ export default function FreeLayout({ children }: { children: ReactNode }) {
               <div className="border-t-2 border-b-2 border-sky-700 bg-white">
                 <div className="mx-auto max-w-5xl px-4 sm:px-6">
                   <div className="flex items-center gap-2 py-2">
-                    <TabLink href="/community/free">메인</TabLink>
-                    <TabLink href="/community/free/all">전체글</TabLink>
-                    <TabLink href="/community/free/meal">오늘의 급식</TabLink>
-                    <div className="ml-auto text-[12px] text-slate-500">정렬/필터 자리</div>
-                  </div>
+  {/* ✅ 모바일: 가로 스크롤 탭 */}
+  <div className="flex flex-1 items-center gap-2 overflow-x-auto whitespace-nowrap pr-2 no-scrollbar">
+    <TabLink href="/community/free">메인</TabLink>
+    <TabLink href="/community/free/all">전체글</TabLink>
+    <TabLink href="/community/free/meal">오늘의 급식</TabLink>
+    {/* (기존에 남아있는 탭들 쓰는 경우 여기에 그대로 추가) */}
+  </div>
+
+  {/* ✅ 정렬/필터 자리는 PC에서만 보여주기 */}
+  <div className="hidden sm:block text-[12px] text-slate-500 whitespace-nowrap">
+    정렬/필터 자리
+  </div>
+</div>
+
                 </div>
               </div>
             </FullBleed>
