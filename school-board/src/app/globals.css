@@ -36,3 +36,104 @@ html {
     font-size: 16px;
   }
 }
+/* =========================
+   Christmas: lights + snow
+   ========================= */
+
+.xmas-tabs {
+  position: relative;
+  overflow: visible;
+}
+
+/* 전구 줄 (탭 위쪽에 휘감긴 느낌) */
+.xmas-tabs::before {
+  content: "";
+  position: absolute;
+  left: -12px;
+  right: -12px;
+  top: -14px;
+  height: 36px;
+  pointer-events: none;
+  z-index: 2;
+
+  /* 줄(와이어) + 전구(도트) */
+  background:
+    /* wire */
+    radial-gradient(60px 18px at 30px 28px, transparent 65%, rgba(15, 23, 42, 0.35) 66%, rgba(15, 23, 42, 0.35) 70%, transparent 71%) repeat-x,
+    /* bulbs */
+    radial-gradient(circle at 18px 18px, rgba(255,255,255,0.95) 0 2px, transparent 3px 100%),
+    radial-gradient(circle at 18px 18px, rgba(255, 80, 80, 0.95) 0 5px, transparent 6px 100%),
+    radial-gradient(circle at 18px 18px, rgba(80, 220, 120, 0.95) 0 5px, transparent 6px 100%),
+    radial-gradient(circle at 18px 18px, rgba(80, 160, 255, 0.95) 0 5px, transparent 6px 100%),
+    radial-gradient(circle at 18px 18px, rgba(255, 210, 80, 0.95) 0 5px, transparent 6px 100%);
+
+  background-size:
+    120px 36px,
+    120px 36px,
+    120px 36px,
+    120px 36px,
+    120px 36px,
+    120px 36px;
+
+  /* 전구들을 서로 다른 위치로 엇갈리게 */
+  background-position:
+    0 0,
+    0 0,
+    0 0,
+    24px 0,
+    48px 0,
+    72px 0;
+
+  filter: drop-shadow(0 0 6px rgba(255,255,255,0.35));
+  opacity: 0.95;
+}
+
+/* 전구 반짝임 애니메이션 */
+@keyframes xmasTwinkle {
+  0%, 100% { filter: drop-shadow(0 0 4px rgba(255,255,255,0.25)); opacity: 0.92; }
+  50% { filter: drop-shadow(0 0 10px rgba(255,255,255,0.55)); opacity: 1; }
+}
+.xmas-tabs::before {
+  animation: xmasTwinkle 1.6s ease-in-out infinite;
+}
+
+/* 눈: 가벼운 레이어 2장 (성능 괜찮음) */
+.snow-layer {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 5; /* 탭/컨텐츠 위로는 올라오지 않게 더 높일 수도 있음 */
+}
+
+.snow-layer::before,
+.snow-layer::after {
+  content: "";
+  position: absolute;
+  inset: -200px 0 0 0;
+  background-image:
+    radial-gradient(circle, rgba(255,255,255,0.9) 1.2px, transparent 1.3px),
+    radial-gradient(circle, rgba(255,255,255,0.7) 1px, transparent 1.1px),
+    radial-gradient(circle, rgba(255,255,255,0.55) 0.9px, transparent 1px);
+  background-size: 140px 140px, 220px 220px, 320px 320px;
+  background-position: 0 0, 40px 60px, 120px 30px;
+  opacity: 0.85;
+  transform: translateY(-120px);
+}
+
+@keyframes snowFall1 {
+  0% { transform: translateY(-140px); }
+  100% { transform: translateY(120vh); }
+}
+@keyframes snowFall2 {
+  0% { transform: translateY(-180px); }
+  100% { transform: translateY(120vh); }
+}
+
+.snow-layer::before {
+  animation: snowFall1 14s linear infinite;
+}
+.snow-layer::after {
+  opacity: 0.55;
+  filter: blur(0.2px);
+  animation: snowFall2 20s linear infinite;
+}

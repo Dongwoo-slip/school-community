@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useMemo } from "react";
 import { useSearchParams } from "next/navigation";
-import { useFreeBoard } from "./layout";
+import { useFreeBoard } from "../layout";
 
 function fmtCompactDate(iso: string) {
   const d = new Date(iso);
@@ -13,28 +13,21 @@ function fmtCompactDate(iso: string) {
   return `${yy}/${mm}/${dd}`;
 }
 
-function NoticeBadge() {
-  return (
-    <span className="inline-flex items-center justify-center bg-amber-500/15 px-2 py-1 text-[11px] font-semibold text-amber-800 ring-1 ring-amber-400/40">
-      공지
-    </span>
-  );
-}
-
-export default function FreeBoardClient() {
+export default function AllBoardClient() {
   const { loading, orderedPosts, numberMap, query, me } = useFreeBoard();
   const sp = useSearchParams();
   const mine = sp.get("mine") === "1";
 
   const visiblePosts = useMemo(() => {
-    let arr = orderedPosts;
+    // ✅ 전체글에서는 공지(=admin) 제외
+    let arr = orderedPosts.filter((p) => p.author?.role !== "admin");
 
     // ✅ 내가 쓴 글 필터
     if (mine && me.userId) {
       arr = arr.filter((p: any) => (p?.author_id ?? null) === me.userId);
     }
 
-    // ✅ 제목 검색 필터
+    // ✅ 제목 검색
     const q = query.trim().toLowerCase();
     if (!q) return arr;
     return arr.filter((p: any) => (p.title ?? "").toLowerCase().includes(q));
@@ -42,7 +35,7 @@ export default function FreeBoardClient() {
 
   return (
     <>
-      {/* 배너 */}
+      {/* 배너(메인과 동일 유지) */}
       <div className="mb-4 border-y-2 border-sky-700 bg-white">
         <div className="border-b border-sky-700 bg-sky-50 px-4 py-2 text-[12px] font-semibold text-sky-900">
           CheongJu High School Community - CONNECT
@@ -61,11 +54,10 @@ export default function FreeBoardClient() {
               </div>
             </div>
 
-            {/* 문의 이메일 영역 유지 */}
             <div className="md:w-[260px] md:shrink-0 md:border-l md:border-slate-200 md:pl-4">
               <div className="text-[12px] font-bold text-slate-900">문의 이메일</div>
               <div className="mt-1 text-[12px] text-slate-700">
-                <a href="ryudongu17@gmail.com" className="text-sky-700 underline underline-offset-2">
+                <a href="mailto:ryudongu17@gmail.com" className="text-sky-700 underline underline-offset-2">
                   ryudongu17@gmail.com
                 </a>
               </div>
@@ -82,7 +74,7 @@ export default function FreeBoardClient() {
         </div>
       </div>
 
-      {/* ✅ 배너 아래 / 목록 위: 글쓰기 버튼 */}
+      {/* ✅ 글쓰기 버튼 (전체글에서만) */}
       <div className="mb-3 flex items-center justify-end">
         <Link
           href="/community/free/new"
@@ -92,7 +84,6 @@ export default function FreeBoardClient() {
         </Link>
       </div>
 
-      {/* 글 목록 */}
       {loading ? (
         <div className="text-slate-600 text-sm">불러오는 중…</div>
       ) : visiblePosts.length === 0 ? (
@@ -113,37 +104,27 @@ export default function FreeBoardClient() {
 
           <ul className="divide-y divide-slate-200">
             {visiblePosts.map((p: any) => {
-              const isAdmin = p.author?.role === "admin";
               const idOk = typeof p.id === "string" && p.id.length > 0;
-              const href = idOk ? `/community/free/${encodeURIComponent(p.id)}` : "/community/free";
-              const num = !isAdmin && idOk ? numberMap.get(p.id) : undefined;
+              const href = idOk ? `/community/free/${encodeURIComponent(p.id)}` : "/community/free/all";
+              const num = idOk ? numberMap.get(p.id) : undefined;
 
               const username = p.author?.username ?? "unknown";
               const date = fmtCompactDate(p.created_at);
               const hasPoll = !!p.poll && Array.isArray(p.poll.options) && p.poll.options.length >= 2;
 
-              // ✅ key는 id 고정(중복/랜덤 key 방지)
               const key = idOk ? p.id : `${p.created_at ?? "x"}-${p.title ?? "y"}`;
 
               return (
-                <li key={key} className={isAdmin ? "bg-amber-50" : "hover:bg-slate-50"}>
+                <li key={key} className="hover:bg-slate-50">
                   <div className="grid grid-cols-12 items-center gap-2 px-3 py-2.5 text-sm">
                     <div className="col-span-2 text-[12px] text-slate-900">
-                      {isAdmin ? (
-                        <NoticeBadge />
-                      ) : (
-                        <span className="inline-flex min-w-8 items-center justify-center border border-slate-300 bg-white px-2 py-1 text-[11px] text-slate-800">
-                          {typeof num === "number" ? num : "-"}
-                        </span>
-                      )}
+                      <span className="inline-flex min-w-8 items-center justify-center border border-slate-300 bg-white px-2 py-1 text-[11px] text-slate-800">
+                        {typeof num === "number" ? num : "-"}
+                      </span>
                     </div>
 
                     <div className="col-span-6 sm:col-span-5 min-w-0">
-                      <Link
-                        href={href}
-                        className={"block min-w-0 truncate font-medium " + (isAdmin ? "text-amber-800" : "text-slate-900")}
-                        title={p.title}
-                      >
+                      <Link href={href} className="block min-w-0 truncate font-medium text-slate-900" title={p.title}>
                         {p.title} <span className="ml-1 font-semibold text-rose-600">[{p.view_count ?? 0}]</span>
                         {hasPoll ? <span className="ml-1">🗳️</span> : null}
                       </Link>
@@ -151,7 +132,6 @@ export default function FreeBoardClient() {
 
                     <div className="hidden sm:block sm:col-span-2 min-w-0 truncate text-slate-800 text-[12px]">
                       {username}
-                      {isAdmin ? <span className="ml-1 text-amber-600 font-semibold">★</span> : null}
                     </div>
 
                     <div className="col-span-2 sm:col-span-2 text-right text-[12px] text-slate-700">{date}</div>
