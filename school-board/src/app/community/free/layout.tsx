@@ -303,16 +303,6 @@ export default function FreeLayout({ children }: { children: ReactNode }) {
 
   // ✅ 쪽지함 빨간 점용
   const [dmUnread, setDmUnread] = useState(0);
- async function loadDmUnread() {
-    if (!me.userId) {
-      setDmUnread(0);
-      return;
-    }
-    const res = await fetch("/api/messages/inbox", { cache: "no-store", credentials: "include" });
-    const json = await res.json().catch(() => ({}));
-    setDmUnread(typeof json?.unread === "number" ? json.unread : 0);
-  }
-
 
   async function loadMe() {
     const res = await fetch("/api/me", { cache: "no-store", credentials: "include" });
@@ -357,14 +347,23 @@ export default function FreeLayout({ children }: { children: ReactNode }) {
     setUnread(0);
   }
 
-  // ✅ 쪽지함 unread 계산 (서버 수정 없이: inbox에서 read=false 세기)
+  // ✅ ✅ 단 하나만! (중복 제거)
   async function loadDmUnread() {
     if (!me.userId) {
       setDmUnread(0);
       return;
     }
+
+    // 서버가 unread를 내려주면 그걸 쓰고,
+    // 아니면 data에서 read=false 개수로 fallback
     const res = await fetch("/api/messages/inbox?limit=50", { cache: "no-store", credentials: "include" });
     const json = await res.json().catch(() => ({}));
+
+    if (typeof json?.unread === "number") {
+      setDmUnread(json.unread);
+      return;
+    }
+
     const arr = Array.isArray(json?.data) ? json.data : [];
     const cnt = arr.filter((x: any) => x?.read === false).length;
     setDmUnread(cnt);
