@@ -20,8 +20,7 @@ function isUuid(v: string) {
 }
 
 /**
- * 이 프로젝트는 인증/role 판단을 /api/me에서 이미 잘 하고 있으니,
- * 여기서는 쿠키 그대로 넘겨서 /api/me 결과를 신뢰하고 사용.
+ * 인증/role 판단은 /api/me에서 하므로, 여기서는 쿠키를 그대로 넘겨서 /api/me 결과를 사용
  */
 async function getMeFromApi(req: NextRequest) {
   const origin = new URL(req.url).origin;
@@ -34,34 +33,47 @@ async function getMeFromApi(req: NextRequest) {
 
   const json = await res.json().catch(() => ({}));
   return {
-    userId: json?.userId ?? null,
-    role: json?.role ?? "guest",
-    username: json?.username ?? null,
+    userId: (json?.userId ?? null) as string | null,
+    role: (json?.role ?? "guest") as string,
+    username: (json?.username ?? null) as string | null,
   };
 }
 
 async function resolveReceiverIdByUsername(usernameRaw: string) {
   const supa = adminClient();
   const username = cleanUsername(usernameRaw);
-  if (!username) return { receiverId: null as string | null, foundName: null as string | null, err: "username이 비었습니다." };
 
-  // ✅ ilike는 패턴이므로 정확히 찾고 싶으면 eq가 더 좋음(대소문자까지 완전 일치)
-  // 일단 너 요구대로 "username 그대로" 찾기: eq 먼저
+  if (!username) {
+    return { receiverId: null as string | null, foundName: null as string | null, err: "username이 비었습니다." };
+  }
+
+  // 1) 정확히(대소문자 무시)
   {
-    const { data, error } = await supa.from("profiles").select("id, username").eq("username", username).limit(5);
+    const { data, error } = await supa.from("profiles").select("id, username").ilike("username", username).limit(5);
+
     if (!error && Array.isArray(data) && data.length === 1) {
-      return { receiverId: data[0].id as string, foundName: (data[0].username as string) ?? null, err: null as string | null };
+      return {
+        receiverId: data[0].id as string,
+        foundName: (data[0].username as string) ?? null,
+        err: null as string | null,
+      };
     }
     if (!error && Array.isArray(data) && data.length > 1) {
       return { receiverId: null, foundName: null, err: `username '${username}' 이(가) 여러 명입니다. (중복 username)` };
     }
   }
 
-  // 대소문자/공백 문제 대응: ilike(정확히)
+  // 2) 소문자 버전도 재시도
   {
-    const { data, error } = await supa.from("profiles").select("id, username").ilike("username", username).limit(5);
+    const low = username.toLowerCase();
+    const { data, error } = await supa.from("profiles").select("id, username").ilike("username", low).limit(5);
+
     if (!error && Array.isArray(data) && data.length === 1) {
-      return { receiverId: data[0].id as string, foundName: (data[0].username as string) ?? null, err: null as string | null };
+      return {
+        receiverId: data[0].id as string,
+        foundName: (data[0].username as string) ?? null,
+        err: null as string | null,
+      };
     }
     if (!error && Array.isArray(data) && data.length > 1) {
       return { receiverId: null, foundName: null, err: `username '${username}' 이(가) 여러 명입니다. (중복 username)` };
@@ -82,29 +94,28 @@ async function resolveReceiverIdByPostId(postIdRaw: string) {
   const receiverId = (data as any)?.author_id ?? null;
   if (!receiverId) return { receiverId: null, err: "⚠ 이 게시글의 작성자(author_id)를 찾지 못했습니다." };
 
-  return { receiverId, err: null };
+  return { receiverId: receiverId as string, err: null as string | null };
 }
 
+/**
+ * messages 테이블이 receiver_id / recipient_id 둘 중 뭐를 쓰는지 모르니
+ * receiver_id로 먼저 넣고, 컬럼 에러면 recipient_id로 재시도
+ */
 async function insertMessageFlexible(payload: any) {
   const supa = adminClient();
 
-  // ✅ 혹시 남아있으면 제거(메시지 테이블에 post_id 없음)
-  delete payload.post_id;
-
-  // 1) receiver_id로 시도
+  // 1) receiver_id
   {
     const { data, error } = await supa.from("messages").insert(payload).select("id").maybeSingle();
     if (!error) return { ok: true, id: (data as any)?.id ?? null, used: "receiver_id" as const };
 
-    // recipient_id만 있는 경우 대비
-    if (String(error.message || "").toLowerCase().includes("receiver_id")) {
-      // fallthrough
-    } else {
+    const msg = String(error.message || "").toLowerCase();
+    if (!msg.includes("receiver_id")) {
       return { ok: false, error: error.message };
     }
   }
 
-  // 2) recipient_id로 재시도
+  // 2) recipient_id 재시도
   const { receiver_id, ...rest } = payload;
   const payload2 = { ...rest, recipient_id: receiver_id };
 
@@ -117,35 +128,24 @@ async function insertMessageFlexible(payload: any) {
 async function insertDmNotification(receiverId: string, actorUsername: string | null) {
   const supa = adminClient();
 
-  // ✅ 여기서 .catch() 쓰면 안 됨(쿼리빌더엔 catch 없음)
-  // ✅ 알림 insert 실패해도 DM은 성공 유지: try/catch로 조용히 무시
-  try {
-    const payload: any = {
-      type: "dm",
-      recipient_id: receiverId,
-      actor_username: actorUsername ?? "admin",
-      read: false,
-    };
+  // ✅ supabase-js는 Promise에 .catch 체이닝하는 방식 대신
+  // { error }를 받아서 처리하는 게 안전함
+  const { error } = await supa.from("notifications").insert({
+    type: "dm",
+    recipient_id: receiverId,
+    actor_username: actorUsername ?? "admin",
+    post_id: null,
+    read: false,
+  });
 
-    // notifications에 post_id 컬럼이 있는 프로젝트도 있어서 "있으면 넣고" 없으면 에러 무시
-    payload.post_id = null;
-
-    const { error } = await supa.from("notifications").insert(payload);
-    if (!error) return;
-
-    // post_id 컬럼 없어서 실패한 경우 -> post_id 빼고 재시도
-    if (String(error.message || "").toLowerCase().includes("post_id")) {
-      delete payload.post_id;
-      await supa.from("notifications").insert(payload);
-    }
-  } catch {
-    // 알림은 best-effort
-  }
+  // 실패해도 DM은 성공 처리
+  if (error) return;
 }
 
 export async function POST(req: NextRequest) {
   try {
     const me = await getMeFromApi(req);
+
     if (!me.userId) return NextResponse.json({ error: "로그인이 필요합니다." }, { status: 401 });
     if (me.role !== "admin") return NextResponse.json({ error: "관리자만 DM을 보낼 수 있습니다." }, { status: 403 });
 
@@ -154,13 +154,10 @@ export async function POST(req: NextRequest) {
     const content = String(body?.content ?? "").trim();
     if (!content) return NextResponse.json({ error: "content가 비었습니다." }, { status: 400 });
 
-    // 지원 파라미터:
-    // - receiver_id / recipient_id : uuid
-    // - to / username : username 문자열
-    // - post / post_id : 게시글 id로 author_id 찾기
-    const receiverIdRaw = String(body?.receiver_id ?? body?.recipient_id ?? "").trim() || "";
-    const usernameRaw = String(body?.to ?? body?.username ?? "").trim() || "";
-    const postRaw = String(body?.post ?? body?.post_id ?? "").trim() || "";
+    // ✅ 여기서 파서 에러났던 부분: 괄호/세미콜론까지 확실히 닫음
+    const receiverIdRaw = String(body?.receiver_id ?? body?.recipient_id ?? "").trim();
+    const usernameRaw = String(body?.to ?? body?.username ?? "").trim();
+    const postRaw = String(body?.post ?? body?.post_id ?? "").trim();
 
     let receiverId: string | null = null;
     let resolvedName: string | null = null;
@@ -186,10 +183,14 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // ✅ 타입 확정 (여기 지나면 receiverId는 무조건 string)
+    if (!receiverId) return NextResponse.json({ error: "receiverId 해석 실패" }, { status: 400 });
+    const receiverIdFinal = receiverId;
+
     // 메시지 insert (receiver_id / recipient_id 자동 대응)
     const ins = await insertMessageFlexible({
       sender_id: me.userId,
-      receiver_id: receiverId,
+      receiver_id: receiverIdFinal,
       content,
       read: false,
     });
@@ -199,14 +200,14 @@ export async function POST(req: NextRequest) {
     }
 
     // DM 알림 생성(실패해도 DM은 성공)
-    await insertDmNotification(receiverId, me.username);
+    await insertDmNotification(receiverIdFinal, me.username);
 
     return NextResponse.json(
       {
         ok: true,
         id: ins.id,
-        receiver_id: receiverId,
-        username: resolvedName ?? usernameRaw ?? null,
+        receiver_id: receiverIdFinal,
+        username: resolvedName ?? (usernameRaw || null),
       },
       { status: 200 }
     );
