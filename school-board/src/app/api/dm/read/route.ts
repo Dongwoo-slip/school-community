@@ -1,33 +1,26 @@
 import { NextRequest, NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import { createClient } from "@supabase/supabase-js";
+import { createServerClient } from "@supabase/ssr";
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-
-function supaWithCookieHeader(cookieHeader: string) {
-  return createClient(SUPABASE_URL, ANON_KEY, {
-    auth: { persistSession: false },
-    global: {
-      headers: {
-        cookie: cookieHeader, // ✅ 서버에서 Supabase로 쿠키 전달 (로그인 세션 판별용)
-      },
-    },
-  });
-}
+const SUPABASE_ANON = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
 export async function POST(req: NextRequest) {
   try {
-    // ✅ Next 16: cookies()는 Promise -> await 필요
+    // ✅ Next 16: cookies()는 Promise -> 반드시 await
     const cookieStore = await cookies();
 
-    // cookie header로 합치기
-    const cookieHeader = cookieStore
-      .getAll()
-      .map((c) => `${c.name}=${c.value}`)
-      .join("; ");
-
-    const supa = supaWithCookieHeader(cookieHeader);
+    const supabase = createServerClient(SUPABASE_URL, SUPABASE_ANON, {
+      cookies: {
+        // ✅ 여기서 cookies()를 다시 호출하지 말고, 위에서 만든 cookieStore를 사용
+        getAll: () => cookieStore.getAll(),
+        setAll: (list) => {
+          list.forEach(({ name, value, options }) => {
+            cookieStore.set(name, value, options);
+          });
+        },
+      },
+    });
 
     const body = await req.json().catch(() => ({}));
     const ids: string[] = Array.isArray(body?.ids) ? body.ids : [];
@@ -36,18 +29,48 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: true, updated: 0 }, { status: 200 });
     }
 
-    // ✅ 내 쪽지(read=true)로 업데이트 (RLS 정책에 의해 내 것만 업데이트되게 설계돼 있어야 함)
-    const { error, count } = await supa
-      .from("messages")
-      .update({ read: true })
-      .in("id", ids)
-      .select("id", { count: "exact", head: true });
-
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+    // 로그인 체크(내 DM만 읽음 처리하도록)
+    const { data: u, error: uerr } = await supabase.auth.getUser();
+    if (uerr || !u?.user) {
+      return NextResponse.json({ error: "로그인이 필요합니다." }, { status: 401 });
     }
 
-    return NextResponse.json({ ok: true, updated: count ?? ids.length }, { status: 200 });
+    // ✅ 너 프로젝트는 messages 컬럼명이 receiver_id/recipient_id 둘 중 하나일 수 있어서 방어적으로 처리
+    // 1) receiver_id 스키마 가정
+    {
+      const { error, count } = await supabase
+        .from("messages")
+        .update({ read: true })
+        .in("id", ids)
+        .eq("receiver_id", u.user.id)
+        .select("id", { count: "exact", head: true });
+
+      if (!error) {
+        return NextResponse.json({ ok: true, updated: count ?? ids.length }, { status: 200 });
+      }
+
+      // receiver_id가 없다는 류면 아래 fallback으로
+      const msg = String(error.message || "").toLowerCase();
+      if (!msg.includes("receiver_id") && !msg.includes("column")) {
+        return NextResponse.json({ error: error.message }, { status: 500 });
+      }
+    }
+
+    // 2) recipient_id fallback
+    {
+      const { error, count } = await supabase
+        .from("messages")
+        .update({ read: true })
+        .in("id", ids)
+        .eq("recipient_id", u.user.id)
+        .select("id", { count: "exact", head: true });
+
+      if (error) {
+        return NextResponse.json({ error: error.message }, { status: 500 });
+      }
+
+      return NextResponse.json({ ok: true, updated: count ?? ids.length }, { status: 200 });
+    }
   } catch (e: any) {
     return NextResponse.json({ error: e?.message ?? "server error" }, { status: 500 });
   }
