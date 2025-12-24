@@ -19,16 +19,7 @@ export async function POST() {
   if (!user) return NextResponse.json({ error: "로그인이 필요합니다." }, { status: 401 });
 
   const sb = admin();
-  const { error } = await sb
-    .from("notifications")
-    .update({ read: true })
-    .eq("recipient_id", user.id)
-    .eq("read", false);
-
-  if (error) {
-    // 테이블 없으면 조용히 성공처럼
-    return NextResponse.json({ ok: true });
-  }
+  await sb.from("notifications").update({ read: true }).eq("recipient_id", user.id).eq("read", false);
 
   return NextResponse.json({ ok: true });
 }

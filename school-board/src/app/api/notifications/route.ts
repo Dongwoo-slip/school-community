@@ -19,9 +19,6 @@ export async function GET() {
   if (!user) return NextResponse.json({ error: "로그인이 필요합니다.", data: [], unread: 0 }, { status: 401 });
 
   const sb = admin();
-
-  // notifications 스키마(권장):
-  // id uuid, recipient_id uuid, actor_username text, type text, post_id uuid, created_at timestamptz, read boolean
   const { data: rows, error } = await sb
     .from("notifications")
     .select("id,type,actor_username,post_id,created_at,read")
@@ -29,10 +26,7 @@ export async function GET() {
     .order("created_at", { ascending: false })
     .limit(50);
 
-  if (error) {
-    // 테이블/컬럼 없으면 UI 안깨지게 빈값 처리
-    return NextResponse.json({ data: [], unread: 0 });
-  }
+  if (error) return NextResponse.json({ data: [], unread: 0 });
 
   const unread = (rows ?? []).filter((r: any) => r.read === false).length;
   return NextResponse.json({ data: rows ?? [], unread });

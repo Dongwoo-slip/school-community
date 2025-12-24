@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import React, { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
-import AnonymousChatBox from "@/components/AnonymousChatBox";
 
 type Poll = { question?: string; options?: { id: string; text: string }[] };
 type Post = {
@@ -11,11 +10,13 @@ type Post = {
   title: string;
   created_at: string;
   view_count: number;
+  like_count?: number | null;
   poll?: Poll | null;
   image_urls?: string[] | null;
   author_id?: string | null;
   author?: { username: string | null; role: string | null };
 };
+
 type Me = { userId: string | null; role: string; username: string | null };
 
 type Noti = {
@@ -58,19 +59,13 @@ function FullBleed({ children }: { children: ReactNode }) {
 
 function TabLink({ href, children }: { href: string; children: ReactNode }) {
   const pathname = usePathname();
-
-  const active =
-    href === "/community/free"
-      ? pathname === "/community/free"
-      : pathname === href || pathname.startsWith(href + "/");
-
+  const active = pathname === href;
   return (
     <Link
       href={href}
       className={
-        active
-          ? "border border-sky-700 bg-sky-700 px-3 py-1 text-[12px] font-semibold text-white hover:bg-sky-600"
-          : "border border-slate-300 bg-white px-3 py-1 text-[12px] font-semibold text-slate-800 hover:bg-slate-50"
+        "shrink-0 whitespace-nowrap border px-3 py-1 text-[12px] font-semibold " +
+        (active ? "border-sky-700 bg-sky-700 text-white hover:bg-sky-600" : "border-slate-300 bg-white text-slate-800 hover:bg-slate-50")
       }
     >
       {children}
@@ -87,12 +82,205 @@ function fmtNotiTime(iso: string) {
   return `${mm}/${dd} ${hh}:${mi}`;
 }
 
-function StatMini({ title, value }: { title: string; value: number | null }) {
+function StatPills({ members, visitors }: { members: number | null; visitors: number | null }) {
   return (
-    <div className="border border-slate-200 bg-white px-3 py-2">
-      <div className="text-[11px] font-semibold text-slate-600">{title}</div>
-      <div className="mt-0.5 text-[14px] font-extrabold text-slate-900">
-        {value === null ? "-" : value.toLocaleString()}
+    <div className="mt-3 grid grid-cols-2 gap-2">
+      <div className="border border-slate-300 bg-white p-2 text-center">
+        <div className="text-[11px] font-semibold text-slate-600">누적 회원수</div>
+        <div className="mt-0.5 text-[15px] font-extrabold text-slate-900">{members === null ? "-" : members.toLocaleString()}</div>
+      </div>
+      <div className="border border-slate-300 bg-white p-2 text-center">
+        <div className="text-[11px] font-semibold text-slate-600">누적 방문수</div>
+        <div className="mt-0.5 text-[15px] font-extrabold text-slate-900">{visitors === null ? "-" : visitors.toLocaleString()}</div>
+      </div>
+    </div>
+  );
+}
+
+/* ----------------- Chat (layout에 포함) ----------------- */
+type ChatMsg = {
+  id: string;
+  user_id: string;
+  anon_id: string | null;
+  content: string;
+  created_at: string;
+};
+
+function AnonymousChatBox({ me }: { me: Me }) {
+  const [msgs, setMsgs] = useState<ChatMsg[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [text, setText] = useState("");
+  const [cursor, setCursor] = useState<string | null>(null);
+  const [hasMore, setHasMore] = useState(true);
+  const [netErr, setNetErr] = useState<string | null>(null);
+
+  async function loadRecent() {
+    try {
+      const res = await fetch(`/api/chat?limit=25`, { cache: "no-store", credentials: "include" });
+      const json = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        setNetErr(json?.error ?? `불러오기 실패 (${res.status})`);
+        return; // ✅ 실패해도 기존 메시지 유지
+      }
+
+      setNetErr(null);
+      const arr: ChatMsg[] = Array.isArray(json?.data) ? json.data : [];
+      const sorted = [...arr].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+      setMsgs(sorted);
+      setCursor(sorted.length ? sorted[0].created_at : null);
+      setHasMore(Boolean(json?.hasMore));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function loadMore() {
+    if (!cursor) return;
+    setBusy(true);
+    try {
+      const res = await fetch(`/api/chat?limit=25&before=${encodeURIComponent(cursor)}`, {
+        cache: "no-store",
+        credentials: "include",
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) return;
+
+      const arr: ChatMsg[] = Array.isArray(json?.data) ? json.data : [];
+      const sorted = [...arr].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+
+      setMsgs((prev) => {
+        const seen = new Set(prev.map((m) => m.id));
+        return [...sorted.filter((m) => !seen.has(m.id)), ...prev];
+      });
+
+      setCursor(sorted.length ? sorted[0].created_at : cursor);
+      setHasMore(Boolean(json?.hasMore));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function send() {
+    if (!me.userId) {
+      alert("로그인 후 이용할 수 있어요.");
+      return;
+    }
+
+    const content = text.trim();
+    if (!content) return;
+
+    setBusy(true);
+    try {
+      const res = await fetch(`/api/chat`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content }),
+      });
+
+      const json = await res.json().catch(() => ({}));
+
+      if (res.status === 401) {
+        alert("로그인이 필요합니다.");
+        return;
+      }
+      if (!res.ok) {
+        alert(json?.error ?? "전송 실패");
+        return;
+      }
+
+      setText("");
+      const m: ChatMsg | null = json?.data ?? null;
+      if (m?.id) setMsgs((prev) => [...prev, m]);
+      else await loadRecent();
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  useEffect(() => {
+    loadRecent();
+    const t = setInterval(loadRecent, 12000);
+    return () => clearInterval(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  return (
+    <div className="mt-4 border border-slate-300 bg-white">
+      <div className="border-b border-slate-200 px-3 py-2 flex items-center justify-between">
+        <div>
+          <div className="text-[13px] font-semibold text-slate-900">💬 실시간 익명채팅</div>
+          <div className="text-[11px] text-slate-500 mt-0.5">{me.userId ? "로그인 상태에서만 전송 가능" : "로그인하면 채팅을 보낼 수 있어요"}</div>
+          {netErr ? <div className="text-[11px] text-rose-600 mt-1">⚠ {netErr}</div> : null}
+        </div>
+        <button type="button" onClick={loadRecent} className="text-[11px] text-slate-600 underline underline-offset-2" disabled={busy}>
+          새로고침
+        </button>
+      </div>
+
+      <div className="px-3 py-2">
+        {hasMore ? (
+          <button
+            type="button"
+            onClick={loadMore}
+            disabled={busy || loading}
+            className="w-full border border-slate-200 bg-white py-1.5 text-[11px] text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+          >
+            이전 내용 보기
+          </button>
+        ) : (
+          <div className="text-center text-[11px] text-slate-400 py-1">처음입니다</div>
+        )}
+      </div>
+
+      <div className="px-3 pb-3">
+        <div className="h-[220px] overflow-auto border border-slate-200 bg-white p-2 space-y-2">
+          {loading ? <div className="text-[12px] text-slate-600">불러오는 중…</div> : null}
+          {msgs.length === 0 && !loading ? <div className="text-[12px] text-slate-600">아직 채팅이 없습니다.</div> : null}
+
+          {msgs.map((m) => {
+            const mine = !!me.userId && String(m.user_id) === String(me.userId);
+            const label = m.anon_id ?? "익명";
+            return (
+              <div key={m.id} className={mine ? "flex justify-end" : "flex justify-start"}>
+                <div className={"max-w-[85%] " + (mine ? "text-right" : "text-left")}>
+                  <div className="text-[10px] text-slate-500 mb-0.5">{mine ? "" : label}</div>
+                  <div
+                    className={
+                      "inline-block px-3 py-2 text-[12px] leading-snug border text-slate-900 " +
+                      (mine ? "bg-sky-50 border-sky-200" : "bg-slate-50 border-slate-200")
+                    }
+                  >
+                    {m.content}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="mt-2 flex items-stretch gap-2">
+          <input
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            disabled={!me.userId || busy}
+            placeholder={me.userId ? "메시지 입력…" : "로그인 후 채팅 가능"}
+            className="w-full border border-slate-300 bg-white px-3 py-2 text-[12px] text-slate-900 outline-none disabled:bg-slate-100"
+            onKeyDown={(e) => {
+              if (e.key === "Enter") send();
+            }}
+          />
+          <button
+            type="button"
+            onClick={send}
+            disabled={!me.userId || busy || text.trim().length === 0}
+            className="border border-sky-700 bg-sky-700 px-3 text-[12px] font-semibold text-white hover:bg-sky-600 disabled:opacity-60"
+          >
+            전송
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -113,6 +301,19 @@ export default function FreeLayout({ children }: { children: ReactNode }) {
   const [notis, setNotis] = useState<Noti[]>([]);
   const [unread, setUnread] = useState(0);
 
+  // ✅ 쪽지함 빨간 점용
+  const [dmUnread, setDmUnread] = useState(0);
+ async function loadDmUnread() {
+    if (!me.userId) {
+      setDmUnread(0);
+      return;
+    }
+    const res = await fetch("/api/messages/inbox", { cache: "no-store", credentials: "include" });
+    const json = await res.json().catch(() => ({}));
+    setDmUnread(typeof json?.unread === "number" ? json.unread : 0);
+  }
+
+
   async function loadMe() {
     const res = await fetch("/api/me", { cache: "no-store", credentials: "include" });
     const json = await res.json().catch(() => ({}));
@@ -122,7 +323,7 @@ export default function FreeLayout({ children }: { children: ReactNode }) {
   async function loadPosts() {
     const res = await fetch("/api/posts?board=free", { cache: "no-store" });
     const json = await res.json().catch(() => ({}));
-    setPosts(Array.isArray(json.data) ? json.data : []);
+    setPosts(json.data ?? []);
   }
 
   async function loadVisitors() {
@@ -156,6 +357,19 @@ export default function FreeLayout({ children }: { children: ReactNode }) {
     setUnread(0);
   }
 
+  // ✅ 쪽지함 unread 계산 (서버 수정 없이: inbox에서 read=false 세기)
+  async function loadDmUnread() {
+    if (!me.userId) {
+      setDmUnread(0);
+      return;
+    }
+    const res = await fetch("/api/messages/inbox?limit=50", { cache: "no-store", credentials: "include" });
+    const json = await res.json().catch(() => ({}));
+    const arr = Array.isArray(json?.data) ? json.data : [];
+    const cnt = arr.filter((x: any) => x?.read === false).length;
+    setDmUnread(cnt);
+  }
+
   async function refreshAll() {
     setLoading(true);
     await Promise.all([loadMe(), loadPosts(), loadVisitors(), loadMembers()]);
@@ -168,6 +382,7 @@ export default function FreeLayout({ children }: { children: ReactNode }) {
     setNotiOpen(false);
     setNotis([]);
     setUnread(0);
+    setDmUnread(0);
     router.refresh();
   }
 
@@ -179,8 +394,13 @@ export default function FreeLayout({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!me.userId) return;
     loadNotifications();
-    const t = setInterval(loadNotifications, 25000);
-    return () => clearInterval(t);
+    loadDmUnread();
+    const t1 = setInterval(loadNotifications, 25000);
+    const t2 = setInterval(loadDmUnread, 20000);
+    return () => {
+      clearInterval(t1);
+      clearInterval(t2);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [me.userId]);
 
@@ -244,7 +464,7 @@ export default function FreeLayout({ children }: { children: ReactNode }) {
   return (
     <FreeCtx.Provider value={ctxValue}>
       <main className="mx-auto max-w-5xl px-4 py-3 sm:px-6 sm:py-5">
-        {/* 상단 고정 */}
+        {/* 상단 */}
         <div className="sticky top-0 z-40 bg-white pt-0">
           <div className="flex items-start justify-between gap-3">
             {/* 왼쪽 */}
@@ -257,19 +477,17 @@ export default function FreeLayout({ children }: { children: ReactNode }) {
                     className="h-10 sm:h-12 md:h-14 w-auto object-contain max-w-[360px] sm:max-w-[460px] md:max-w-[520px]"
                   />
                 </Link>
-
                 <div className="hidden sm:block pb-1 text-[12px] font-semibold text-slate-700 whitespace-nowrap -ml-0.5">
                   청주고 전용 커뮤니티
                 </div>
               </div>
 
               <div className="mt-1 text-[12px] font-bold text-slate-900">
-                자유게시판 <span className="mx-1 text-slate-400">·</span>{" "}
-                <span className="text-slate-600">구인구직</span>
+                자유게시판 <span className="mx-1 text-slate-400">·</span> <span className="text-slate-600">구인구직</span>
               </div>
             </div>
 
-            {/* 검색창 */}
+            {/* 검색 */}
             <div className="hidden md:flex flex-1 justify-center pt-3">
               <form className="w-full max-w-[320px]" onSubmit={(e) => e.preventDefault()}>
                 <div className="flex items-stretch border border-slate-800 bg-white">
@@ -279,23 +497,10 @@ export default function FreeLayout({ children }: { children: ReactNode }) {
                     placeholder="게시글 검색 (제목)"
                     className="w-full px-3 py-2 text-[12px] text-slate-900 outline-none"
                   />
-                  <button
-                    type="submit"
-                    aria-label="검색"
-                    className="border-l border-sky-700 bg-sky-700 px-4 text-white hover:bg-sky-600"
-                  >
+                  <button type="submit" aria-label="검색" className="border-l border-sky-700 bg-sky-700 px-4 text-white hover:bg-sky-600">
                     <span className="text-[16px] leading-none">🔍</span>
                   </button>
                 </div>
-
-                {query.trim() ? (
-                  <div className="mt-1 text-[11px] text-slate-500">
-                    검색중…{" "}
-                    <button type="button" className="ml-1 underline" onClick={() => setQuery("")}>
-                      지우기
-                    </button>
-                  </div>
-                ) : null}
               </form>
             </div>
 
@@ -304,13 +509,8 @@ export default function FreeLayout({ children }: { children: ReactNode }) {
               <div className="hidden sm:block text-right text-[12px] text-slate-600 pt-0 mr-2 -mt-0.5">
                 {me.userId ? (
                   <>
-                    로그인:{" "}
-                    <span className="font-semibold text-emerald-700">
-                      {me.username ?? "unknown"}
-                    </span>
-                    {me.role === "admin" ? (
-                      <span className="ml-1 font-semibold text-amber-700">★</span>
-                    ) : null}
+                    로그인: <span className="font-semibold text-emerald-700">{me.username ?? "unknown"}</span>
+                    {me.role === "admin" ? <span className="ml-1 font-semibold text-amber-700">★</span> : null}
                   </>
                 ) : (
                   "로그인되지 않음"
@@ -320,22 +520,41 @@ export default function FreeLayout({ children }: { children: ReactNode }) {
               <div className="relative flex items-center gap-1.5 -mt-0.5" data-noti-root="1">
                 {me.role === "admin" ? (
                   <Link
+                    href="/community/free/admin/dm"
+                    className="border border-emerald-400 bg-white px-2 py-1 text-[11px] font-semibold text-emerald-700 hover:bg-emerald-50"
+                    title="관리자 DM 센터"
+                  >
+                    🛠 DM센터
+                  </Link>
+                ) : null}
+
+                {me.role === "admin" ? (
+                  <Link
                     href="/community/free/admin/reports"
                     className={
                       "relative border px-2 py-1 text-[11px] font-semibold " +
-                      (reportUnread > 0
-                        ? "border-rose-400 bg-rose-50 text-rose-700"
-                        : "border-rose-400 text-rose-700 bg-white hover:bg-rose-50")
+                      (reportUnread > 0 ? "border-rose-400 bg-rose-50 text-rose-700" : "border-rose-400 text-rose-700 bg-white hover:bg-rose-50")
                     }
                     title="신고 접수된 글"
                   >
                     🚩 신고접수
-                    {reportUnread > 0 ? (
-                      <span className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full bg-rose-600 ring-2 ring-white" />
-                    ) : null}
+                    {reportUnread > 0 ? <span className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full bg-rose-600 ring-2 ring-white" /> : null}
                   </Link>
                 ) : null}
 
+                {/* ✅ 쪽지함 + 점 표시 */}
+                {me.userId ? (
+                  <Link
+                    href="/community/free/messages"
+                    className="relative border border-slate-300 bg-white px-2 py-1 text-[11px] text-slate-800 hover:bg-slate-50"
+                    title="쪽지함"
+                  >
+                    ✉ 쪽지함
+                    {dmUnread > 0 ? <span className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full bg-rose-600 ring-2 ring-white" /> : null}
+                  </Link>
+                ) : null}
+
+                {/* 알림 */}
                 <button
                   type="button"
                   onClick={async () => {
@@ -352,41 +571,27 @@ export default function FreeLayout({ children }: { children: ReactNode }) {
                   title="알림"
                 >
                   <span className="text-[14px] leading-none">{unread > 0 ? "🔔" : "🔕"}</span>
-                  {unread > 0 ? (
-                    <span className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full bg-rose-600 ring-2 ring-white" />
-                  ) : null}
+                  {unread > 0 ? <span className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full bg-rose-600 ring-2 ring-white" /> : null}
                 </button>
 
                 {!me.userId ? (
                   <>
-                    <Link
-                      className="border border-slate-300 bg-white px-2 py-1 text-[11px] text-slate-800 hover:bg-slate-50"
-                      href="/login?next=/community/free"
-                    >
+                    <Link className="border border-slate-300 bg-white px-2 py-1 text-[11px] text-slate-800 hover:bg-slate-50" href="/login?next=/community/free">
                       로그인
                     </Link>
-                    <Link
-                      className="border border-slate-300 bg-white px-2 py-1 text-[11px] text-slate-800 hover:bg-slate-50"
-                      href="/signup"
-                    >
+                    <Link className="border border-slate-300 bg-white px-2 py-1 text-[11px] text-slate-800 hover:bg-slate-50" href="/signup">
                       회원가입
                     </Link>
                   </>
                 ) : (
-                  <button
-                    type="button"
-                    onClick={onLogout}
-                    className="border border-slate-300 bg-white px-2 py-1 text-[11px] text-slate-800 hover:bg-slate-50"
-                  >
+                  <button type="button" onClick={onLogout} className="border border-slate-300 bg-white px-2 py-1 text-[11px] text-slate-800 hover:bg-slate-50">
                     로그아웃
                   </button>
                 )}
 
                 {notiOpen ? (
                   <div className="absolute right-0 top-9 z-50 w-[320px] overflow-hidden border border-slate-300 bg-white shadow-lg">
-                    <div className="border-b border-slate-200 px-3 py-2 text-[12px] font-semibold text-slate-900">
-                      알림
-                    </div>
+                    <div className="border-b border-slate-200 px-3 py-2 text-[12px] font-semibold text-slate-900">알림</div>
 
                     <div className="max-h-[260px] overflow-auto">
                       {notis.length === 0 ? (
@@ -404,23 +609,17 @@ export default function FreeLayout({ children }: { children: ReactNode }) {
                                 ? `${actor}님이 회원님의 글에 좋아요를 눌렀습니다.`
                                 : n.type === "report"
                                 ? `${actor}님이 글을 신고했습니다.`
+                                : n.type === "dm"
+                                ? `관리자 쪽지가 도착했습니다.`
                                 : `${actor}님의 활동 알림이 있습니다.`;
 
-                            const href = n.post_id
-                              ? `/community/free/${encodeURIComponent(n.post_id)}`
-                              : "/community/free";
+                            const href = n.post_id ? `/community/free/${encodeURIComponent(n.post_id)}` : "/community/free";
 
                             return (
                               <li key={n.id} className="px-3 py-2">
-                                <Link
-                                  href={href}
-                                  className="block hover:underline"
-                                  onClick={() => setNotiOpen(false)}
-                                >
+                                <Link href={href} className="block hover:underline" onClick={() => setNotiOpen(false)}>
                                   <div className="text-[12px] text-slate-800">{msg}</div>
-                                  <div className="mt-0.5 text-[11px] text-slate-500">
-                                    {fmtNotiTime(n.created_at)}
-                                  </div>
+                                  <div className="mt-0.5 text-[11px] text-slate-500">{fmtNotiTime(n.created_at)}</div>
                                 </Link>
                               </li>
                             );
@@ -430,26 +629,11 @@ export default function FreeLayout({ children }: { children: ReactNode }) {
                     </div>
 
                     <div className="border-t border-slate-200 px-3 py-2">
-                      <Link
-                        href="/community/free/all?mine=1"
-                        className="block text-[12px] font-semibold text-slate-900 hover:underline"
-                        onClick={() => setNotiOpen(false)}
-                      >
-                        내가 쓴 글 (전체글)
+                      <Link href="/community/free/all?mine=1" className="block text-[12px] font-semibold text-slate-900 hover:underline" onClick={() => setNotiOpen(false)}>
+                        내가 쓴 글
                       </Link>
-                      <Link
-                        href="/community/free/all"
-                        className="mt-1 block text-[12px] text-slate-600 hover:underline"
-                        onClick={() => setNotiOpen(false)}
-                      >
-                        전체글로 이동
-                      </Link>
-                      <Link
-                        href="/community/free"
-                        className="mt-1 block text-[12px] text-slate-600 hover:underline"
-                        onClick={() => setNotiOpen(false)}
-                      >
-                        메인으로 이동
+                      <Link href="/community/free" className="mt-1 block text-[12px] text-slate-600 hover:underline" onClick={() => setNotiOpen(false)}>
+                        메인으로
                       </Link>
                     </div>
                   </div>
@@ -462,58 +646,42 @@ export default function FreeLayout({ children }: { children: ReactNode }) {
           <div className="mt-3 md:hidden">
             <div className="border border-slate-300 bg-white">
               <div className="flex items-stretch">
-                <input
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  placeholder="게시글 검색 (제목)"
-                  className="w-full px-3 py-2 text-[12px] text-slate-900 outline-none"
-                />
-                <button
-                  type="button"
-                  aria-label="검색"
-                  className="border-l border-sky-700 bg-sky-700 px-4 text-white hover:bg-sky-600"
-                >
+                <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="게시글 검색 (제목)" className="w-full px-3 py-2 text-[12px] text-slate-900 outline-none" />
+                <button type="button" aria-label="검색" className="border-l border-sky-700 bg-sky-700 px-4 text-white hover:bg-sky-600">
                   <span className="text-[16px] leading-none">🔍</span>
                 </button>
               </div>
             </div>
           </div>
 
-          {/* 탭 */}
-<div className="mt-3 xmas-tabs">
-  <FullBleed>
-    <div className="border-t-2 border-b-2 border-sky-700 bg-white">
-      <div className="mx-auto max-w-5xl px-4 sm:px-6">
-        {/* ✅ 모바일 줄바꿈 방지 + 가로 스크롤 */}
-        <div className="flex items-center gap-2 py-2 overflow-x-auto whitespace-nowrap [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          <TabLink href="/community/free">메인</TabLink>
-          <TabLink href="/community/free/all">전체글</TabLink>
-          <TabLink href="/community/free/meal">오늘의 급식</TabLink>
-
-          <div className="ml-auto text-[12px] text-slate-500 shrink-0">정렬/필터 자리</div>
-        </div>
-      </div>
-    </div>
-  </FullBleed>
-</div>
-
+          {/* 상단 탭 */}
+          <div className="mt-3">
+            <FullBleed>
+              <div className="border-t-2 border-b-2 border-sky-700 bg-white">
+                <div className="mx-auto max-w-5xl px-4 sm:px-6">
+                  <div className="flex items-center gap-2 py-2 overflow-x-auto">
+                    <TabLink href="/community/free">메인</TabLink>
+                    <TabLink href="/community/free/all">전체글</TabLink>
+                    <TabLink href="/community/free/meal">오늘의 급식</TabLink>
+                    <div className="ml-auto shrink-0 text-[12px] text-slate-500">정렬/필터 자리</div>
+                  </div>
+                </div>
+              </div>
+            </FullBleed>
+          </div>
 
           <div className="border-b border-slate-200 mt-3" />
         </div>
 
         {/* 본문 + 오른쪽 */}
         <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-12 md:gap-5">
-          <section className="md:col-span-8 lg:col-span-9 md:max-w-none md:justify-self-stretch">
-            {children}
-          </section>
+          <section className="md:col-span-8 lg:col-span-9 md:max-w-none md:justify-self-stretch">{children}</section>
 
           <aside className="hidden md:block md:col-span-4 lg:col-span-3 md:max-w-none md:justify-self-stretch">
             <div className="sticky top-6">
               <div className="border border-slate-300 bg-white p-4">
                 <div className="mb-3 flex items-center justify-between gap-2">
-                  <span className="text-[15px] font-semibold tracking-tight text-slate-900">
-                    오늘의 TOPIC
-                  </span>
+                  <span className="text-[15px] font-semibold tracking-tight text-slate-900">오늘의 TOPIC</span>
                   <span className="text-[11px] text-slate-500">(조회수)</span>
                 </div>
 
@@ -525,17 +693,12 @@ export default function FreeLayout({ children }: { children: ReactNode }) {
                   <ul className="space-y-2">
                     {top3.map((p, idx) => (
                       <li key={p.id}>
-                        <Link
-                          href={`/community/free/${encodeURIComponent(p.id)}`}
-                          className="block border border-slate-300 bg-white px-3 py-2 hover:bg-slate-50"
-                        >
+                        <Link href={`/community/free/${encodeURIComponent(p.id)}`} className="block border border-slate-300 bg-white px-3 py-2 hover:bg-slate-50">
                           <div className="flex items-center justify-between gap-2">
                             <div className="min-w-0 truncate font-semibold text-[13px] text-slate-900">
                               #{idx + 1} {p.title}
                             </div>
-                            <div className="shrink-0 text-[11px] text-slate-500 whitespace-nowrap">
-                              조회 {p.view_count}
-                            </div>
+                            <div className="shrink-0 text-[11px] text-slate-500 whitespace-nowrap">조회 {p.view_count}</div>
                           </div>
                         </Link>
                       </li>
@@ -543,15 +706,10 @@ export default function FreeLayout({ children }: { children: ReactNode }) {
                   </ul>
                 )}
 
-                {/* ✅ 통계: topic 밑으로 이동 */}
-                <div className="mt-3 grid grid-cols-1 gap-2">
-                  <StatMini title="누적 회원 수" value={members} />
-                  <StatMini title="누적 방문 수" value={visitors} />
-                </div>
+                <StatPills members={members} visitors={visitors} />
               </div>
 
-              {/* ✅ 채팅 유지 */}
-              <AnonymousChatBox meUserId={me.userId} />
+              <AnonymousChatBox me={me} />
             </div>
           </aside>
         </div>

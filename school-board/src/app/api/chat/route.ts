@@ -11,43 +11,38 @@ function admin() {
   return createAdminClient(url, key, { auth: { persistSession: false } });
 }
 
-const TABLE = "chat_messages";
-const ROOM = "global";
-
-function makeAnonName(userId: string) {
-  // 완전 익명 느낌 + 고정(유저마다 같은 익명닉)
-  const tail = userId.replace(/-/g, "").slice(-4).toUpperCase();
-  return `익명${tail}`;
+function makeAnonId(userId: string) {
+  const s = String(userId).replace(/-/g, "");
+  return `익명${s.slice(0, 4)}`;
 }
 
-// GET /api/chat?limit=25&before=2025-12-18T... (optional)
 export async function GET(req: Request) {
-  const { searchParams } = new URL(req.url);
-  const limit = Math.min(Math.max(Number(searchParams.get("limit") ?? 25), 1), 50);
-  const before = searchParams.get("before"); // created_at 기준 페이지네이션
+  const url = new URL(req.url);
+  const limit = Math.min(Number(url.searchParams.get("limit") ?? "25"), 50);
+  const before = url.searchParams.get("before"); // created_at
 
   const sb = admin();
 
+  // ✅ username 컬럼을 절대 조회하지 않음
   let q = sb
-    .from(TABLE)
-    .select("id,room,content,anon_id,created_at,user_id")
-    .eq("room", ROOM)
+    .from("chat_messages")
+    .select("id,content,user_id,anon_id,created_at")
     .order("created_at", { ascending: false })
-    .limit(limit);
+    .limit(limit + 1);
 
   if (before) q = q.lt("created_at", before);
 
   const { data, error } = await q;
 
-  if (error) return NextResponse.json({ error: error.message, data: [], hasMore: false }, { status: 500 });
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  return NextResponse.json({
-    data: data ?? [],
-    hasMore: (data ?? []).length === limit,
-  });
+  const arr = data ?? [];
+  const hasMore = arr.length > limit;
+  const sliced = hasMore ? arr.slice(0, limit) : arr;
+
+  return NextResponse.json({ data: sliced, hasMore });
 }
 
-// POST /api/chat  (로그인 필요)
 export async function POST(req: Request) {
   const authed = await createAuthedClient();
   const { data } = await authed.auth.getUser();
@@ -55,23 +50,26 @@ export async function POST(req: Request) {
 
   if (!user) return NextResponse.json({ error: "로그인이 필요합니다." }, { status: 401 });
 
-  const body = await req.json().catch(() => null);
+  const body = await req.json().catch(() => ({}));
   const content = String(body?.content ?? "").trim();
-  if (!content) return NextResponse.json({ error: "내용을 입력해주세요." }, { status: 400 });
+  if (!content) return NextResponse.json({ error: "내용이 비었습니다." }, { status: 400 });
 
   const sb = admin();
 
-  // ✅ 핵심: room + user_id 항상 저장 → 새로고침되어도 안 사라짐
-  const insertRow = {
-    room: ROOM,
+  // ✅ username 컬럼 없이 insert
+  const row = {
     content,
     user_id: user.id,
-    anon_id: makeAnonName(user.id),
+    anon_id: makeAnonId(user.id),
   };
 
-  const { data: row, error } = await sb.from(TABLE).insert(insertRow).select("id,room,content,anon_id,created_at,user_id").single();
+  const { data: inserted, error } = await sb
+    .from("chat_messages")
+    .insert(row)
+    .select("id,content,user_id,anon_id,created_at")
+    .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  return NextResponse.json({ data: row });
+  return NextResponse.json({ data: inserted });
 }
