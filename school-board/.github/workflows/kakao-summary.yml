@@ -1,16 +1,98 @@
-name: Kakao Daily Summary (KST 00:00)
+import { NextRequest, NextResponse } from "next/server";
+import { sendMemoTemplate, kakaoConfig } from "@/lib/kakao";
+import {
+  getLastRun,
+  setLastRun,
+  getNewPostsCount,
+  getNewCommentsCount,
+  getReportsSummary,
+  getTotalPostsCount,
+  getTotalCommentsCount,
+  getTotalMembersCount,
+  getTotalVisitsCount,
+  kstToday,
+} from "@/lib/stats";
 
-on:
-  schedule:
-    - cron: "0 15 * * *"  # ✅ UTC 15:00 = KST 00:00(자정)
-  workflow_dispatch:
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
-jobs:
-  call:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Call summary endpoint
-        run: |
-          curl -fsSL \
-            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
-            "${{ secrets.SITE_URL }}/api/cron/summary"
+function normalizeAuth(h: string) {
+  const t = (h || "").trim();
+  if (!t) return "";
+  const m = t.match(/^bearer\s+(.+)$/i);
+  return (m ? m[1] : t).trim();
+}
+
+export async function GET(req: NextRequest) {
+  const rawAuth = req.headers.get("authorization") || "";
+  const got = normalizeAuth(rawAuth);
+  const secret = (process.env.CRON_SECRET || "").trim();
+
+  if (!secret || got !== secret) {
+    return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
+  }
+
+  const name = "kakao_daily_summary";
+
+  try {
+    const last = await getLastRun(name);
+    const now = new Date();
+
+    // ✅ 총합(맨 위 표시)
+    const [totalPosts, totalComments, totalMembers, totalVisits] = await Promise.all([
+      getTotalPostsCount(),
+      getTotalCommentsCount(),
+      getTotalMembersCount(),
+      getTotalVisitsCount(),
+    ]);
+
+    // ✅ 최근(짧게만 표시)
+    const [newPosts, newComments, reports] = await Promise.all([
+      getNewPostsCount(last),
+      getNewCommentsCount(last),
+      getReportsSummary(last),
+    ]);
+
+    const { siteUrl } = kakaoConfig();
+    const logoUrl = `${siteUrl}/logo.png`;
+    const today = kstToday();
+
+    // ❗ description 짧게(잘림 방지)
+    const shortDesc = `최근: 새글 ${newPosts}, 새댓글 ${newComments}, 신고 ${reports.newReports}(미처리 ${reports.openReports})`;
+
+    const templateObject = {
+      object_type: "feed",
+      content: {
+        title: `📊 Square 일일 요약 (${today})`,
+        description: shortDesc,
+        image_url: logoUrl,
+        link: { web_url: siteUrl, mobile_web_url: siteUrl },
+      },
+      item_content: {
+        profile_text: "Square",
+        profile_image_url: logoUrl,
+        // ✅ 표처럼 보이는 핵심 4개 (먼저 표시)
+        items: [
+          { item: "전체 글 수", item_op: `${totalPosts}개` },
+          { item: "전체 댓글 수", item_op: `${totalComments}개` },
+          { item: "총 회원 수", item_op: `${totalMembers}명` },
+          { item: "누적 방문 수", item_op: `${totalVisits}회` },
+        ],
+      },
+      buttons: [
+        { title: "사이트 열기", link: { web_url: siteUrl, mobile_web_url: siteUrl } },
+        {
+          title: "자유게시판",
+          link: { web_url: `${siteUrl}/community/free`, mobile_web_url: `${siteUrl}/community/free` },
+        },
+      ],
+    };
+
+    await sendMemoTemplate(templateObject);
+    await setLastRun(name, now);
+
+    return NextResponse.json({ ok: true });
+  } catch (e: any) {
+    return NextResponse.json({ ok: false, error: String(e?.message || e) }, { status: 500 });
+  }
+}

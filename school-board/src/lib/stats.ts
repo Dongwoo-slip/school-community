@@ -1,49 +1,30 @@
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { kstDateString } from "@/lib/time";
 
-// 신규 집계용(필요하면 너 테이블명으로 수정)
+// ✅ 너 프로젝트 테이블명(필요시 수정)
 const TABLE_POSTS = "posts";
 const TABLE_COMMENTS = "comments";
 const TABLE_REPORTS = "reports";
 
-type AnyRow = Record<string, any>;
+async function countAll(table: string, column = "id") {
+  const { count, error } = await supabaseAdmin
+    .from(table)
+    .select(column, { count: "exact", head: true });
 
-function toNumber(v: any): number | null {
-  if (typeof v === "number" && Number.isFinite(v)) return v;
-  if (typeof v === "string") {
-    const t = v.trim().replaceAll(",", "");
-    if (t && !Number.isNaN(Number(t))) return Number(t);
-  }
-  return null;
+  if (error) throw new Error(`Count all failed on ${table}: ${error.message}`);
+  return count ?? 0;
 }
 
-function bestByKeywords(row: AnyRow, include: RegExp[], exclude: RegExp[] = []): number {
-  const entries = Object.entries(row)
-    .map(([k, v]) => [k, toNumber(v)] as const)
-    .filter(([, n]) => n !== null) as Array<[string, number]>;
+async function countSince(table: string, since: Date) {
+  const { count, error } = await supabaseAdmin
+    .from(table)
+    .select("id", { count: "exact", head: true })
+    .gt("created_at", since.toISOString());
 
-  const cands = entries
-    .filter(([k]) => include.some((r) => r.test(k)) && !exclude.some((r) => r.test(k)));
-
-  if (cands.length === 0) return 0;
-
-  // 후보 중 가장 큰 값(대부분 total이 제일 큼)
-  return Math.max(...cands.map(([, n]) => n));
+  if (error) throw new Error(`Count since failed on ${table}: ${error.message}`);
+  return count ?? 0;
 }
 
-async function getSiteStatsRow(): Promise<AnyRow> {
-  const { data, error } = await supabaseAdmin
-    .from("site_stats")
-    .select("*")
-    .limit(1)
-    .maybeSingle();
-
-  if (error) throw new Error(`Read site_stats failed: ${error.message}`);
-  if (!data) throw new Error("site_stats has no rows (empty).");
-  return data as AnyRow;
-}
-
-// --- cron_state ---
 export async function getLastRun(name: string) {
   const { data, error } = await supabaseAdmin
     .from("cron_state")
@@ -63,58 +44,51 @@ export async function setLastRun(name: string, when: Date) {
   if (error) throw new Error(`DB upsert cron_state failed: ${error.message}`);
 }
 
-// ✅ 총합 4개: site_stats에서 “키워드로 자동 탐지”
+// ✅ 전체 글/댓글: 테이블에서 직접 count
 export async function getTotalPostsCount() {
-  const s = await getSiteStatsRow();
-  return bestByKeywords(
-    s,
-    [/post/i, /게시/i, /글/i],
-    [/new/i, /today/i, /daily/i, /week/i, /month/i, /최근/i, /신규/i]
-  );
+  return countAll(TABLE_POSTS, "id");
 }
-
 export async function getTotalCommentsCount() {
-  const s = await getSiteStatsRow();
-  return bestByKeywords(
-    s,
-    [/comment/i, /reply/i, /댓글/i, /답글/i],
-    [/new/i, /today/i, /daily/i, /week/i, /month/i, /최근/i, /신규/i]
-  );
+  return countAll(TABLE_COMMENTS, "id");
 }
 
+// ✅ 총회원수: auth.users가 “진짜 회원수”
 export async function getTotalMembersCount() {
-  const s = await getSiteStatsRow();
-  return bestByKeywords(
-    s,
-    [/member/i, /user/i, /users/i, /회원/i],
-    [/new/i, /today/i, /daily/i, /active/i, /최근/i, /신규/i]
-  );
+  const perPage = 1000;
+  let page = 1;
+  let total = 0;
+
+  while (true) {
+    const { data, error } = await supabaseAdmin.auth.admin.listUsers({ page, perPage });
+    if (error) throw new Error(`Auth listUsers failed: ${error.message}`);
+
+    const users = (data as any)?.users ?? [];
+    total += users.length;
+
+    if (users.length < perPage) break;
+    page += 1;
+    if (page > 1000) break;
+  }
+
+  return total;
 }
 
+// ✅ 누적 방문수(총합): site_stats(key/value)에서 visitors 읽기
 export async function getTotalVisitsCount() {
-  const s = await getSiteStatsRow();
-  return bestByKeywords(
-    s,
-    [/visit/i, /visits/i, /pv/i, /pageview/i, /page_view/i, /hit/i, /view/i, /traffic/i, /방문/i, /조회/i],
-    [/new/i, /today/i, /daily/i, /최근/i, /신규/i]
-  );
+  const { data, error } = await supabaseAdmin
+    .from("site_stats")
+    .select("value")
+    .eq("key", "visitors")
+    .maybeSingle();
+
+  if (error) throw new Error(`Read site_stats(visitors) failed: ${error.message}`);
+  return Number((data as any)?.value ?? 0);
 }
 
-// --- 신규(지난 실행 이후) : 실제 테이블에서 계산 ---
-async function countSince(table: string, since: Date) {
-  const { count, error } = await supabaseAdmin
-    .from(table)
-    .select("id", { count: "exact", head: true })
-    .gt("created_at", since.toISOString());
-
-  if (error) throw new Error(`Count since failed on ${table}: ${error.message}`);
-  return count ?? 0;
-}
-
+// ✅ 신규(지난 실행 이후)
 export async function getNewPostsCount(since: Date) {
   return countSince(TABLE_POSTS, since);
 }
-
 export async function getNewCommentsCount(since: Date) {
   return countSince(TABLE_COMMENTS, since);
 }
