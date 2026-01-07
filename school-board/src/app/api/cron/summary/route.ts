@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { sendMemoTemplate } from "@/lib/kakao";
+import { sendMemoTemplate, kakaoConfig } from "@/lib/kakao";
 import {
   getLastRun,
   setLastRun,
@@ -23,9 +23,12 @@ function normalizeAuth(h: string) {
   return (m ? m[1] : t).trim();
 }
 
+function fmtKo(n: number) {
+  return Number(n || 0).toLocaleString("ko-KR");
+}
+
 export async function GET(req: NextRequest) {
-  const rawAuth = req.headers.get("authorization") || "";
-  const got = normalizeAuth(rawAuth);
+  const got = normalizeAuth(req.headers.get("authorization") || "");
   const secret = (process.env.CRON_SECRET || "").trim();
 
   if (!secret || got !== secret) {
@@ -38,58 +41,59 @@ export async function GET(req: NextRequest) {
     const last = await getLastRun(name);
     const now = new Date();
 
-    // ✅ 총합(먼저 표시)
-    const [totalPosts, totalComments, totalMembers, totalVisits] = await Promise.all([
+    const [tp, tc, tm, tv] = await Promise.all([
       getTotalPostsCount(),
       getTotalCommentsCount(),
       getTotalMembersCount(),
       getTotalVisitsCount(),
     ]);
 
-    // ✅ 지난 실행 이후(하루 1번이면 보통 24시간치)
-    const [newPosts, newComments, reports] = await Promise.all([
+    const [np, nc, reports] = await Promise.all([
       getNewPostsCount(last),
       getNewCommentsCount(last),
       getReportsSummary(last),
     ]);
 
-    const siteUrl = process.env.SITE_URL || "https://cjconnect2.vercel.app";
-    const logoUrl = `${siteUrl}/logo.png`;
+    const { siteUrl } = kakaoConfig();
     const today = kstToday();
+    const logoUrl = `${siteUrl}/logo.png`;
+
+    // ✅ OG 이미지 URL (캐시 방지용 v 파라미터 포함)
+    const ogUrl =
+      `${siteUrl}/api/og/daily` +
+      `?title=${encodeURIComponent(`Square Daily Summary (${today})`)}` +
+      `&sub=${encodeURIComponent(`New: posts ${np} · comments ${nc} · reports ${reports.newReports}`)}` +
+      `&logo=${encodeURIComponent(logoUrl)}` +
+      `&tp=${tp}&tc=${tc}&tm=${tm}&tv=${tv}` +
+      `&np=${np}&nc=${nc}&nr=${reports.newReports}&or=${reports.openReports}` +
+      `&v=${Date.now()}`;
+
+    // 텍스트는 짧게(카톡 UI에서 어차피 잘릴 수 있으니)
+    const shortDesc = `총합/요약은 카드 이미지에서 확인`;
 
     const templateObject = {
       object_type: "feed",
       content: {
         title: `📊 Square 일일 요약 (${today})`,
-        description:
-          `총합 현황과 최근 변경사항을 정리했어요.\n` +
-          `- 최근 새 글: ${newPosts}개 / 새 댓글: ${newComments}개\n` +
-          `- 최근 새 신고: ${reports.newReports}건 (미처리 ${reports.openReports}건)`,
-        image_url: logoUrl,
+        description: shortDesc,
+        image_url: ogUrl, // ✅ 여기서 예쁜 카드 이미지가 뜸
         link: { web_url: siteUrl, mobile_web_url: siteUrl },
       },
       item_content: {
         profile_text: "Square",
         profile_image_url: logoUrl,
-        // ✅ 여기 items의 앞 4개가 “먼저 표시”됨 (표처럼 보임)
+        // ✅ 아래 items는 “백업용”(이미지에 이미 다 있음) — 짧게만
         items: [
-          { item: "전체 글 수", item_op: `${totalPosts}개` },
-          { item: "전체 댓글 수", item_op: `${totalComments}개` },
-          { item: "총 회원 수", item_op: `${totalMembers}명` },
-          { item: "누적 방문 수", item_op: `${totalVisits}회` },
-
-          // (선택) 아래는 추가 정보 — 원하면 빼도 됨
-          { item: "최근 새 글", item_op: `${newPosts}개` },
-          { item: "최근 새 댓글", item_op: `${newComments}개` },
+          { item: "전체글", item_op: `${fmtKo(tp)}개` },
+          { item: "전체댓글", item_op: `${fmtKo(tc)}개` },
+          { item: "회원", item_op: `${fmtKo(tm)}명` },
+          { item: "누적방문", item_op: `${fmtKo(tv)}회` },
         ],
       },
       buttons: [
+        { title: "사이트 열기", link: { web_url: siteUrl, mobile_web_url: siteUrl } },
         {
-          title: "사이트 열기",
-          link: { web_url: siteUrl, mobile_web_url: siteUrl },
-        },
-        {
-          title: "관리/확인",
+          title: "자유게시판",
           link: { web_url: `${siteUrl}/community/free`, mobile_web_url: `${siteUrl}/community/free` },
         },
       ],
@@ -100,9 +104,6 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({ ok: true });
   } catch (e: any) {
-    return NextResponse.json(
-      { ok: false, error: String(e?.message || e) },
-      { status: 500 }
-    );
+    return NextResponse.json({ ok: false, error: String(e?.message || e) }, { status: 500 });
   }
 }
