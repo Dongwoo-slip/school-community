@@ -1,8 +1,8 @@
-name: Kakao Summary (Every 3 hours)
+name: Kakao Daily Summary (KST 00:00)
 
 on:
   schedule:
-    - cron: "0 */3 * * *"
+    - cron: "0 15 * * *"  # ✅ UTC 15:00 = KST 00:00(자정)
   workflow_dispatch:
 
 jobs:

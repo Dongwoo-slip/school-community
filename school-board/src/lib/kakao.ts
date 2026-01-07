@@ -64,7 +64,7 @@ export async function exchangeCodeForToken(code: string) {
 export async function refreshAccessToken() {
   const { clientId } = kakaoConfig();
   const refreshToken = await getRefreshTokenFromDb();
-  if (!refreshToken) throw new Error("No refresh_token in DB. Run /api/kakao/login first.");
+  if (!refreshToken) throw new Error("No refresh_token in DB. Run /api/KaKao/login first.");
 
   const res = await fetch("https://kauth.kakao.com/oauth/token", {
     method: "POST",
@@ -79,7 +79,6 @@ export async function refreshAccessToken() {
   const json = (await res.json()) as TokenResponse & Record<string, unknown>;
   if (!res.ok) throw new Error(`Refresh failed: ${JSON.stringify(json)}`);
 
-  // refresh_token이 새로 내려오면 DB 갱신(안 내려오면 유지)
   if ((json as TokenResponse).refresh_token) {
     await saveRefreshTokenToDb((json as TokenResponse).refresh_token!);
   }
@@ -87,16 +86,9 @@ export async function refreshAccessToken() {
   return json as TokenResponse;
 }
 
-export async function sendMemoText(text: string) {
+// ✅ 표/카드처럼 예쁘게 보내기(피드 템플릿)
+export async function sendMemoTemplate(templateObject: any) {
   const token = await refreshAccessToken();
-  const { siteUrl } = kakaoConfig();
-
-  const templateObject = {
-    object_type: "text",
-    text,
-    link: { web_url: siteUrl, mobile_web_url: siteUrl },
-    button_title: "사이트 열기",
-  };
 
   const res = await fetch("https://kapi.kakao.com/v2/api/talk/memo/default/send", {
     method: "POST",
@@ -109,7 +101,7 @@ export async function sendMemoText(text: string) {
     }),
   });
 
-  const json = (await res.json()) as Record<string, unknown>;
+  const json = await res.json();
   if (!res.ok) throw new Error(`Send failed: ${JSON.stringify(json)}`);
   return json;
 }
