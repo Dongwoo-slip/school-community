@@ -12,12 +12,35 @@ import {
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-export async function GET(req: NextRequest) {
-  const auth = req.headers.get("authorization") || "";
-  const expected = `Bearer ${process.env.CRON_SECRET}`;
+function normalizeAuth(h: string) {
+  // "Bearer 0417" / "bearer 0417" / "0417" 전부 허용
+  const t = (h || "").trim();
+  if (!t) return "";
+  const m = t.match(/^bearer\s+(.+)$/i);
+  return (m ? m[1] : t).trim();
+}
 
-  if (!process.env.CRON_SECRET || auth !== expected) {
-    return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
+export async function GET(req: NextRequest) {
+  const rawAuth = req.headers.get("authorization") || "";
+  const got = normalizeAuth(rawAuth);
+  const secret = (process.env.CRON_SECRET || "").trim();
+
+  // ✅ 인증
+  if (!secret || got !== secret) {
+    return NextResponse.json(
+      {
+        ok: false,
+        error: "unauthorized",
+        // 🔎 디버그(민감정보 노출 X): 길이만
+        debug: {
+          hasSecret: !!secret,
+          secretLen: secret.length,
+          gotLen: got.length,
+          hasAuthHeader: !!rawAuth,
+        },
+      },
+      { status: 401 }
+    );
   }
 
   const name = "kakao_summary";
@@ -45,6 +68,9 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({ ok: true });
   } catch (e: any) {
-    return NextResponse.json({ ok: false, error: String(e?.message || e) }, { status: 500 });
+    return NextResponse.json(
+      { ok: false, error: String(e?.message || e) },
+      { status: 500 }
+    );
   }
 }
