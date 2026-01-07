@@ -58,7 +58,7 @@ export async function GET(req: NextRequest) {
     const today = kstToday();
     const logoUrl = `${siteUrl}/logo.png`;
 
-    // 2번째 사진처럼 "최근" 행에 붙일 문장 (너무 길면 … 될 수 있음)
+    // ✅ 이 줄을 sum_op(굵고 큼)에서 빼고, items(기본 크기)로 넣을 거임
     const recentLine = `새글 ${np}개 · 새댓글 ${nc}개 · 신고 ${reports.newReports}건 · 미처리 ${reports.openReports}건`;
 
     const templateObject = {
@@ -66,25 +66,24 @@ export async function GET(req: NextRequest) {
       content: {
         title: `📊 Square 일일 요약 (${today})`,
         description: "최근 변화 요약입니다.",
-        // ✅ 큰 썸네일은 안 쓰고(없애고), 프로필 로고만 사용
+        // ✅ 큰 썸네일 방지: image_url 넣지 않음
         link: { web_url: siteUrl, mobile_web_url: siteUrl },
       },
       item_content: {
-        // ✅ 상단 작은 프로필 로고
+        // ✅ 프로필처럼 로고만
         profile_text: "Square",
         profile_image_url: logoUrl,
 
-        // ✅ 여기서 item_op가 “오른쪽 끝”으로 감 (2번째 사진 스타일)
+        // ✅ 숫자 오른쪽 끝 유지(item_op)
         items: [
           { item: "전체 글", item_op: `${num(tp)}개` },
           { item: "전체 댓글", item_op: `${num(tc)}개` },
           { item: "총 회원", item_op: `${num(tm)}명` },
           { item: "누적 방문", item_op: `${num(tv)}회` },
-        ],
 
-        // ✅ "최근" 행(2번째 사진처럼)
-        sum: "최근",
-        sum_op: recentLine,
+          // ✅ 여기! (sum_op 대신 items로 넣어서 글자 크기 줄어듦)
+          { item: "최근", item_op: recentLine },
+        ],
       },
       buttons: [
         { title: "사이트 열기", link: { web_url: siteUrl, mobile_web_url: siteUrl } },
