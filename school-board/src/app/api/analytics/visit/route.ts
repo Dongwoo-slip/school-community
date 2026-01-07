@@ -6,7 +6,6 @@ export const dynamic = "force-dynamic";
 
 export async function POST(_req: NextRequest) {
   try {
-    // ✅ site_stats 누적 방문수 +1 (DB RPC)
     const { data, error } = await supabaseAdmin.rpc("increment_site_stats_visits");
     if (error) throw new Error(`increment_site_stats_visits failed: ${error.message}`);
 

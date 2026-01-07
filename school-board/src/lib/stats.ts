@@ -1,47 +1,35 @@
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { kstDateString } from "@/lib/time";
 
-// ✅ 너 프로젝트 테이블명 (필요시 수정)
+// ✅ 신규 집계용 테이블명(필요시 수정)
 const TABLE_POSTS = "posts";
 const TABLE_COMMENTS = "comments";
 const TABLE_REPORTS = "reports";
 
-// ✅ site_stats에서 총합을 읽어올 때 사용할 id (보통 1)
-const SITE_STATS_ID = 1;
+type AnyRow = Record<string, any>;
 
-type SiteStatsRow = {
-  id: number;
-  total_posts: number | null;
-  total_comments: number | null;
-  total_members: number | null;
-  total_visits: number | null;
-  updated_at?: string | null;
-};
+function pickNumber(row: AnyRow, keys: string[], fallback = 0) {
+  for (const k of keys) {
+    const v = row?.[k];
+    if (typeof v === "number") return v;
+    if (typeof v === "string" && v.trim() !== "" && !Number.isNaN(Number(v))) return Number(v);
+  }
+  return fallback;
+}
 
-async function getSiteStats(): Promise<SiteStatsRow> {
+async function getSiteStatsRow(): Promise<AnyRow> {
+  // ✅ id 없이 “첫 행 1개”만 가져오기
   const { data, error } = await supabaseAdmin
     .from("site_stats")
-    .select("id,total_posts,total_comments,total_members,total_visits,updated_at")
-    .eq("id", SITE_STATS_ID)
+    .select("*")
+    .limit(1)
     .maybeSingle();
 
   if (error) throw new Error(`Read site_stats failed: ${error.message}`);
-  if (!data) {
-    // row가 없으면 0으로 처리(원하면 여기서 에러로 바꿔도 됨)
-    return {
-      id: SITE_STATS_ID,
-      total_posts: 0,
-      total_comments: 0,
-      total_members: 0,
-      total_visits: 0,
-      updated_at: null,
-    };
-  }
-
-  return data as SiteStatsRow;
+  return (data as AnyRow) ?? {};
 }
 
-// --- cron_state (요약 기준 시점 저장) ---
+// --- cron_state ---
 export async function getLastRun(name: string) {
   const { data, error } = await supabaseAdmin
     .from("cron_state")
@@ -61,26 +49,25 @@ export async function setLastRun(name: string, when: Date) {
   if (error) throw new Error(`DB upsert cron_state failed: ${error.message}`);
 }
 
-// --- 총합(요청한 4개) : ✅ site_stats 기준 ---
+// --- 총합 4개: ✅ site_stats 기준 ---
 export async function getTotalPostsCount() {
-  const s = await getSiteStats();
-  return Number(s.total_posts ?? 0);
+  const s = await getSiteStatsRow();
+  return pickNumber(s, ["total_posts", "posts_total", "totalPost", "post_total", "posts", "total_posts_count"]);
 }
 
 export async function getTotalCommentsCount() {
-  const s = await getSiteStats();
-  return Number(s.total_comments ?? 0);
+  const s = await getSiteStatsRow();
+  return pickNumber(s, ["total_comments", "comments_total", "totalComment", "comment_total", "comments", "total_comments_count"]);
 }
 
 export async function getTotalMembersCount() {
-  const s = await getSiteStats();
-  return Number(s.total_members ?? 0);
+  const s = await getSiteStatsRow();
+  return pickNumber(s, ["total_members", "members_total", "total_users", "totalUsers", "users_total", "members", "users"]);
 }
 
 export async function getTotalVisitsCount() {
-  // ✅ “누적 방문수(총합)” : site_stats.total_visits 사용
-  const s = await getSiteStats();
-  return Number(s.total_visits ?? 0);
+  const s = await getSiteStatsRow();
+  return pickNumber(s, ["total_visits", "visits_total", "totalVisits", "visit_total", "visits", "total_pv", "pageviews"]);
 }
 
 // --- 신규(지난 실행 이후) : 실제 테이블에서 계산 ---
