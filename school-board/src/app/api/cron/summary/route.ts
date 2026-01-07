@@ -58,8 +58,7 @@ export async function GET(req: NextRequest) {
     const today = kstToday();
     const logoUrl = `${siteUrl}/logo.png`;
 
-    // ✅ "새글..."을 위로 올림(= description). 여기 영역 글씨가 더 작게 나옴.
-    // 너무 길면 … 될 수 있으니 한 줄로 압축.
+    // ✅ 위쪽(작은 글씨 영역) — 길면 … 될 수 있으니 한 줄로 짧게
     const desc = `최근: 새글 ${np}개 · 새댓글 ${nc}개 · 신고 ${reports.newReports}건 · 미처리 ${reports.openReports}건`;
 
     const templateObject = {
@@ -71,11 +70,11 @@ export async function GET(req: NextRequest) {
         link: { web_url: siteUrl, mobile_web_url: siteUrl },
       },
       item_content: {
-        // ✅ 작은 프로필 로고 유지
+        // ✅ 작은 원형 로고(프로필처럼)
         profile_text: "Square",
         profile_image_url: logoUrl,
 
-        // ✅ 총합 표(오른쪽 정렬 느낌 + 단위)
+        // ✅ 오른쪽 끝 정렬: 숫자는 item_op에 넣기
         items: [
           { item: "전체 글", item_op: `${num(tp)}개` },
           { item: "전체 댓글", item_op: `${num(tc)}개` },
