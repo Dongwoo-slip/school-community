@@ -1,22 +1,22 @@
 import { NextResponse } from "next/server";
+import { kakaoConfig } from "@/lib/kakao";
+
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 export async function GET() {
-  const clientId = process.env.KAKAO_REST_API_KEY;
-  const redirectUri = process.env.KAKAO_REDIRECT_URI;
+  const { clientId, redirectUri } = kakaoConfig();
 
-  if (!clientId || !redirectUri) {
-    return NextResponse.json(
-      { error: "Missing env", clientId: !!clientId, redirectUri: !!redirectUri },
-      { status: 500 }
-    );
-  }
+  const authUrl = new URL("https://kauth.kakao.com/oauth/authorize");
+  authUrl.searchParams.set("response_type", "code");
+  authUrl.searchParams.set("client_id", clientId);
+  authUrl.searchParams.set("redirect_uri", redirectUri);
 
-  const url =
-    `https://kauth.kakao.com/oauth/authorize` +
-    `?client_id=${encodeURIComponent(clientId)}` +
-    `&redirect_uri=${encodeURIComponent(redirectUri)}` +
-    `&response_type=code` +
-    `&scope=talk_message`;
+  // ✅ “나에게 보내기” 권한
+  authUrl.searchParams.set("scope", "talk_message");
 
-  return NextResponse.redirect(url);
+  // refresh_token이 안 내려오면 아래 주석 해제하고 다시 로그인
+  // authUrl.searchParams.set("prompt", "consent");
+
+  return NextResponse.redirect(authUrl.toString());
 }

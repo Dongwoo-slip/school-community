@@ -61,7 +61,6 @@ export default function Comments({
       const res = await fetch("/api/comments", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        // ✅ post_id로 통일
         body: JSON.stringify({ post_id: postId, content: text }),
       });
       const json = await res.json().catch(() => ({}));

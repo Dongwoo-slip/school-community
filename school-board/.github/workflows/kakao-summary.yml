@@ -1,0 +1,16 @@
+name: Kakao Summary (Every 3 hours)
+
+on:
+  schedule:
+    - cron: "0 */3 * * *"
+  workflow_dispatch:
+
+jobs:
+  call:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call summary endpoint
+        run: |
+          curl -fsSL \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            "${{ secrets.SITE_URL }}/api/cron/summary"
