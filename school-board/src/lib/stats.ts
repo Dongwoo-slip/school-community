@@ -1,24 +1,37 @@
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { kstDateString } from "@/lib/time";
 
-// ✅ 신규 집계용 테이블명(필요시 수정)
+// 신규 집계용(필요하면 너 테이블명으로 수정)
 const TABLE_POSTS = "posts";
 const TABLE_COMMENTS = "comments";
 const TABLE_REPORTS = "reports";
 
 type AnyRow = Record<string, any>;
 
-function pickNumber(row: AnyRow, keys: string[], fallback = 0) {
-  for (const k of keys) {
-    const v = row?.[k];
-    if (typeof v === "number") return v;
-    if (typeof v === "string" && v.trim() !== "" && !Number.isNaN(Number(v))) return Number(v);
+function toNumber(v: any): number | null {
+  if (typeof v === "number" && Number.isFinite(v)) return v;
+  if (typeof v === "string") {
+    const t = v.trim().replaceAll(",", "");
+    if (t && !Number.isNaN(Number(t))) return Number(t);
   }
-  return fallback;
+  return null;
+}
+
+function bestByKeywords(row: AnyRow, include: RegExp[], exclude: RegExp[] = []): number {
+  const entries = Object.entries(row)
+    .map(([k, v]) => [k, toNumber(v)] as const)
+    .filter(([, n]) => n !== null) as Array<[string, number]>;
+
+  const cands = entries
+    .filter(([k]) => include.some((r) => r.test(k)) && !exclude.some((r) => r.test(k)));
+
+  if (cands.length === 0) return 0;
+
+  // 후보 중 가장 큰 값(대부분 total이 제일 큼)
+  return Math.max(...cands.map(([, n]) => n));
 }
 
 async function getSiteStatsRow(): Promise<AnyRow> {
-  // ✅ id 없이 “첫 행 1개”만 가져오기
   const { data, error } = await supabaseAdmin
     .from("site_stats")
     .select("*")
@@ -26,7 +39,8 @@ async function getSiteStatsRow(): Promise<AnyRow> {
     .maybeSingle();
 
   if (error) throw new Error(`Read site_stats failed: ${error.message}`);
-  return (data as AnyRow) ?? {};
+  if (!data) throw new Error("site_stats has no rows (empty).");
+  return data as AnyRow;
 }
 
 // --- cron_state ---
@@ -49,25 +63,41 @@ export async function setLastRun(name: string, when: Date) {
   if (error) throw new Error(`DB upsert cron_state failed: ${error.message}`);
 }
 
-// --- 총합 4개: ✅ site_stats 기준 ---
+// ✅ 총합 4개: site_stats에서 “키워드로 자동 탐지”
 export async function getTotalPostsCount() {
   const s = await getSiteStatsRow();
-  return pickNumber(s, ["total_posts", "posts_total", "totalPost", "post_total", "posts", "total_posts_count"]);
+  return bestByKeywords(
+    s,
+    [/post/i, /게시/i, /글/i],
+    [/new/i, /today/i, /daily/i, /week/i, /month/i, /최근/i, /신규/i]
+  );
 }
 
 export async function getTotalCommentsCount() {
   const s = await getSiteStatsRow();
-  return pickNumber(s, ["total_comments", "comments_total", "totalComment", "comment_total", "comments", "total_comments_count"]);
+  return bestByKeywords(
+    s,
+    [/comment/i, /reply/i, /댓글/i, /답글/i],
+    [/new/i, /today/i, /daily/i, /week/i, /month/i, /최근/i, /신규/i]
+  );
 }
 
 export async function getTotalMembersCount() {
   const s = await getSiteStatsRow();
-  return pickNumber(s, ["total_members", "members_total", "total_users", "totalUsers", "users_total", "members", "users"]);
+  return bestByKeywords(
+    s,
+    [/member/i, /user/i, /users/i, /회원/i],
+    [/new/i, /today/i, /daily/i, /active/i, /최근/i, /신규/i]
+  );
 }
 
 export async function getTotalVisitsCount() {
   const s = await getSiteStatsRow();
-  return pickNumber(s, ["total_visits", "visits_total", "totalVisits", "visit_total", "visits", "total_pv", "pageviews"]);
+  return bestByKeywords(
+    s,
+    [/visit/i, /visits/i, /pv/i, /pageview/i, /page_view/i, /hit/i, /view/i, /traffic/i, /방문/i, /조회/i],
+    [/new/i, /today/i, /daily/i, /최근/i, /신규/i]
+  );
 }
 
 // --- 신규(지난 실행 이후) : 실제 테이블에서 계산 ---
