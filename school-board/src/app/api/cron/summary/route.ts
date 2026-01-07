@@ -23,7 +23,7 @@ function normalizeAuth(h: string) {
   return (m ? m[1] : t).trim();
 }
 
-function fmtKo(n: number) {
+function fmt(n: number) {
   return Number(n || 0).toLocaleString("ko-KR");
 }
 
@@ -58,37 +58,33 @@ export async function GET(req: NextRequest) {
     const today = kstToday();
     const logoUrl = `${siteUrl}/logo.png`;
 
-    // ✅ OG 이미지 URL (캐시 방지용 v 파라미터 포함)
-    const ogUrl =
-      `${siteUrl}/api/og/daily` +
-      `?title=${encodeURIComponent(`Square Daily Summary (${today})`)}` +
-      `&sub=${encodeURIComponent(`New: posts ${np} · comments ${nc} · reports ${reports.newReports}`)}` +
-      `&logo=${encodeURIComponent(logoUrl)}` +
-      `&tp=${tp}&tc=${tc}&tm=${tm}&tv=${tv}` +
-      `&np=${np}&nc=${nc}&nr=${reports.newReports}&or=${reports.openReports}` +
-      `&v=${Date.now()}`;
+    // ✅ 길이 짧게(… 방지): 한 줄로, 기호 최소
+    const desc = `최근: 글 ${np} 댓글 ${nc} 신고 ${reports.newReports} (미처리 ${reports.openReports})`;
 
-    // 텍스트는 짧게(카톡 UI에서 어차피 잘릴 수 있으니)
-    const shortDesc = `총합/요약은 카드 이미지에서 확인`;
+    // ✅ “누적방문 밑에 같이” 보이게 하려면 sum/sum_op 사용
+    // (카톡 UI에서 items 아래에 한 줄로 붙음)
+    const sumLine = `글 ${np} · 댓글 ${nc} · 신고 ${reports.newReports} · 미처리 ${reports.openReports}`;
 
     const templateObject = {
       object_type: "feed",
       content: {
         title: `📊 Square 일일 요약 (${today})`,
-        description: shortDesc,
-        image_url: ogUrl, // ✅ 여기서 예쁜 카드 이미지가 뜸
+        description: desc, // 여기 길면 잘리니까 아주 짧게만
+        image_url: logoUrl, // 로고만
         link: { web_url: siteUrl, mobile_web_url: siteUrl },
       },
       item_content: {
         profile_text: "Square",
         profile_image_url: logoUrl,
-        // ✅ 아래 items는 “백업용”(이미지에 이미 다 있음) — 짧게만
         items: [
-          { item: "전체글", item_op: `${fmtKo(tp)}개` },
-          { item: "전체댓글", item_op: `${fmtKo(tc)}개` },
-          { item: "회원", item_op: `${fmtKo(tm)}명` },
-          { item: "누적방문", item_op: `${fmtKo(tv)}회` },
+          { item: "전체 글", item_op: `${fmt(tp)}개` },
+          { item: "전체 댓글", item_op: `${fmt(tc)}개` },
+          { item: "총 회원", item_op: `${fmt(tm)}명` },
+          { item: "누적 방문", item_op: `${fmt(tv)}회` },
         ],
+        // ✅ 누적 방문 “밑에 같이” 한 줄 요약
+        sum: "최근 요약",
+        sum_op: sumLine,
       },
       buttons: [
         { title: "사이트 열기", link: { web_url: siteUrl, mobile_web_url: siteUrl } },
