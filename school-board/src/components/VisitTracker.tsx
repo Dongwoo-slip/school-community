@@ -1,14 +1,14 @@
 "use client";
+
 import { useEffect } from "react";
+import { usePathname } from "next/navigation";
 
 export default function VisitTracker() {
-  useEffect(() => {
-    const key = `sq_visit_${new Date().toISOString().slice(0, 10)}`;
-    if (sessionStorage.getItem(key)) return;
-    sessionStorage.setItem(key, "1");
+  const pathname = usePathname();
 
+  useEffect(() => {
     fetch("/api/analytics/visit", { method: "POST" }).catch(() => {});
-  }, []);
+  }, [pathname]);
 
   return null;
 }

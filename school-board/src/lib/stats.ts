@@ -1,13 +1,47 @@
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { kstDateString } from "@/lib/time";
 
-// ✅ 너 프로젝트 테이블명에 맞게 필요시 수정
+// ✅ 너 프로젝트 테이블명 (필요시 수정)
 const TABLE_POSTS = "posts";
 const TABLE_COMMENTS = "comments";
-const TABLE_MEMBERS = "profiles";      // 보통 profiles (없으면 너 테이블명으로 변경)
-const TABLE_DAILY_VISITS = "daily_visits";
 const TABLE_REPORTS = "reports";
 
+// ✅ site_stats에서 총합을 읽어올 때 사용할 id (보통 1)
+const SITE_STATS_ID = 1;
+
+type SiteStatsRow = {
+  id: number;
+  total_posts: number | null;
+  total_comments: number | null;
+  total_members: number | null;
+  total_visits: number | null;
+  updated_at?: string | null;
+};
+
+async function getSiteStats(): Promise<SiteStatsRow> {
+  const { data, error } = await supabaseAdmin
+    .from("site_stats")
+    .select("id,total_posts,total_comments,total_members,total_visits,updated_at")
+    .eq("id", SITE_STATS_ID)
+    .maybeSingle();
+
+  if (error) throw new Error(`Read site_stats failed: ${error.message}`);
+  if (!data) {
+    // row가 없으면 0으로 처리(원하면 여기서 에러로 바꿔도 됨)
+    return {
+      id: SITE_STATS_ID,
+      total_posts: 0,
+      total_comments: 0,
+      total_members: 0,
+      total_visits: 0,
+      updated_at: null,
+    };
+  }
+
+  return data as SiteStatsRow;
+}
+
+// --- cron_state (요약 기준 시점 저장) ---
 export async function getLastRun(name: string) {
   const { data, error } = await supabaseAdmin
     .from("cron_state")
@@ -27,15 +61,29 @@ export async function setLastRun(name: string, when: Date) {
   if (error) throw new Error(`DB upsert cron_state failed: ${error.message}`);
 }
 
-async function countAll(table: string, column = "id") {
-  const { count, error } = await supabaseAdmin
-    .from(table)
-    .select(column, { count: "exact", head: true });
-
-  if (error) throw new Error(`Count all failed on ${table}: ${error.message}`);
-  return count ?? 0;
+// --- 총합(요청한 4개) : ✅ site_stats 기준 ---
+export async function getTotalPostsCount() {
+  const s = await getSiteStats();
+  return Number(s.total_posts ?? 0);
 }
 
+export async function getTotalCommentsCount() {
+  const s = await getSiteStats();
+  return Number(s.total_comments ?? 0);
+}
+
+export async function getTotalMembersCount() {
+  const s = await getSiteStats();
+  return Number(s.total_members ?? 0);
+}
+
+export async function getTotalVisitsCount() {
+  // ✅ “누적 방문수(총합)” : site_stats.total_visits 사용
+  const s = await getSiteStats();
+  return Number(s.total_visits ?? 0);
+}
+
+// --- 신규(지난 실행 이후) : 실제 테이블에서 계산 ---
 async function countSince(table: string, since: Date) {
   const { count, error } = await supabaseAdmin
     .from(table)
@@ -46,27 +94,6 @@ async function countSince(table: string, since: Date) {
   return count ?? 0;
 }
 
-// ✅ 총합 (요청한 4개)
-export async function getTotalPostsCount() {
-  return countAll(TABLE_POSTS, "id");
-}
-
-export async function getTotalCommentsCount() {
-  return countAll(TABLE_COMMENTS, "id");
-}
-
-export async function getTotalMembersCount() {
-  // profiles 테이블이 보통 id=uuid
-  return countAll(TABLE_MEMBERS, "id");
-}
-
-export async function getTotalVisitsCount() {
-  // daily_visits에 쌓인 전체 row 수(= 누적 방문수로 사용)
-  // (같은 사람이 다른 날 방문하면 그 날마다 1회로 카운트)
-  return countAll(TABLE_DAILY_VISITS, "visitor_id");
-}
-
-// ✅ 신규(지난 실행 이후)
 export async function getNewPostsCount(since: Date) {
   return countSince(TABLE_POSTS, since);
 }
@@ -93,7 +120,6 @@ export async function getReportsSummary(since: Date) {
   return { newReports: newReports ?? 0, openReports: openReports ?? 0 };
 }
 
-// (선택) 메시지에 날짜 표시용
 export function kstToday() {
   return kstDateString(new Date());
 }

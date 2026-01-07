@@ -1,34 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase/admin";
-import { kstDateString } from "@/lib/time";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-function randomId() {
-  return crypto.randomUUID();
-}
+export async function POST(_req: NextRequest) {
+  try {
+    // ✅ site_stats 누적 방문수 +1 (DB RPC)
+    const { data, error } = await supabaseAdmin.rpc("increment_site_stats_visits");
+    if (error) throw new Error(`increment_site_stats_visits failed: ${error.message}`);
 
-export async function POST(req: NextRequest) {
-  const today = kstDateString(new Date());
-
-  const existingVid = req.cookies.get("sq_vid")?.value;
-  const vid = existingVid || randomId();
-
-  const { error } = await supabaseAdmin.from("daily_visits").upsert({ date: today, visitor_id: vid });
-  if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
-
-  const res = NextResponse.json({ ok: true });
-
-  if (!existingVid) {
-    res.cookies.set("sq_vid", vid, {
-      httpOnly: true,
-      sameSite: "lax",
-      secure: true,
-      path: "/",
-      maxAge: 60 * 60 * 24 * 365,
-    });
+    return NextResponse.json({ ok: true, total_visits: Number(data ?? 0) });
+  } catch (e: any) {
+    return NextResponse.json({ ok: false, error: String(e?.message || e) }, { status: 500 });
   }
-
-  return res;
 }
