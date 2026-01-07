@@ -56,29 +56,39 @@ export async function GET(req: NextRequest) {
 
     const { siteUrl } = kakaoConfig();
     const today = kstToday();
+    const logoUrl = `${siteUrl}/logo.png`;
 
-    // ✅ 아주 짧게(… 방지)
-    const desc = `최근: 글 ${np} 댓글 ${nc} 신고 ${reports.newReports} (미처리 ${reports.openReports})`;
-    const sumLine = `글 ${np} · 댓글 ${nc} · 신고 ${reports.newReports} · 미처리 ${reports.openReports}`;
+    // ✅ description은 짧게(길면 … 처리됨)
+    const desc = `최근: 글 ${np} · 댓글 ${nc} · 신고 ${reports.newReports}`;
+
+    // ✅ sum/sum_op은 너무 길면 잘려서, 11자 내로 최대한 압축
+    // 예: 글3/댓5/신1/미0
+    const sumOp = `글${np}/댓${nc}/신${reports.newReports}/미${reports.openReports}`;
 
     const templateObject = {
       object_type: "feed",
       content: {
         title: `📊 Square 일일 요약 (${today})`,
         description: desc,
-        // ✅ image_url을 아예 넣지 않으면 카드 상단 이미지가 안 붙음
+        // ✅ 여기 image_url을 넣으면 “큰 썸네일”이 생김 → 넣지 않음
         link: { web_url: siteUrl, mobile_web_url: siteUrl },
       },
       item_content: {
+        // ✅ 작은 원형 프로필 로고
         profile_text: "Square",
+        profile_image_url: logoUrl,
+
+        // ✅ 숫자들은 item_op에 넣으면 오른쪽 정렬로 보이기 좋음
         items: [
-          { item: "전체 글", item_op: `${fmt(tp)}개` },
-          { item: "전체 댓글", item_op: `${fmt(tc)}개` },
-          { item: "총 회원", item_op: `${fmt(tm)}명` },
-          { item: "누적 방문", item_op: `${fmt(tv)}회` },
+          { item: "전체글", item_op: fmt(tp) },
+          { item: "댓글", item_op: fmt(tc) },
+          { item: "회원", item_op: fmt(tm) },
+          { item: "방문", item_op: fmt(tv) },
         ],
-        sum: "최근 요약",
-        sum_op: sumLine,
+
+        // ✅ “누적방문 밑에 같이” 요약 한 줄
+        sum: "최근",
+        sum_op: sumOp,
       },
       buttons: [
         { title: "사이트 열기", link: { web_url: siteUrl, mobile_web_url: siteUrl } },
