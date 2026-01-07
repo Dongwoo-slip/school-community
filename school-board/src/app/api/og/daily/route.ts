@@ -1,131 +1,106 @@
-import { ImageResponse } from "next/og";
-import React from "react";
+import { NextRequest, NextResponse } from "next/server";
+import { sendMemoTemplate, kakaoConfig } from "@/lib/kakao";
+import {
+  getLastRun,
+  setLastRun,
+  getNewPostsCount,
+  getNewCommentsCount,
+  getReportsSummary,
+  getTotalPostsCount,
+  getTotalCommentsCount,
+  getTotalMembersCount,
+  getTotalVisitsCount,
+  kstToday,
+} from "@/lib/stats";
 
-export const runtime = "edge";
+export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-function q(url: URL, key: string, def = "0") {
-  return url.searchParams.get(key) ?? def;
+function normalizeAuth(h: string) {
+  const t = (h || "").trim();
+  if (!t) return "";
+  const m = t.match(/^bearer\s+(.+)$/i);
+  return (m ? m[1] : t).trim();
 }
 
-function fmt(n: string) {
-  const num = Number(String(n).replaceAll(",", "").trim());
-  if (Number.isFinite(num)) return num.toLocaleString("en-US");
-  return String(n);
+function fmtKo(n: number) {
+  return Number(n || 0).toLocaleString("ko-KR");
 }
 
-export async function GET(req: Request) {
-  const url = new URL(req.url);
+export async function GET(req: NextRequest) {
+  const got = normalizeAuth(req.headers.get("authorization") || "");
+  const secret = (process.env.CRON_SECRET || "").trim();
 
-  const title = q(url, "title", "Square Daily Summary");
-  const subtitle = q(url, "sub", "");
-  const logo = q(url, "logo", "");
-
-  const rows: Array<[string, string]> = [
-    ["Total Posts", fmt(q(url, "tp"))],
-    ["Total Comments", fmt(q(url, "tc"))],
-    ["Total Members", fmt(q(url, "tm"))],
-    ["Total Visits", fmt(q(url, "tv"))],
-    ["New Posts", fmt(q(url, "np"))],
-    ["New Comments", fmt(q(url, "nc"))],
-    ["New Reports", fmt(q(url, "nr"))],
-    ["Open Reports", fmt(q(url, "or"))],
-  ];
-
-  const h = React.createElement;
-
-  const headerLeft: any[] = [];
-  if (logo) {
-    headerLeft.push(
-      h("img", {
-        src: logo,
-        width: 64,
-        height: 64,
-        style: {
-          borderRadius: 16,
-          background: "rgba(255,255,255,0.06)",
-          border: "1px solid rgba(255,255,255,0.12)",
-        },
-      })
-    );
+  if (!secret || got !== secret) {
+    return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
   }
 
-  headerLeft.push(
-    h(
-      "div",
-      { style: { display: "flex", flexDirection: "column" } },
-      h(
-        "div",
-        { style: { fontSize: 44, fontWeight: 800, letterSpacing: "-0.02em" } },
-        title
-      ),
-      h("div", { style: { fontSize: 22, opacity: 0.85 } }, subtitle)
-    )
-  );
+  const name = "kakao_daily_summary";
 
-  const cards = rows.map(([k, v]) =>
-    h(
-      "div",
-      {
-        key: k,
-        style: {
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          padding: "18px 22px",
-          borderRadius: 18,
-          background: "rgba(255,255,255,0.06)",
-          border: "1px solid rgba(255,255,255,0.12)",
-        },
-      },
-      h("div", { style: { fontSize: 24, opacity: 0.9 } }, k),
-      h("div", { style: { fontSize: 30, fontWeight: 900, letterSpacing: "-0.01em" } }, v)
-    )
-  );
+  try {
+    const last = await getLastRun(name);
+    const now = new Date();
 
-  const element = h(
-    "div",
-    {
-      style: {
-        width: "1200px",
-        height: "630px",
-        display: "flex",
-        padding: "48px",
-        background: "linear-gradient(180deg, #071521 0%, #0B2A3A 55%, #071521 100%)",
-        color: "#EAF2FF",
-        fontFamily: "system-ui, -apple-system, Segoe UI, Roboto",
+    const [tp, tc, tm, tv] = await Promise.all([
+      getTotalPostsCount(),
+      getTotalCommentsCount(),
+      getTotalMembersCount(),
+      getTotalVisitsCount(),
+    ]);
+
+    const [np, nc, reports] = await Promise.all([
+      getNewPostsCount(last),
+      getNewCommentsCount(last),
+      getReportsSummary(last),
+    ]);
+
+    const { siteUrl } = kakaoConfig();
+    const today = kstToday();
+    const logoUrl = `${siteUrl}/logo.png`;
+
+    // ✅ 짧은 OG URL (숫자만 + .png 경로)
+    const ogUrl =
+      `${siteUrl}/api/og/daily.png` +
+      `?d=${encodeURIComponent(today)}` +
+      `&tp=${tp}&tc=${tc}&tm=${tm}&tv=${tv}` +
+      `&np=${np}&nc=${nc}&nr=${reports.newReports}&or=${reports.openReports}` +
+      `&v=${Date.now()}`;
+
+    const templateObject = {
+      object_type: "feed",
+      content: {
+        title: `📊 Square 일일 요약 (${today})`,
+        description: "카드 이미지에서 전체 요약을 확인하세요.",
+        image_url: ogUrl,
+        image_width: 800,
+        image_height: 800,
+        link: { web_url: siteUrl, mobile_web_url: siteUrl },
       },
-    },
-    h(
-      "div",
-      { style: { width: "100%", display: "flex", flexDirection: "column", gap: "22px" } },
-      // Header
-      h(
-        "div",
-        { style: { display: "flex", alignItems: "center", gap: "16px" } },
-        ...headerLeft
-      ),
-      // Grid
-      h(
-        "div",
+      item_content: {
+        profile_text: "Square",
+        profile_image_url: logoUrl,
+        // 백업용으로 짧게만
+        items: [
+          { item: "전체글", item_op: `${fmtKo(tp)}개` },
+          { item: "전체댓글", item_op: `${fmtKo(tc)}개` },
+          { item: "회원", item_op: `${fmtKo(tm)}명` },
+          { item: "누적방문", item_op: `${fmtKo(tv)}회` },
+        ],
+      },
+      buttons: [
+        { title: "사이트 열기", link: { web_url: siteUrl, mobile_web_url: siteUrl } },
         {
-          style: {
-            display: "grid",
-            gridTemplateColumns: "1fr 1fr",
-            gap: "14px",
-            marginTop: "8px",
-          },
+          title: "자유게시판",
+          link: { web_url: `${siteUrl}/community/free`, mobile_web_url: `${siteUrl}/community/free` },
         },
-        ...cards
-      ),
-      // Footer
-      h(
-        "div",
-        { style: { marginTop: "auto", fontSize: 18, opacity: 0.7 } },
-        "cjconnect2.vercel.app"
-      )
-    )
-  );
+      ],
+    };
 
-  return new ImageResponse(element, { width: 1200, height: 630 });
+    await sendMemoTemplate(templateObject);
+    await setLastRun(name, now);
+
+    return NextResponse.json({ ok: true });
+  } catch (e: any) {
+    return NextResponse.json({ ok: false, error: String(e?.message || e) }, { status: 500 });
+  }
 }
