@@ -58,11 +58,9 @@ export async function GET(req: NextRequest) {
     const today = kstToday();
     const logoUrl = `${siteUrl}/logo.png`;
 
-    // ✅ description은 짧게(길면 … 됨)
-    const desc = `최근 변화 요약입니다.`;
-
-    // ✅ 누적방문 “밑에 같이” 표시되는 한 줄 (너무 길지 않게)
-    const sumOp = `새글 ${np}개 · 새댓글 ${nc}개 · 신고 ${reports.newReports}건 · 미처리 ${reports.openReports}건`;
+    // ✅ "새글..."을 위로 올림(= description). 여기 영역 글씨가 더 작게 나옴.
+    // 너무 길면 … 될 수 있으니 한 줄로 압축.
+    const desc = `최근: 새글 ${np}개 · 새댓글 ${nc}개 · 신고 ${reports.newReports}건 · 미처리 ${reports.openReports}건`;
 
     const templateObject = {
       object_type: "feed",
@@ -73,20 +71,17 @@ export async function GET(req: NextRequest) {
         link: { web_url: siteUrl, mobile_web_url: siteUrl },
       },
       item_content: {
-        // ✅ 작은 프로필 로고(원형)
+        // ✅ 작은 프로필 로고 유지
         profile_text: "Square",
         profile_image_url: logoUrl,
 
-        // ✅ 오른쪽 끝 정렬 느낌 + 단위 포함
+        // ✅ 총합 표(오른쪽 정렬 느낌 + 단위)
         items: [
           { item: "전체 글", item_op: `${num(tp)}개` },
           { item: "전체 댓글", item_op: `${num(tc)}개` },
           { item: "총 회원", item_op: `${num(tm)}명` },
           { item: "누적 방문", item_op: `${num(tv)}회` },
         ],
-
-        sum: "최근",
-        sum_op: sumOp,
       },
       buttons: [
         { title: "사이트 열기", link: { web_url: siteUrl, mobile_web_url: siteUrl } },
