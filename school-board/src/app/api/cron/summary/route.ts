@@ -56,33 +56,27 @@ export async function GET(req: NextRequest) {
 
     const { siteUrl } = kakaoConfig();
     const today = kstToday();
-    const logoUrl = `${siteUrl}/logo.png`;
 
-    // ✅ 길이 짧게(… 방지): 한 줄로, 기호 최소
+    // ✅ 아주 짧게(… 방지)
     const desc = `최근: 글 ${np} 댓글 ${nc} 신고 ${reports.newReports} (미처리 ${reports.openReports})`;
-
-    // ✅ “누적방문 밑에 같이” 보이게 하려면 sum/sum_op 사용
-    // (카톡 UI에서 items 아래에 한 줄로 붙음)
     const sumLine = `글 ${np} · 댓글 ${nc} · 신고 ${reports.newReports} · 미처리 ${reports.openReports}`;
 
     const templateObject = {
       object_type: "feed",
       content: {
         title: `📊 Square 일일 요약 (${today})`,
-        description: desc, // 여기 길면 잘리니까 아주 짧게만
-        image_url: logoUrl, // 로고만
+        description: desc,
+        // ✅ image_url을 아예 넣지 않으면 카드 상단 이미지가 안 붙음
         link: { web_url: siteUrl, mobile_web_url: siteUrl },
       },
       item_content: {
         profile_text: "Square",
-        profile_image_url: logoUrl,
         items: [
           { item: "전체 글", item_op: `${fmt(tp)}개` },
           { item: "전체 댓글", item_op: `${fmt(tc)}개` },
           { item: "총 회원", item_op: `${fmt(tm)}명` },
           { item: "누적 방문", item_op: `${fmt(tv)}회` },
         ],
-        // ✅ 누적 방문 “밑에 같이” 한 줄 요약
         sum: "최근 요약",
         sum_op: sumLine,
       },
