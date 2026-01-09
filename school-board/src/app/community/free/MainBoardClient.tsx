@@ -1,79 +1,52 @@
 "use client";
 
 import TimetableWidget from "@/components/TimetableWidget";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 type AdCfg = {
-  visible: boolean;
+  show: boolean;
   w: number;
   h: number;
-  gap: number;
-  top: number;
+  left: number;
+  gapToContent: number;
 };
 
 function getAdCfg(vw: number): AdCfg {
-  // ✅ 모바일: 숨김
-  if (vw < 900) return { visible: false, w: 0, h: 0, gap: 0, top: 0 };
-
-  // ✅ 아이패드 가로(대략 900~1200): 겹치기 쉬움 → 더 작게 + 아래로
-  if (vw < 1200) {
-    return { visible: true, w: 110, h: 260, gap: 10, top: 210 };
-  }
-
-  // ✅ 데스크탑(1200+): 크게
-  return { visible: true, w: 125, h: 350, gap: 14, top: 170 };
+  if (vw < 900) return { show: false, w: 0, h: 0, left: 0, gapToContent: 0 };
+  if (vw < 1200) return { show: true, w: 120, h: 240, left: 12, gapToContent: 16 };
+  return { show: true, w: 150, h: 300, left: 12, gapToContent: 18 };
 }
 
-function FloatingOutsideAd({ containerId }: { containerId: string }) {
+function FloatingLeftAd({ topAnchorId }: { topAnchorId: string }) {
   const [cfg, setCfg] = useState<AdCfg>(() =>
-    typeof window === "undefined" ? { visible: false, w: 0, h: 0, gap: 0, top: 0 } : getAdCfg(window.innerWidth)
+    typeof window === "undefined" ? getAdCfg(0) : getAdCfg(window.innerWidth)
   );
-
-  const [pos, setPos] = useState<{ left: number; top: number; visible: boolean }>({
-    left: 8,
-    top: 170,
-    visible: false,
-  });
+  const [topPx, setTopPx] = useState<number>(160);
 
   const [scrolling, setScrolling] = useState(false);
   const tRef = useRef<number | null>(null);
 
   useEffect(() => {
-    const update = () => {
-      const vw = window.innerWidth;
-      const nextCfg = getAdCfg(vw);
-      setCfg(nextCfg);
+    const calc = () => {
+      const next = getAdCfg(window.innerWidth);
+      setCfg(next);
 
-      if (!nextCfg.visible) {
-        setPos((p) => ({ ...p, visible: false }));
+      const anchor = document.getElementById(topAnchorId);
+      const safeTop = 160;
+
+      if (!anchor) {
+        setTopPx(safeTop);
         return;
       }
 
-      const container = document.getElementById(containerId);
-      if (!container) {
-        setPos((p) => ({ ...p, visible: false }));
-        return;
-      }
-
-      const rect = container.getBoundingClientRect();
-
-      // ✅ 본문 왼쪽 바깥 배치
-      const idealLeft = Math.round(rect.left - nextCfg.w - nextCfg.gap);
-
-      // ✅ 화면 밖으로 나가면 숨김(겹침 방지)
-      const canPlace = idealLeft >= 8;
-
-      setPos({
-        left: Math.max(8, idealLeft),
-        top: nextCfg.top,
-        visible: canPlace,
-      });
+      const r = anchor.getBoundingClientRect();
+      setTopPx(Math.max(safeTop, Math.round(r.top) + 8));
     };
 
-    update();
-    window.addEventListener("resize", update);
-    return () => window.removeEventListener("resize", update);
-  }, [containerId]);
+    calc();
+    window.addEventListener("resize", calc);
+    return () => window.removeEventListener("resize", calc);
+  }, [topAnchorId]);
 
   useEffect(() => {
     const onScroll = () => {
@@ -88,7 +61,7 @@ function FloatingOutsideAd({ containerId }: { containerId: string }) {
     };
   }, []);
 
-  if (!pos.visible || !cfg.visible) return null;
+  if (!cfg.show) return null;
 
   return (
     <aside
@@ -98,7 +71,7 @@ function FloatingOutsideAd({ containerId }: { containerId: string }) {
         "will-change-transform",
         scrolling ? "translate-y-[4px]" : "translate-y-0",
       ].join(" ")}
-      style={{ left: pos.left, top: pos.top, width: cfg.w }}
+      style={{ left: cfg.left, top: topPx, width: cfg.w }}
       aria-label="Floating advertisement"
     >
       <div className="border border-slate-300 bg-white shadow-sm">
@@ -135,14 +108,16 @@ function FloatingOutsideAd({ containerId }: { containerId: string }) {
 }
 
 export default function MainBoardClient() {
-  const containerId = "main-content-container";
+  const topAnchorId = useMemo(() => "ad-top-anchor", []);
 
   return (
     <>
-      <FloatingOutsideAd containerId={containerId} />
+      <FloatingLeftAd topAnchorId={topAnchorId} />
 
-      {/* ✅ 본문: 아이패드에서 겹침 줄이려고 폭도 살짝 줄임(원하면 삭제 가능) */}
-      <div id={containerId} className="mx-auto max-w-[960px]">
+      <div id={topAnchorId} />
+
+      {/* ✅ 기존보다 "30px 정도만" 오른쪽으로 (너무 많이 안 밀림) */}
+      <div className="mx-auto max-w-[940px] lg:ml-[30px] lg:mr-auto">
         <div className="mb-4 border-y-2 border-sky-700 bg-white">
           <div className="border-b border-sky-700 bg-sky-50 px-4 py-2 text-[12px] font-semibold text-sky-900">
             CheongJu High School Community - Sqaure
