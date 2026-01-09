@@ -137,3 +137,15 @@ html {
   filter: blur(0.2px);
   animation: snowFall2 20s linear infinite;
 }
+/* ✅ 사이트 전체 가로 오버플로우 방지 */
+html, body {
+  width: 100%;
+  overflow-x: hidden;
+}
+
+/* ✅ 채팅/긴 텍스트 줄바꿈 강제 오버라이드(전역 nowrap 방어용) */
+[data-force-wrap="true"] {
+  white-space: pre-wrap !important;
+  overflow-wrap: anywhere !important;
+  word-break: break-all !important;
+}

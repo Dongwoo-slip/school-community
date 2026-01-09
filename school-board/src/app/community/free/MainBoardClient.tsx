@@ -1,7 +1,7 @@
 "use client";
 
 import TimetableWidget from "@/components/TimetableWidget";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 type AdCfg = {
   show: boolean;
@@ -14,20 +14,20 @@ function getAdCfg(vw: number): AdCfg {
   // 모바일/작은 화면: 숨김
   if (vw < 900) return { show: false, w: 0, h: 0, left: 0 };
 
-  // 아이패드/중간 폭: 더 작게
-  if (vw < 1200) return { show: true, w: 120, h: 240, left: 12 };
+  // 아이패드 가로(대략): 더 작게
+  if (vw < 1200) return { show: true, w: 110, h: 240, left: 12 };
 
-  // 데스크탑: 크게
+  // 데스크탑
   return { show: true, w: 150, h: 300, left: 12 };
 }
 
 function FloatingLeftAd({ topAnchorId }: { topAnchorId: string }) {
-  const TOP_LOCK = 220; // ✅ "탭바 아래" 최소 top (필요하면 200~260 사이 미세조정)
+  const TOP_LOCK = 220; // ✅ "탭바 아래" 최소 top
 
-  // ✅ Hydration 방지: 서버/클라 첫 렌더에서는 무조건 null, 마운트 후에만 광고 렌더
+  // ✅ 핵심: SSR/CSR 첫 렌더를 동일하게 만들기 위해 mounted 전엔 무조건 null
   const [mounted, setMounted] = useState(false);
 
-  const [cfg, setCfg] = useState<AdCfg>({ show: false, w: 0, h: 0, left: 0 });
+  const [cfg, setCfg] = useState<AdCfg>({ show: false, w: 0, h: 0, left: 12 });
   const [topPx, setTopPx] = useState<number>(TOP_LOCK);
 
   const [scrolling, setScrolling] = useState(false);
@@ -37,7 +37,6 @@ function FloatingLeftAd({ topAnchorId }: { topAnchorId: string }) {
     setMounted(true);
   }, []);
 
-  // ✅ 마운트 후에만 window/document 접근
   useEffect(() => {
     if (!mounted) return;
 
@@ -46,16 +45,14 @@ function FloatingLeftAd({ topAnchorId }: { topAnchorId: string }) {
       setCfg(next);
 
       const anchor = document.getElementById(topAnchorId);
-
-      // anchor가 있으면 anchor의 bottom 기준으로 잡되, TOP_LOCK보다 위로는 못 올라감
-      if (anchor) {
-        const r = anchor.getBoundingClientRect();
-        const anchorBottom = Math.round(r.bottom) + 8;
-        setTopPx(Math.max(TOP_LOCK, anchorBottom));
-      } else {
-        // anchor가 없으면 TOP_LOCK로 고정
+      if (!anchor) {
         setTopPx(TOP_LOCK);
+        return;
       }
+
+      const r = anchor.getBoundingClientRect();
+      const anchorBottom = Math.round(r.bottom) + 8;
+      setTopPx(Math.max(TOP_LOCK, anchorBottom));
     };
 
     calc();
@@ -63,7 +60,6 @@ function FloatingLeftAd({ topAnchorId }: { topAnchorId: string }) {
     return () => window.removeEventListener("resize", calc);
   }, [mounted, topAnchorId]);
 
-  // ✅ 스크롤 “스윽” 느낌(아래로만 살짝)
   useEffect(() => {
     if (!mounted) return;
 
@@ -72,7 +68,6 @@ function FloatingLeftAd({ topAnchorId }: { topAnchorId: string }) {
       if (tRef.current) window.clearTimeout(tRef.current);
       tRef.current = window.setTimeout(() => setScrolling(false), 140);
     };
-
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => {
       window.removeEventListener("scroll", onScroll);
@@ -80,9 +75,8 @@ function FloatingLeftAd({ topAnchorId }: { topAnchorId: string }) {
     };
   }, [mounted]);
 
-  // ✅ 서버/클라 첫 렌더에서는 항상 null → Hydration mismatch 방지
-  if (!mounted) return null;
-  if (!cfg.show) return null;
+  // ✅ mounted 전엔 무조건 null → hydration mismatch 방지
+  if (!mounted || !cfg.show) return null;
 
   return (
     <aside
@@ -94,7 +88,7 @@ function FloatingLeftAd({ topAnchorId }: { topAnchorId: string }) {
       ].join(" ")}
       style={{
         left: cfg.left,
-        top: topPx, // ✅ 탭바 아래로 제한된 top
+        top: topPx,
         width: cfg.w,
       }}
       aria-label="Floating advertisement"
@@ -133,19 +127,19 @@ function FloatingLeftAd({ topAnchorId }: { topAnchorId: string }) {
 }
 
 export default function MainBoardClient() {
-  const topAnchorId = "ad-top-anchor";
+  const topAnchorId = useMemo(() => "ad-top-anchor", []);
 
   return (
     <>
-      {/* ✅ 탭바 아래 기준점(항상 먼저 렌더) */}
+      {/* ✅ 1) anchor를 먼저 렌더(서버/클라 동일한 첫 DOM 유지) */}
       <div id={topAnchorId} />
 
-      {/* ✅ 광고: 마운트 이후에만 렌더 → Hydration 오류 해결 */}
+      {/* ✅ 2) 광고는 mounted 이후에만 렌더 */}
       <FloatingLeftAd topAnchorId={topAnchorId} />
 
       {/* ✅ 본문: 기존보다 30px만 이동 */}
       <div className="mx-auto max-w-[940px] lg:ml-[30px] lg:mr-auto">
-        {/* 배너(컴팩트) */}
+        {/* 배너 */}
         <div className="mb-4 border-y-2 border-sky-700 bg-white">
           <div className="border-b border-sky-700 bg-sky-50 px-4 py-2 text-[12px] font-semibold text-sky-900">
             CheongJu High School Community - Sqaure
