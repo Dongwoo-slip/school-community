@@ -13,7 +13,7 @@ type AdCfg = {
 
 function getAdCfg(vw: number): AdCfg {
   if (vw < 900) return { show: false, w: 0, h: 0, left: 0, gapToContent: 0 };
-  if (vw < 1200) return { show: true, w: 120, h: 240, left: 12, gapToContent: 16 };
+  if (vw < 1200) return { show: true, w: 110, h: 240, left: 12, gapToContent: 16 };
   return { show: true, w: 150, h: 300, left: 12, gapToContent: 18 };
 }
 
