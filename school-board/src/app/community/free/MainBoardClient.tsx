@@ -3,16 +3,36 @@
 import TimetableWidget from "@/components/TimetableWidget";
 import { useEffect, useRef, useState } from "react";
 
+type AdCfg = {
+  visible: boolean;
+  w: number;
+  h: number;
+  gap: number;
+  top: number;
+};
+
+function getAdCfg(vw: number): AdCfg {
+  // ✅ 모바일: 숨김
+  if (vw < 900) return { visible: false, w: 0, h: 0, gap: 0, top: 0 };
+
+  // ✅ 아이패드 가로(대략 900~1200): 겹치기 쉬움 → 더 작게 + 아래로
+  if (vw < 1200) {
+    return { visible: true, w: 110, h: 260, gap: 10, top: 210 };
+  }
+
+  // ✅ 데스크탑(1200+): 크게
+  return { visible: true, w: 125, h: 350, gap: 14, top: 170 };
+}
+
 function FloatingOutsideAd({ containerId }: { containerId: string }) {
-  const AD_W = 125;       // ✅ 180의 5분의4(0.8배) = 144
-  const AD_H = 350;
-  const GAP = 14;
-  const TOP_MIN = 170;
+  const [cfg, setCfg] = useState<AdCfg>(() =>
+    typeof window === "undefined" ? { visible: false, w: 0, h: 0, gap: 0, top: 0 } : getAdCfg(window.innerWidth)
+  );
 
   const [pos, setPos] = useState<{ left: number; top: number; visible: boolean }>({
     left: 8,
-    top: TOP_MIN,
-    visible: true,
+    top: 170,
+    visible: false,
   });
 
   const [scrolling, setScrolling] = useState(false);
@@ -20,6 +40,15 @@ function FloatingOutsideAd({ containerId }: { containerId: string }) {
 
   useEffect(() => {
     const update = () => {
+      const vw = window.innerWidth;
+      const nextCfg = getAdCfg(vw);
+      setCfg(nextCfg);
+
+      if (!nextCfg.visible) {
+        setPos((p) => ({ ...p, visible: false }));
+        return;
+      }
+
       const container = document.getElementById(containerId);
       if (!container) {
         setPos((p) => ({ ...p, visible: false }));
@@ -27,13 +56,18 @@ function FloatingOutsideAd({ containerId }: { containerId: string }) {
       }
 
       const rect = container.getBoundingClientRect();
-      const idealLeft = Math.round(rect.left - AD_W - GAP);
-      const left = Math.max(8, idealLeft);
 
-      const top = TOP_MIN;
-      const visible = window.innerWidth >= 980;
+      // ✅ 본문 왼쪽 바깥 배치
+      const idealLeft = Math.round(rect.left - nextCfg.w - nextCfg.gap);
 
-      setPos({ left, top, visible });
+      // ✅ 화면 밖으로 나가면 숨김(겹침 방지)
+      const canPlace = idealLeft >= 8;
+
+      setPos({
+        left: Math.max(8, idealLeft),
+        top: nextCfg.top,
+        visible: canPlace,
+      });
     };
 
     update();
@@ -54,7 +88,7 @@ function FloatingOutsideAd({ containerId }: { containerId: string }) {
     };
   }, []);
 
-  if (!pos.visible) return null;
+  if (!pos.visible || !cfg.visible) return null;
 
   return (
     <aside
@@ -64,25 +98,25 @@ function FloatingOutsideAd({ containerId }: { containerId: string }) {
         "will-change-transform",
         scrolling ? "translate-y-[4px]" : "translate-y-0",
       ].join(" ")}
-      style={{ left: pos.left, top: pos.top, width: AD_W }}
+      style={{ left: pos.left, top: pos.top, width: cfg.w }}
       aria-label="Floating advertisement"
     >
       <div className="border border-slate-300 bg-white shadow-sm">
-        <div className="border-b border-slate-200 bg-slate-50 px-3 py-2 text-[12px] font-semibold text-slate-900 text-center">
+        <div className="border-b border-slate-200 bg-slate-50 px-2 py-2 text-[11px] font-semibold text-slate-900 text-center">
           AD
         </div>
 
-        <div className="p-3">
+        <div className="p-2">
           <div
             className="flex items-center justify-center border-2 border-dashed border-slate-300 bg-slate-100"
-            style={{ height: AD_H }}
+            style={{ height: cfg.h }}
           >
             <div className="text-center">
-              <div className="text-[12px] font-bold text-slate-800">광고</div>
-              <div className="mt-1 text-[11px] text-slate-600">
-                {AD_W}×{AD_H}
+              <div className="text-[11px] font-bold text-slate-800">광고</div>
+              <div className="mt-1 text-[10px] text-slate-600">
+                {cfg.w}×{cfg.h}
               </div>
-              <div className="mt-2 text-[11px] text-slate-500">
+              <div className="mt-2 text-[10px] text-slate-500 leading-tight">
                 배너 자리
               </div>
             </div>
@@ -90,9 +124,9 @@ function FloatingOutsideAd({ containerId }: { containerId: string }) {
 
           <a
             href="mailto:test"
-            className="mt-2 block border border-slate-200 bg-white px-3 py-2 text-[12px] font-semibold text-slate-900 hover:bg-slate-50 text-center"
+            className="mt-2 block border border-slate-200 bg-white px-2 py-2 text-[10px] font-semibold text-slate-900 hover:bg-slate-50 text-center"
           >
-            광고 문의
+            문의
           </a>
         </div>
       </div>
@@ -107,14 +141,8 @@ export default function MainBoardClient() {
     <>
       <FloatingOutsideAd containerId={containerId} />
 
-      <div
-        id={containerId}
-        className="
-          mx-auto
-          max-w-[960px]
-          xl:translate-x-[70px]
-        "
-      >
+      {/* ✅ 본문: 아이패드에서 겹침 줄이려고 폭도 살짝 줄임(원하면 삭제 가능) */}
+      <div id={containerId} className="mx-auto max-w-[960px]">
         <div className="mb-4 border-y-2 border-sky-700 bg-white">
           <div className="border-b border-sky-700 bg-sky-50 px-4 py-2 text-[12px] font-semibold text-sky-900">
             CheongJu High School Community - Sqaure
@@ -127,7 +155,7 @@ export default function MainBoardClient() {
                   청주고 학생 커뮤니티 Square
                 </div>
                 <div className="mt-1 text-[12px] text-slate-600">
-                  테스트 운영 중 · 오류/건의는 아래 이메일로 문의 바랍니다.
+                  테스트 운영 중 · 오류/건의는 아래 이메일로 알려줘!
                 </div>
               </div>
 
