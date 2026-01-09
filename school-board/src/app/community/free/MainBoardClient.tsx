@@ -18,7 +18,7 @@ function getAdCfg(vw: number): AdCfg {
   if (vw < 1200) return { show: true, w: 110, h: 240, left: 12 };
 
   // 데스크탑
-  return { show: true, w: 150, h: 300, left: 12 };
+  return { show: true, w: 140, h: 300, left: 12 };
 }
 
 function FloatingLeftAd({ topAnchorId }: { topAnchorId: string }) {

@@ -24,13 +24,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ko">
+    <html lang="ko" className="w-full overflow-x-hidden">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-dvh bg-gradient-to-b from-[#071521] via-[#0B2A3A] to-[#071521] text-slate-100`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-dvh w-full overflow-x-hidden bg-gradient-to-b from-[#071521] via-[#0B2A3A] to-[#071521] text-slate-100`}
       >
         {/* ✅ 오늘 방문자수 집계용 (하루 1번 호출) */}
         <VisitTracker />
-
         {children}
       </body>
     </html>

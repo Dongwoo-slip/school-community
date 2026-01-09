@@ -149,3 +149,16 @@ html, body {
   overflow-wrap: anywhere !important;
   word-break: break-all !important;
 }
+/* ====== 가로 스크롤 원천 차단(안전장치) ====== */
+html, body {
+  width: 100%;
+  overflow-x: hidden;
+}
+
+/* ====== 강제 줄바꿈 (전역 nowrap/important를 이김) ====== */
+.force-wrap {
+  white-space: pre-wrap !important;
+  overflow-wrap: anywhere !important;
+  word-break: break-all !important;
+  max-width: 100% !important;
+}
