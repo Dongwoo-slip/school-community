@@ -75,13 +75,24 @@ function TabLink({ href, children }: { href: string; children: ReactNode }) {
   );
 }
 
+/* ✅ hydration/시간대 흔들림 방지: KST 고정 포맷 */
+const KST_FMT = new Intl.DateTimeFormat("ko-KR", {
+  timeZone: "Asia/Seoul",
+  month: "2-digit",
+  day: "2-digit",
+  hour: "2-digit",
+  minute: "2-digit",
+  hour12: false,
+});
+
 function fmtNotiTime(iso: string) {
-  const d = new Date(iso);
-  const mm = String(d.getMonth() + 1).padStart(2, "0");
-  const dd = String(d.getDate()).padStart(2, "0");
-  const hh = String(d.getHours()).padStart(2, "0");
-  const mi = String(d.getMinutes()).padStart(2, "0");
-  return `${mm}/${dd} ${hh}:${mi}`;
+  try {
+    const parts = KST_FMT.formatToParts(new Date(iso));
+    const get = (t: string) => parts.find((p) => p.type === t)?.value ?? "";
+    return `${get("month")}/${get("day")} ${get("hour")}:${get("minute")}`;
+  } catch {
+    return "";
+  }
 }
 
 function StatPills({ members, visitors }: { members: number | null; visitors: number | null }) {
@@ -104,34 +115,302 @@ function StatPills({ members, visitors }: { members: number | null; visitors: nu
 }
 
 /* ----------------- Chat (layout에 포함) ----------------- */
-/**
- * ✅ 완전 차단 버전:
- * - 채팅 메시지/입력/버튼/네트워크 요청 전부 없음
- * - 자리 자체를 "점검중" 박스로 대체
- */
+type ChatMsg = {
+  id: string;
+  user_id: string;
+  anon_id: string | null;
+  content: string;
+  created_at: string;
+};
+
+function fmtChatTime(iso: string) {
+  return fmtNotiTime(iso);
+}
+
+/** ✅ 어떤 환경에서도 가로로 뻗지 않게: 일정 글자마다 “보이지 않는 줄바꿈 기회” 추가 */
+function addSoftBreaks(input: string, every = 18) {
+  const ZWSP = "\u200B";
+  let out = "";
+  let run = 0;
+
+  for (const ch of input) {
+    out += ch;
+
+    if (ch === "\n" || ch === " " || ch === "\t") {
+      run = 0;
+      continue;
+    }
+
+    run += 1;
+    if (run >= every) {
+      out += ZWSP;
+      run = 0;
+    }
+  }
+  return out;
+}
+
+function isNearBottom(el: HTMLElement, threshold = 160) {
+  const remain = el.scrollHeight - el.scrollTop - el.clientHeight;
+  return remain < threshold;
+}
+
 function AnonymousChatBox({ me }: { me: Me }) {
-  void me;
+  const [msgsAsc, setMsgsAsc] = useState<ChatMsg[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [busy, setBusy] = useState(false);
+  const [hasMore, setHasMore] = useState(false);
+  const [netErr, setNetErr] = useState<string | null>(null);
+  const [text, setText] = useState("");
+
+  const scrollerRef = React.useRef<HTMLDivElement | null>(null);
+  const bottomRef = React.useRef<HTMLDivElement | null>(null);
+
+  const stickRef = React.useRef(true);
+  const firstRef = React.useRef(true);
+  const restoreRef = React.useRef<null | { top: number; height: number }>(null);
+
+  const oldestCreatedAt = msgsAsc[0]?.created_at ?? null;
+
+  const scrollToBottom = (behavior: ScrollBehavior = "auto") => {
+    bottomRef.current?.scrollIntoView({ block: "end", behavior });
+    const el = scrollerRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  };
+
+  async function loadLatest() {
+    const el = scrollerRef.current;
+    if (el) stickRef.current = isNearBottom(el);
+
+    try {
+      const res = await fetch(`/api/chat?limit=25`, { cache: "no-store", credentials: "include" });
+      const json = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        setNetErr(json?.error ?? `불러오기 실패 (${res.status})`);
+        return;
+      }
+
+      setNetErr(null);
+      const arr: ChatMsg[] = Array.isArray(json?.data) ? json.data : [];
+      const nextAsc = [...arr].reverse(); // 서버 desc -> 화면 asc
+      setMsgsAsc(nextAsc);
+      setHasMore(Boolean(json?.hasMore));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function loadMore() {
+    if (!oldestCreatedAt || busy) return;
+
+    const el = scrollerRef.current;
+    if (el) restoreRef.current = { top: el.scrollTop, height: el.scrollHeight };
+
+    setBusy(true);
+    try {
+      const res = await fetch(`/api/chat?limit=25&before=${encodeURIComponent(oldestCreatedAt)}`, {
+        cache: "no-store",
+        credentials: "include",
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) return;
+
+      const arr: ChatMsg[] = Array.isArray(json?.data) ? json.data : [];
+      const moreAsc = [...arr].reverse();
+
+      setMsgsAsc((prev) => {
+        const seen = new Set(prev.map((m) => m.id));
+        return [...moreAsc.filter((m) => !seen.has(m.id)), ...prev];
+      });
+
+      setHasMore(Boolean(json?.hasMore));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function send() {
+    if (!me.userId) {
+      alert("로그인 후 이용할 수 있어요.");
+      return;
+    }
+
+    const content = text.trim();
+    if (!content) return;
+
+    setBusy(true);
+    try {
+      const res = await fetch(`/api/chat`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content }),
+      });
+
+      const json = await res.json().catch(() => ({}));
+
+      if (res.status === 401) {
+        alert("로그인이 필요합니다.");
+        return;
+      }
+      if (!res.ok) {
+        alert(json?.error ?? "전송 실패");
+        return;
+      }
+
+      setText("");
+      stickRef.current = true; // 전송 후엔 최신 유지
+      await loadLatest();
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  // ✅ “처음 로드시 맨 아래(최신)” + “아래 붙어있으면 최신 유지” (렌더 직후 보장)
+  React.useLayoutEffect(() => {
+    const el = scrollerRef.current;
+    if (!el) return;
+
+    // loadMore 후 위치 복원
+    if (restoreRef.current) {
+      const snap = restoreRef.current;
+      const newH = el.scrollHeight;
+      el.scrollTop = snap.top + (newH - snap.height);
+      restoreRef.current = null;
+      return;
+    }
+
+    // 첫 로드: 무조건 최신(맨 아래)
+    if (firstRef.current && !loading) {
+      firstRef.current = false;
+      requestAnimationFrame(() => requestAnimationFrame(() => scrollToBottom("auto")));
+      return;
+    }
+
+    // 사용자가 아래 보고 있으면 계속 최신 유지
+    if (stickRef.current) {
+      requestAnimationFrame(() => requestAnimationFrame(() => scrollToBottom("auto")));
+    }
+  }, [msgsAsc.length, loading]);
+
+  useEffect(() => {
+    loadLatest();
+    const t = window.setInterval(loadLatest, 12000);
+    return () => window.clearInterval(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <div className="mt-4 border border-slate-300 bg-white">
       <div className="border-b border-slate-200 px-3 py-2 flex items-center justify-between">
         <div>
           <div className="text-[13px] font-semibold text-slate-900">💬 실시간 익명채팅</div>
-          <div className="text-[11px] text-slate-500 mt-0.5">현재 점검 중 (채팅 임시 중단)</div>
+          <div className="text-[11px] text-slate-500 mt-0.5">
+            {me.userId ? "로그인 상태에서만 전송 가능" : "로그인하면 채팅을 보낼 수 있어요"}
+          </div>
+          {netErr ? <div className="text-[11px] text-rose-600 mt-1">⚠ {netErr}</div> : null}
         </div>
+
+        <button
+          type="button"
+          onClick={loadLatest}
+          className="text-[11px] text-slate-600 underline underline-offset-2 disabled:opacity-60"
+          disabled={busy}
+        >
+          새로고침
+        </button>
       </div>
 
-      <div className="px-3 pb-3 pt-3">
-        <div className="h-[220px] border border-slate-200 bg-slate-50 flex items-center justify-center">
-          <div className="text-center px-4">
-            <div className="text-[14px] font-extrabold text-slate-900">🛠️ 점검 중입니다</div>
-            <div className="mt-2 text-[12px] text-slate-700 leading-relaxed">
-              익명채팅 기능 안정화 작업을 진행하고 있어요.
-              <br />
-              잠시 후 다시 이용해 주세요 🙏
-            </div>
-            <div className="mt-2 text-[11px] text-slate-500">표시 확인용: MAINTENANCE_2026</div>
-          </div>
+      <div className="px-3 py-2">
+        {hasMore ? (
+          <button
+            type="button"
+            onClick={loadMore}
+            disabled={busy || loading}
+            className="w-full border border-slate-200 bg-white py-1.5 text-[11px] text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+          >
+            이전 내용 보기
+          </button>
+        ) : (
+          <div className="text-center text-[11px] text-slate-400 py-1">처음입니다</div>
+        )}
+      </div>
+
+      {/* ✅ 가로 스크롤 근본 차단 + 메시지 줄바꿈 강제 */}
+      <div className="px-3 pb-3">
+        <div
+          ref={scrollerRef}
+          className="h-[220px] overflow-y-auto border border-slate-200 bg-white p-2 space-y-2"
+          style={{ overflowX: "hidden" }}
+          onScroll={() => {
+            const el = scrollerRef.current;
+            if (!el) return;
+            stickRef.current = isNearBottom(el);
+          }}
+        >
+          {loading ? <div className="text-[12px] text-slate-600">불러오는 중…</div> : null}
+          {msgsAsc.length === 0 && !loading ? <div className="text-[12px] text-slate-600">아직 채팅이 없습니다.</div> : null}
+
+          {msgsAsc.map((m) => {
+            const mine = !!me.userId && String(m.user_id) === String(me.userId);
+            const label = m.anon_id ?? "익명";
+
+            return (
+              <div key={m.id} className={"flex min-w-0 " + (mine ? "justify-end" : "justify-start")}>
+                <div className={"min-w-0 max-w-[85%] " + (mine ? "text-right" : "text-left")}>
+                  <div className={"mb-0.5 flex items-center gap-2 min-w-0 " + (mine ? "justify-end" : "justify-start")}>
+                    {!mine ? <span className="text-[10px] text-slate-500 shrink-0">{label}</span> : null}
+                    <span className="text-[10px] text-slate-400 shrink-0" suppressHydrationWarning>
+                      {fmtChatTime(m.created_at)}
+                    </span>
+                  </div>
+
+                  <div
+                    className={
+                      "inline-block min-w-0 rounded border px-3 py-2 text-[12px] leading-snug text-slate-900 " +
+                      (mine ? "bg-sky-50 border-sky-200" : "bg-slate-50 border-slate-200")
+                    }
+                    style={{
+                      maxWidth: "100%",
+                      whiteSpace: "pre-wrap",
+                      overflowWrap: "anywhere",
+                      wordBreak: "break-word",
+                    }}
+                  >
+                    {addSoftBreaks(m.content)}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+
+          <div ref={bottomRef} />
+        </div>
+
+        <div className="mt-2 flex items-stretch gap-2 min-w-0">
+          <textarea
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            disabled={!me.userId || busy}
+            placeholder={me.userId ? "메시지 입력… (Enter 전송 / Shift+Enter 줄바꿈)" : "로그인 후 채팅 가능"}
+            className="w-full min-w-0 border border-slate-300 bg-white px-3 py-2 text-[12px] text-slate-900 outline-none disabled:bg-slate-100 resize-none"
+            rows={2}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                send();
+              }
+            }}
+          />
+          <button
+            type="button"
+            onClick={send}
+            disabled={!me.userId || busy || text.trim().length === 0}
+            className="border border-sky-700 bg-sky-700 px-3 text-[12px] font-semibold text-white hover:bg-sky-600 disabled:opacity-60"
+          >
+            전송
+          </button>
         </div>
       </div>
     </div>
@@ -199,12 +478,15 @@ export default function FreeLayout({ children }: { children: ReactNode }) {
     setUnread(0);
   }
 
+  // ✅ ✅ 단 하나만! (중복 제거)
   async function loadDmUnread() {
     if (!me.userId) {
       setDmUnread(0);
       return;
     }
 
+    // 서버가 unread를 내려주면 그걸 쓰고,
+    // 아니면 data에서 read=false 개수로 fallback
     const res = await fetch("/api/messages/inbox?limit=50", { cache: "no-store", credentials: "include" });
     const json = await res.json().catch(() => ({}));
 
@@ -311,7 +593,7 @@ export default function FreeLayout({ children }: { children: ReactNode }) {
 
   return (
     <FreeCtx.Provider value={ctxValue}>
-      <main className="mx-auto max-w-5xl px-4 py-3 sm:px-6 sm:py-5">
+      <main className="mx-auto max-w-5xl px-4 py-3 sm:px-6 sm:py-5 overflow-x-hidden">
         {/* 상단 */}
         <div className="sticky top-0 z-40 bg-white pt-0">
           <div className="flex items-start justify-between gap-3">
@@ -390,6 +672,7 @@ export default function FreeLayout({ children }: { children: ReactNode }) {
                   </Link>
                 ) : null}
 
+                {/* ✅ 쪽지함 + 점 표시 */}
                 {me.userId ? (
                   <Link
                     href="/community/free/messages"
@@ -401,6 +684,7 @@ export default function FreeLayout({ children }: { children: ReactNode }) {
                   </Link>
                 ) : null}
 
+                {/* 알림 */}
                 <button
                   type="button"
                   onClick={async () => {
@@ -555,7 +839,6 @@ export default function FreeLayout({ children }: { children: ReactNode }) {
                 <StatPills members={members} visitors={visitors} />
               </div>
 
-              {/* ✅ 채팅 자리: 점검중 박스 */}
               <AnonymousChatBox me={me} />
             </div>
           </aside>
