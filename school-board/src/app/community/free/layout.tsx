@@ -17,13 +17,7 @@ type Post = {
   author?: { username: string | null; role: string | null };
 };
 
-type Me = {
-  userId: string | null;
-  role: string;
-  username: string | null;
-  grade: number | null;
-  classNo: number | null;
-};
+type Me = { userId: string | null; role: string; username: string | null };
 
 type Noti = {
   id: string;
@@ -71,9 +65,7 @@ function TabLink({ href, children }: { href: string; children: ReactNode }) {
       href={href}
       className={
         "shrink-0 whitespace-nowrap border px-3 py-1 text-[12px] font-semibold " +
-        (active
-          ? "border-sky-700 bg-sky-700 text-white hover:bg-sky-600"
-          : "border-slate-300 bg-white text-slate-800 hover:bg-slate-50")
+        (active ? "border-sky-700 bg-sky-700 text-white hover:bg-sky-600" : "border-slate-300 bg-white text-slate-800 hover:bg-slate-50")
       }
     >
       {children}
@@ -106,15 +98,11 @@ function StatPills({ members, visitors }: { members: number | null; visitors: nu
     <div className="mt-3 grid grid-cols-2 gap-2">
       <div className="border border-slate-300 bg-white p-2 text-center">
         <div className="text-[11px] font-semibold text-slate-600">누적 회원수</div>
-        <div className="mt-0.5 text-[15px] font-extrabold text-slate-900">
-          {members === null ? "-" : members.toLocaleString()}
-        </div>
+        <div className="mt-0.5 text-[15px] font-extrabold text-slate-900">{members === null ? "-" : members.toLocaleString()}</div>
       </div>
       <div className="border border-slate-300 bg-white p-2 text-center">
         <div className="text-[11px] font-semibold text-slate-600">누적 방문수</div>
-        <div className="mt-0.5 text-[15px] font-extrabold text-slate-900">
-          {visitors === null ? "-" : visitors.toLocaleString()}
-        </div>
+        <div className="mt-0.5 text-[15px] font-extrabold text-slate-900">{visitors === null ? "-" : visitors.toLocaleString()}</div>
       </div>
     </div>
   );
@@ -136,11 +124,7 @@ function AnonymousChatBoxMaintenance() {
         </div>
 
         <div className="mt-2 flex items-stretch gap-2">
-          <input
-            disabled
-            placeholder="점검중입니다."
-            className="w-full border border-slate-300 bg-slate-100 px-3 py-2 text-[12px] text-slate-700 outline-none"
-          />
+          <input disabled placeholder="점검중입니다." className="w-full border border-slate-300 bg-slate-100 px-3 py-2 text-[12px] text-slate-700 outline-none" />
           <button type="button" disabled className="border border-slate-300 bg-slate-200 px-3 text-[12px] font-semibold text-slate-600">
             전송
           </button>
@@ -154,7 +138,7 @@ function AnonymousChatBoxMaintenance() {
 export default function FreeLayout({ children }: { children: ReactNode }) {
   const router = useRouter();
 
-  const [me, setMe] = useState<Me>({ userId: null, role: "guest", username: null, grade: null, classNo: null });
+  const [me, setMe] = useState<Me>({ userId: null, role: "guest", username: null });
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [visitors, setVisitors] = useState<number | null>(null);
@@ -170,13 +154,7 @@ export default function FreeLayout({ children }: { children: ReactNode }) {
   async function loadMe() {
     const res = await fetch("/api/me", { cache: "no-store", credentials: "include" });
     const json = await res.json().catch(() => ({}));
-    setMe({
-      userId: json.userId ?? null,
-      role: json.role ?? "guest",
-      username: json.username ?? null,
-      grade: typeof json.grade === "number" ? json.grade : json.grade ? Number(json.grade) : null,
-      classNo: typeof json.classNo === "number" ? json.classNo : json.classNo ? Number(json.classNo) : null,
-    });
+    setMe({ userId: json.userId ?? null, role: json.role ?? "guest", username: json.username ?? null });
   }
 
   async function loadPosts() {
@@ -292,6 +270,7 @@ export default function FreeLayout({ children }: { children: ReactNode }) {
       .filter((p) => p.author?.role !== "admin")
       .filter((p) => typeof p.id === "string" && p.id.length > 0);
 
+    // ✅ 버그 수정: a vs b
     normal.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
 
     const map = new Map<string, number>();
@@ -341,12 +320,11 @@ export default function FreeLayout({ children }: { children: ReactNode }) {
                     className="h-10 sm:h-12 md:h-14 w-auto object-contain max-w-[360px] sm:max-w-[460px] md:max-w-[520px]"
                   />
                 </Link>
-                <div className="hidden sm:block pb-1 text-[12px] font-semibold text-slate-700 whitespace-nowrap -ml-0.5">
-                  청주고 전용 커뮤니티
-                </div>
+                <div className="hidden sm:block pb-1 text-[12px] font-semibold text-slate-700 whitespace-nowrap -ml-0.5">청주고 전용 커뮤니티</div>
               </div>
 
               <div className="mt-1 text-[12px] font-bold text-slate-900">
+
                 자유게시판 <span className="mx-1 text-slate-400">·</span> <span className="text-slate-600">구인구직</span>
               </div>
             </div>
@@ -374,9 +352,6 @@ export default function FreeLayout({ children }: { children: ReactNode }) {
                 {me.userId ? (
                   <>
                     로그인: <span className="font-semibold text-emerald-700">{me.username ?? "unknown"}</span>
-                    <span className="ml-1 text-slate-500">
-                      ({(me.grade ?? 2)}학년 {(me.classNo ?? 7)}반)
-                    </span>
                     {me.role === "admin" ? <span className="ml-1 font-semibold text-amber-700">★</span> : null}
                   </>
                 ) : (
@@ -395,7 +370,7 @@ export default function FreeLayout({ children }: { children: ReactNode }) {
                   </Link>
                 ) : null}
 
-                {/* ✅ 신고 로그 버튼 */}
+                {/* ✅ 신고 로그 버튼(다시 추가) */}
                 {me.role === "admin" ? (
                   <Link
                     href="/community/free/admin/reports"
@@ -410,18 +385,6 @@ export default function FreeLayout({ children }: { children: ReactNode }) {
                   </Link>
                 ) : null}
 
-                {/* ✅ 내 정보 수정 버튼(로그인 사용자만) */}
-                {me.userId ? (
-                  <Link
-                    href="/community/free/me"
-                    className="border border-slate-300 bg-white px-2 py-1 text-[11px] text-slate-800 hover:bg-slate-50"
-                    title="내 정보 수정(학년/반)"
-                  >
-                    ✏️ 내 정보
-                  </Link>
-                ) : null}
-
-                {/* 쪽지함 */}
                 {me.userId ? (
                   <Link
                     href="/community/free/messages"
@@ -508,7 +471,11 @@ export default function FreeLayout({ children }: { children: ReactNode }) {
                     </div>
 
                     <div className="border-t border-slate-200 px-3 py-2">
-                      <Link href="/community/free/all?mine=1" className="block text-[12px] font-semibold text-slate-900 hover:underline" onClick={() => setNotiOpen(false)}>
+                      <Link
+                        href="/community/free/all?mine=1"
+                        className="block text-[12px] font-semibold text-slate-900 hover:underline"
+                        onClick={() => setNotiOpen(false)}
+                      >
                         내가 쓴 글
                       </Link>
                       <Link href="/community/free" className="mt-1 block text-[12px] text-slate-600 hover:underline" onClick={() => setNotiOpen(false)}>
@@ -525,7 +492,12 @@ export default function FreeLayout({ children }: { children: ReactNode }) {
           <div className="mt-3 md:hidden">
             <div className="border border-slate-300 bg-white">
               <div className="flex items-stretch">
-                <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="게시글 검색 (제목)" className="w-full px-3 py-2 text-[12px] text-slate-900 outline-none" />
+                <input
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="게시글 검색 (제목)"
+                  className="w-full px-3 py-2 text-[12px] text-slate-900 outline-none"
+                />
                 <button type="button" aria-label="검색" className="border-l border-sky-700 bg-sky-700 px-4 text-white hover:bg-sky-600">
                   <span className="text-[16px] leading-none">🔍</span>
                 </button>
@@ -558,21 +530,25 @@ export default function FreeLayout({ children }: { children: ReactNode }) {
 
           <aside className="hidden md:block md:col-span-4 lg:col-span-3 md:max-w-none md:justify-self-stretch">
             <div className="sticky top-6">
-              <div className="border border-slate-300 bg-white p-4">
+              {/* ✅ 오늘의 TOPIC: 배경 파란색 */}
+              <div className="border border-sky-800 bg-sky-700 p-4">
                 <div className="mb-3 flex items-center justify-between gap-2">
-                  <span className="text-[15px] font-semibold tracking-tight text-slate-900">오늘의 TOPIC</span>
-                  <span className="text-[11px] text-slate-500">(조회수)</span>
+                  <span className="text-[15px] font-semibold tracking-tight text-white">오늘의 TOPIC</span>
+                  <span className="text-[11px] text-sky-100">(조회수)</span>
                 </div>
 
                 {loading ? (
-                  <div className="text-slate-500">불러오는 중…</div>
+                  <div className="text-sky-100">불러오는 중…</div>
                 ) : top3.length === 0 ? (
-                  <div className="text-slate-500">아직 데이터가 없습니다.</div>
+                  <div className="text-sky-100">아직 데이터가 없습니다.</div>
                 ) : (
                   <ul className="space-y-2">
                     {top3.map((p, idx) => (
                       <li key={p.id}>
-                        <Link href={`/community/free/${encodeURIComponent(p.id)}`} className="block border border-slate-300 bg-white px-3 py-2 hover:bg-slate-50">
+                        <Link
+                          href={`/community/free/${encodeURIComponent(p.id)}`}
+                          className="block border border-slate-300 bg-white px-3 py-2 hover:bg-slate-50"
+                        >
                           <div className="flex items-center justify-between gap-2">
                             <div className="min-w-0 truncate font-semibold text-[13px] text-slate-900">
                               #{idx + 1} {p.title}
