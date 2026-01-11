@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { createClient as createAuthedClient } from "@/lib/supabase/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 
-export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
@@ -16,39 +15,52 @@ async function requireAdmin() {
   const sb = await createAuthedClient();
   const { data } = await sb.auth.getUser();
   const user = data.user;
-  if (!user) return { ok: false as const, status: 401 };
+  if (!user) return { ok: false as const, status: 401, error: "로그인이 필요합니다." };
 
-  const { data: prof } = await sb.from("profiles").select("role").eq("id", user.id).maybeSingle();
-  if (prof?.role !== "admin") return { ok: false as const, status: 403 };
+  const { data: prof, error } = await sb.from("profiles").select("role").eq("id", user.id).single();
+  if (error) return { ok: false as const, status: 500, error: error.message };
+  if ((prof as any)?.role !== "admin") return { ok: false as const, status: 403, error: "권한이 없습니다." };
 
-  return { ok: true as const, status: 200 };
+  return { ok: true as const };
 }
 
-export async function GET(req: Request) {
-  const gate = await requireAdmin();
-  if (!gate.ok) {
-    return NextResponse.json(
-      { ok: false, error: gate.status === 401 ? "unauthorized" : "forbidden" },
-      { status: gate.status }
-    );
-  }
-
-  const url = new URL(req.url);
-  const limit = Math.min(Number(url.searchParams.get("limit") ?? "80"), 200);
-  const table = (url.searchParams.get("table") ?? "").trim(); // 예: posts / comments
+export async function GET() {
+  const auth = await requireAdmin();
+  if (!auth.ok) return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
 
   const sb = admin();
 
-  let q = sb
-    .from("deleted_content")
-    .select("id, source_table, source_id, deleted_at, deleted_by, payload")
+  const { data, error } = await sb
+    .from("deleted_posts")
+    .select("id, post_id, title, content, author_id, deleted_by, deleted_at")
     .order("deleted_at", { ascending: false })
-    .limit(limit);
+    .limit(300);
 
-  if (table) q = q.ilike("source_table", `%${table}%`);
-
-  const { data, error } = await q;
   if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
 
-  return NextResponse.json({ ok: true, data: data ?? [] });
+  const rows = data ?? [];
+
+  // username 매핑 (author + deleted_by)
+  const ids = Array.from(
+    new Set(
+      rows
+        .flatMap((r: any) => [r.author_id, r.deleted_by])
+        .filter(Boolean)
+        .map(String)
+    )
+  );
+
+  const map = new Map<string, string | null>();
+  if (ids.length) {
+    const { data: profs } = await sb.from("profiles").select("id, username").in("id", ids);
+    (profs ?? []).forEach((p: any) => map.set(String(p.id), p.username ?? null));
+  }
+
+  const out = rows.map((r: any) => ({
+    ...r,
+    author_username: r.author_id ? map.get(String(r.author_id)) ?? null : null,
+    deleted_by_username: r.deleted_by ? map.get(String(r.deleted_by)) ?? null : null,
+  }));
+
+  return NextResponse.json({ ok: true, data: out });
 }
