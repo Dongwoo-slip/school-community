@@ -1,49 +1,75 @@
 import { NextResponse } from "next/server";
 import { createClient as createAuthedClient } from "@/lib/supabase/server";
-import { createClient as createAdminClient } from "@supabase/supabase-js";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-function admin() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-  return createAdminClient(url, key, { auth: { persistSession: false } });
-}
- 
-function usernameFromEmail(email: string | null | undefined) {
-  if (!email) return null;
-  const at = email.indexOf("@");
-  return at >= 0 ? email.slice(0, at) : email;
-}
-
 export async function GET() {
-  const authed = await createAuthedClient();
-  const { data } = await authed.auth.getUser();
+  const sb = await createAuthedClient();
+  const { data } = await sb.auth.getUser();
   const user = data.user;
 
-  // ✅ 응답 캐시 방지 헤더
-  const noStore = { "Cache-Control": "no-store, max-age=0" };
+  if (!user) {
+    return NextResponse.json({
+      userId: null,
+      role: "guest",
+      username: null,
+      grade: null,
+      classNo: null,
+    });
+  }
+
+  const { data: prof } = await sb
+    .from("profiles")
+    .select("username, role, grade, class_no")
+    .eq("id", user.id)
+    .single();
+
+  return NextResponse.json({
+    userId: user.id,
+    role: prof?.role ?? "user",
+    username: prof?.username ?? null,
+    grade: prof?.grade ?? 2,
+    classNo: prof?.class_no ?? 7,
+  });
+}
+
+/**
+ * ✅ 학년/반 저장
+ * body: { grade: number, classNo: number }
+ */
+export async function PATCH(req: Request) {
+  const sb = await createAuthedClient();
+  const { data } = await sb.auth.getUser();
+  const user = data.user;
 
   if (!user) {
-    return NextResponse.json({ userId: null, role: "guest", username: null }, { headers: noStore });
+    return NextResponse.json({ error: "로그인이 필요합니다." }, { status: 401 });
   }
 
-  const username = usernameFromEmail(user.email);
+  const body = await req.json().catch(() => ({}));
+  const grade = Number(body?.grade);
+  const classNo = Number(body?.classNo);
 
-  try {
-    const sb = admin();
-    const { data: profile } = await sb.from("profiles").select("role").eq("id", user.id).maybeSingle();
+  if (![1, 2, 3].includes(grade)) {
+    return NextResponse.json({ error: "학년이 올바르지 않습니다." }, { status: 400 });
+  }
+  if (!Number.isInteger(classNo) || classNo < 1 || classNo > 11) {
+    return NextResponse.json({ error: "반은 1~11만 가능합니다." }, { status: 400 });
+  }
 
-    return NextResponse.json(
-      {
-        userId: user.id,
-        role: profile?.role ?? "user",
-        username,
-      },
-      { headers: noStore }
+  // ✅ profiles에 update (대부분 row 존재)
+  // row가 없더라도 대비해서 upsert 시도
+  const { error: upsertErr } = await sb
+    .from("profiles")
+    .upsert(
+      { id: user.id, grade, class_no: classNo },
+      { onConflict: "id" }
     );
-  } catch {
-    return NextResponse.json({ userId: user.id, role: "user", username }, { headers: noStore });
+
+  if (upsertErr) {
+    return NextResponse.json({ error: upsertErr.message }, { status: 500 });
   }
+
+  return NextResponse.json({ ok: true, grade, classNo });
 }

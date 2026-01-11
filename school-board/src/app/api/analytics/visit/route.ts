@@ -1,16 +1,13 @@
-import { NextRequest, NextResponse } from "next/server";
-import { supabaseAdmin } from "@/lib/supabase/admin";
+import { NextResponse } from "next/server";
 
-export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
-export async function POST(_req: NextRequest) {
-  try {
-    const { data, error } = await supabaseAdmin.rpc("increment_site_stats_visits");
-    if (error) throw new Error(`increment_site_stats_visits failed: ${error.message}`);
+export async function POST() {
+  // ✅ 일단 서버 500부터 제거 (DB 집계는 나중에 안정화 후 붙이기)
+  return NextResponse.json({ ok: true });
+}
 
-    return NextResponse.json({ ok: true, total_visits: Number(data ?? 0) });
-  } catch (e: any) {
-    return NextResponse.json({ ok: false, error: String(e?.message || e) }, { status: 500 });
-  }
+export async function GET() {
+  return NextResponse.json({ ok: true });
 }
