@@ -5,12 +5,25 @@ import { useMemo } from "react";
 import { useSearchParams } from "next/navigation";
 import { useFreeBoard } from "../layout";
 
+/* ✅ KST 고정(SSR/CSR 흔들림 예방) */
+const KST_DATE = new Intl.DateTimeFormat("ko-KR", {
+  timeZone: "Asia/Seoul",
+  year: "2-digit",
+  month: "2-digit",
+  day: "2-digit",
+});
+
 function fmtCompactDate(iso: string) {
-  const d = new Date(iso);
-  const yy = String(d.getFullYear()).slice(2);
-  const mm = String(d.getMonth() + 1).padStart(2, "0");
-  const dd = String(d.getDate()).padStart(2, "0");
-  return `${yy}/${mm}/${dd}`;
+  try {
+    const parts = KST_DATE.formatToParts(new Date(iso));
+    const get = (t: string) => parts.find((p) => p.type === t)?.value ?? "";
+    const yy = get("year");
+    const mm = get("month");
+    const dd = get("day");
+    return `${yy}/${mm}/${dd}`;
+  } catch {
+    return "";
+  }
 }
 
 export default function AllBoardClient() {
@@ -35,46 +48,9 @@ export default function AllBoardClient() {
 
   return (
     <>
-      {/* 배너(메인과 동일 유지) */}
-      <div className="mb-4 border-y-2 border-sky-700 bg-white">
-        <div className="border-b border-sky-700 bg-sky-50 px-4 py-2 text-[12px] font-semibold text-sky-900">
-          CheongJu High School Community - Sqaure
-        </div>
+      {/* ✅ 배너는 이제 layout.tsx에서 공통으로만 렌더합니다. */}
 
-        <div className="px-5 py-4 sm:px-6">
-          <div className="flex flex-col gap-4 md:flex-row md:items-start">
-            <div className="min-w-0 flex-1">
-              <div className="w-full overflow-hidden border border-slate-300 bg-slate-100">
-                <img
-                  src="/imagebanner.jpg"
-                  alt="imagebanner"
-                  className="h-[150px] w-full object-cover sm:h-[180px]"
-                  loading="lazy"
-                />
-              </div>
-            </div>
-
-            <div className="md:w-[260px] md:shrink-0 md:border-l md:border-slate-200 md:pl-4">
-              <div className="text-[12px] font-bold text-slate-900">문의 이메일</div>
-              <div className="mt-1 text-[12px] text-slate-700">
-                <a href="mailto:test for running" className="text-sky-700 underline underline-offset-2">
-                  test. for running
-                </a>
-              </div>
-
-              <div className="mt-2 text-[12px] text-slate-600">
-                운영팀: <span className="font-semibold text-slate-900">모든 관리자 계정</span>
-              </div>
-
-              <button className="mt-3 w-full border border-sky-100 bg-sky-700 px-3 py-2 text-[12px] font-semibold text-white hover:bg-sky-600">
-                공지 보기 (자리)
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* ✅ 글쓰기 버튼 (전체글에서만) */}
+      {/* 글쓰기 버튼 */}
       <div className="mb-3 flex items-center justify-end">
         <Link
           href="/community/free/new"
@@ -134,8 +110,12 @@ export default function AllBoardClient() {
                       {username}
                     </div>
 
-                    <div className="col-span-2 sm:col-span-2 text-right text-[12px] text-slate-700">{date}</div>
-                    <div className="col-span-2 sm:col-span-1 text-right text-[12px] text-slate-700">{p.view_count ?? 0}</div>
+                    <div className="col-span-2 sm:col-span-2 text-right text-[12px] text-slate-700">
+                      {date}
+                    </div>
+                    <div className="col-span-2 sm:col-span-1 text-right text-[12px] text-slate-700">
+                      {p.view_count ?? 0}
+                    </div>
                   </div>
                 </li>
               );
