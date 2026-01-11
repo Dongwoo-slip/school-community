@@ -526,6 +526,7 @@ export default function FreeLayout({ children }: { children: ReactNode }) {
                   <div className="flex items-center gap-2 py-2 overflow-x-auto">
                     <TabLink href="/community/free">메인</TabLink>
                     <TabLink href="/community/free/all">전체글</TabLink>
+                    <TabLink href="/community/free/jobs">구인구직</TabLink>
                     <TabLink href="/community/free/meal">오늘의 급식</TabLink>
                     <div className="ml-auto shrink-0 text-[12px] text-slate-500">정렬/필터 자리</div>
                   </div>

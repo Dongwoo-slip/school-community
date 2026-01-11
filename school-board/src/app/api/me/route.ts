@@ -16,14 +16,16 @@ export async function GET() {
       username: null,
       grade: null,
       classNo: null,
+      interests: [],
     });
   }
 
+  // ✅ profiles에서 username/role/grade/class_no + interests까지 가져오기
   const { data: prof } = await sb
     .from("profiles")
-    .select("username, role, grade, class_no")
+    .select("username, role, grade, class_no, interests")
     .eq("id", user.id)
-    .single();
+    .maybeSingle();
 
   return NextResponse.json({
     userId: user.id,
@@ -31,6 +33,7 @@ export async function GET() {
     username: prof?.username ?? null,
     grade: prof?.grade ?? 2,
     classNo: prof?.class_no ?? 7,
+    interests: Array.isArray(prof?.interests) ? prof!.interests : [],
   });
 }
 
@@ -60,16 +63,25 @@ export async function PATCH(req: Request) {
 
   // ✅ profiles에 update (대부분 row 존재)
   // row가 없더라도 대비해서 upsert 시도
-  const { error: upsertErr } = await sb
-    .from("profiles")
-    .upsert(
-      { id: user.id, grade, class_no: classNo },
-      { onConflict: "id" }
-    );
+  const { error: upsertErr } = await sb.from("profiles").upsert(
+    { id: user.id, grade, class_no: classNo },
+    { onConflict: "id" }
+  );
 
   if (upsertErr) {
     return NextResponse.json({ error: upsertErr.message }, { status: 500 });
   }
 
-  return NextResponse.json({ ok: true, grade, classNo });
+  return Next_attachR(
+    NextResponse.json({ ok: true, grade, classNo })
+  );
+}
+
+/**
+ * (선택) 일부 환경에서 NextResponse가 미묘하게 타입/캐시로 꼬일 때 방지용.
+ * 필요 없으면 위 PATCH의 return을 그냥 NextResponse.json(...)으로 바꿔도 됨.
+ */
+function Next_attachR(res: NextResponse) {
+  res.headers.set("Cache-Control", "no-store");
+  return res;
 }
