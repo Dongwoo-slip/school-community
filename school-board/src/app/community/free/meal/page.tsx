@@ -24,7 +24,7 @@ function addDays(ymd: string, delta: number) {
 }
 
 function fmtYMD(ymd: string) {
-  return `${ymd.slice(0, 4)}-${ymd.slice(4, 6)}-${ymd.slice(6, 8)}`;
+  return `${ymd.slice(0, 4)}.${ymd.slice(4, 6)}.${ymd.slice(6, 8)}`;
 }
 
 function stripDish(raw: string) {
@@ -40,7 +40,7 @@ export default function MealPage() {
   const [lunch, setLunch] = useState<string[]>([]);
   const [dinner, setDinner] = useState<string[]>([]);
 
-  const title = useMemo(() => `🍱 급식 정보 (${fmtYMD(ymd)})`, [ymd]);
+  const title = useMemo(() => `급식 정보`, [ymd]);
 
   async function load(targetYmd: string) {
     setLoading(true);
@@ -67,81 +67,118 @@ export default function MealPage() {
   }, [ymd]);
 
   return (
-    <main className="mx-auto max-w-5xl px-4 py-4 sm:px-6 sm:py-6">
-      <div className="mb-4 flex items-center justify-between gap-3">
-        <Link href="/community/free" className="text-sm text-slate-700 hover:underline">
-          ← 자유게시판
-        </Link>
-        <div className="text-sm font-semibold text-slate-900">{title}</div>
+    <div className="space-y-8">
+      {/* Header */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h2 className="text-3xl font-black text-white flex items-center gap-3">
+            <span className="text-4xl">🍱</span> {title}
+          </h2>
+          <p className="mt-1 text-xs font-bold text-sky-400 uppercase tracking-widest">
+            {fmtYMD(ymd)} Daily Menu
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setYmd(addDays(ymd, -1))}
+            className="btn-ghost px-4 py-2"
+          >
+            ◀ 이전
+          </button>
+          <button
+            onClick={() => setYmd(todayYMD())}
+            className="btn-secondary px-6 py-2"
+          >
+            오늘
+          </button>
+          <button
+            onClick={() => setYmd(addDays(ymd, 1))}
+            className="btn-ghost px-4 py-2"
+          >
+            다음 ▶
+          </button>
+        </div>
       </div>
 
-      <section className="border border-slate-300 bg-white p-4 sm:p-6">
-        <div className="flex flex-wrap items-center gap-2 justify-between">
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setYmd(addDays(ymd, -1))}
-              className="border border-slate-300 bg-white px-3 py-1.5 text-[12px] font-semibold text-slate-800 hover:bg-slate-50"
-            >
-              ◀ 전날
-            </button>
-            <button
-              type="button"
-              onClick={() => setYmd(todayYMD())}
-              className="border border-slate-300 bg-white px-3 py-1.5 text-[12px] font-semibold text-slate-800 hover:bg-slate-50"
-            >
-              오늘
-            </button>
-            <button
-              type="button"
-              onClick={() => setYmd(addDays(ymd, 1))}
-              className="border border-slate-300 bg-white px-3 py-1.5 text-[12px] font-semibold text-slate-800 hover:bg-slate-50"
-            >
-              다음날 ▶
-            </button>
+      {/* Content */}
+      <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
+        {/* Lunch Card */}
+        <div className="glass overflow-hidden rounded-[2rem] p-8">
+          <div className="mb-6 flex items-center justify-between">
+            <h3 className="text-xl font-bold text-white flex items-center gap-3">
+              <span className="text-2xl">🌞</span> 점심
+            </h3>
+            <span className="rounded-full bg-sky-500/10 px-3 py-1 text-[10px] font-black text-sky-400 uppercase tracking-widest">
+              Lunch
+            </span>
           </div>
 
-          <div className="text-[12px] text-slate-600">
-            기준일: <span className="font-semibold text-slate-900">{fmtYMD(ymd)}</span>
-          </div>
-        </div>
-
-        <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
-          <div className="border border-slate-200 bg-white p-4">
-            <div className="mb-2 text-[13px] font-bold text-slate-900">점심</div>
-            {loading ? <div className="text-[12px] text-slate-600">불러오는 중…</div> : null}
-            {err ? <div className="text-[12px] text-rose-600">{err}</div> : null}
-            {!loading && !err && lunch.length === 0 ? <div className="text-[12px] text-slate-600">급식 정보 없음</div> : null}
-            {lunch.length > 0 ? (
-              <ul className="space-y-1">
+          <div className="rounded-2xl bg-white/[0.03] p-6">
+            {loading ? (
+              <div className="space-y-3">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <div key={i} className="h-4 animate-pulse rounded bg-white/5 w-full" />
+                ))}
+              </div>
+            ) : err ? (
+              <div className="py-12 text-center text-sm font-medium text-rose-400/70">{err}</div>
+            ) : lunch.length === 0 ? (
+              <div className="py-12 text-center text-sm font-medium text-slate-600 italic">메뉴 정보가 없습니다.</div>
+            ) : (
+              <ul className="space-y-3">
                 {lunch.map((x, i) => (
-                  <li key={`l-${i}-${x}`} className="text-[12px] text-slate-800 leading-snug">
-                    • {x}
+                  <li key={`l-${i}-${x}`} className="flex items-center gap-3 text-sm font-medium text-slate-200">
+                    <span className="h-1.5 w-1.5 rounded-full bg-sky-400 shrink-0" />
+                    {x}
                   </li>
                 ))}
               </ul>
-            ) : null}
-          </div>
-
-          <div className="border border-slate-200 bg-white p-4">
-            <div className="mb-2 text-[13px] font-bold text-slate-900">저녁</div>
-            {loading ? <div className="text-[12px] text-slate-600">불러오는 중…</div> : null}
-            {err ? <div className="text-[12px] text-rose-600">{err}</div> : null}
-            {!loading && !err && dinner.length === 0 ? <div className="text-[12px] text-slate-600">급식 정보 없음</div> : null}
-            {dinner.length > 0 ? (
-              <ul className="space-y-1">
-                {dinner.map((x, i) => (
-                  <li key={`d-${i}-${x}`} className="text-[12px] text-slate-800 leading-snug">
-                    • {x}
-                  </li>
-                ))}
-              </ul>
-            ) : null}
+            )}
           </div>
         </div>
 
-        <div className="mt-4 text-[11px] text-slate-500">※ 주말/방학/휴업일에는 급식이 없을 수 있어요.</div>
-      </section>
-    </main>
+        {/* Dinner Card */}
+        <div className="glass overflow-hidden rounded-[2rem] p-8">
+          <div className="mb-6 flex items-center justify-between">
+            <h3 className="text-xl font-bold text-white flex items-center gap-3">
+              <span className="text-2xl">🌙</span> 저녁
+            </h3>
+            <span className="rounded-full bg-indigo-500/10 px-3 py-1 text-[10px] font-black text-indigo-400 uppercase tracking-widest">
+              Dinner
+            </span>
+          </div>
+
+          <div className="rounded-2xl bg-white/[0.03] p-6">
+            {loading ? (
+              <div className="space-y-3">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <div key={i} className="h-4 animate-pulse rounded bg-white/5 w-full" />
+                ))}
+              </div>
+            ) : err ? (
+              <div className="py-12 text-center text-sm font-medium text-rose-400/70">{err}</div>
+            ) : dinner.length === 0 ? (
+              <div className="py-12 text-center text-sm font-medium text-slate-600 italic">메뉴 정보가 없습니다.</div>
+            ) : (
+              <ul className="space-y-3">
+                {dinner.map((x, i) => (
+                  <li key={`d-${i}-${x}`} className="flex items-center gap-3 text-sm font-medium text-slate-200">
+                    <span className="h-1.5 w-1.5 rounded-full bg-indigo-400 shrink-0" />
+                    {x}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <div className="glass rounded-2xl p-6 text-center">
+        <p className="text-xs font-bold text-slate-600 tracking-wide">
+          ※ 주말/방학/휴업일에는 급식 정보가 표시되지 않을 수 있습니다.
+        </p>
+      </div>
+    </div>
   );
 }

@@ -1,164 +1,150 @@
 @import "tailwindcss";
 
 :root {
-  --background: oklab(99.405% 0 -0.00011 / 0.84);
-  --foreground: hsl(0, 0%, 100%);
+  --background: #0f172a;
+  --foreground: #f8fafc;
+  --card: rgba(30, 41, 59, 0.7);
+  --card-foreground: #f1f5f9;
+  --popover: rgba(15, 23, 42, 0.9);
+  --popover-foreground: #f8fafc;
+  --primary: #38bdf8;
+  --primary-foreground: #0f172a;
+  --secondary: #1e293b;
+  --secondary-foreground: #f8fafc;
+  --muted: #334155;
+  --muted-foreground: #94a3b8;
+  --accent: #0ea5e9;
+  --accent-foreground: #f8fafc;
+  --destructive: #ef4444;
+  --destructive-foreground: #f8fafc;
+  --border: #334155;
+  --input: #334155;
+  --ring: #38bdf8;
+  --radius: 0.75rem;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-lg: var(--radius);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-sm: calc(var(--radius) - 4px);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: hwb(0 100% 0%);
-    --foreground: #ededed;
-  }
+* {
+  border-color: var(--border);
 }
 
 body {
-  background: var(--background);
+  background-color: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  background-image:
+    radial-gradient(at 0% 0%, rgba(56, 189, 248, 0.1) 0px, transparent 50%),
+    radial-gradient(at 100% 0%, rgba(14, 165, 233, 0.1) 0px, transparent 50%);
+  background-attachment: fixed;
+  -webkit-font-smoothing: antialiased;
 }
 
-/* 모바일 기본 글자 크기 줄이기 */
+/* Glassmorphism Classes */
+.glass {
+  background: var(--card);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+}
+
+.glass-hover {
+  transition: all 0.3s ease;
+}
+
+.glass-hover:hover {
+  background: rgba(51, 65, 85, 0.8);
+  border-color: rgba(56, 189, 248, 0.3);
+  transform: translateY(-2px);
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--background);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--muted);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--muted-foreground);
+}
+
+/* Typography Enhancements */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  letter-spacing: -0.025em;
+  font-weight: 700;
+}
+
+/* Mobile responsive adjustments */
 html {
-  font-size: 14px;
+  font-size: 15px;
 }
 
-/* sm(640px) 이상부터는 원래대로 */
 @media (min-width: 640px) {
   html {
     font-size: 16px;
   }
 }
-/* =========================
-   Christmas: lights + snow
-   ========================= */
 
-.xmas-tabs {
-  position: relative;
-  overflow: visible;
-}
-
-/* 전구 줄 (탭 위쪽에 휘감긴 느낌) */
-.xmas-tabs::before {
-  content: "";
-  position: absolute;
-  left: -12px;
-  right: -12px;
-  top: -14px;
-  height: 36px;
-  pointer-events: none;
-  z-index: 2;
-
-  /* 줄(와이어) + 전구(도트) */
-  background:
-    /* wire */
-    radial-gradient(60px 18px at 30px 28px, transparent 65%, rgba(15, 23, 42, 0.35) 66%, rgba(15, 23, 42, 0.35) 70%, transparent 71%) repeat-x,
-    /* bulbs */
-    radial-gradient(circle at 18px 18px, rgba(255,255,255,0.95) 0 2px, transparent 3px 100%),
-    radial-gradient(circle at 18px 18px, rgba(255, 80, 80, 0.95) 0 5px, transparent 6px 100%),
-    radial-gradient(circle at 18px 18px, rgba(80, 220, 120, 0.95) 0 5px, transparent 6px 100%),
-    radial-gradient(circle at 18px 18px, rgba(80, 160, 255, 0.95) 0 5px, transparent 6px 100%),
-    radial-gradient(circle at 18px 18px, rgba(255, 210, 80, 0.95) 0 5px, transparent 6px 100%);
-
-  background-size:
-    120px 36px,
-    120px 36px,
-    120px 36px,
-    120px 36px,
-    120px 36px,
-    120px 36px;
-
-  /* 전구들을 서로 다른 위치로 엇갈리게 */
-  background-position:
-    0 0,
-    0 0,
-    0 0,
-    24px 0,
-    48px 0,
-    72px 0;
-
-  filter: drop-shadow(0 0 6px rgba(255,255,255,0.35));
-  opacity: 0.95;
-}
-
-/* 전구 반짝임 애니메이션 */
-@keyframes xmasTwinkle {
-  0%, 100% { filter: drop-shadow(0 0 4px rgba(255,255,255,0.25)); opacity: 0.92; }
-  50% { filter: drop-shadow(0 0 10px rgba(255,255,255,0.55)); opacity: 1; }
-}
-.xmas-tabs::before {
-  animation: xmasTwinkle 1.6s ease-in-out infinite;
-}
-
-/* 눈: 가벼운 레이어 2장 (성능 괜찮음) */
-.snow-layer {
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: 5; /* 탭/컨텐츠 위로는 올라오지 않게 더 높일 수도 있음 */
-}
-
-.snow-layer::before,
-.snow-layer::after {
-  content: "";
-  position: absolute;
-  inset: -200px 0 0 0;
-  background-image:
-    radial-gradient(circle, rgba(255,255,255,0.9) 1.2px, transparent 1.3px),
-    radial-gradient(circle, rgba(255,255,255,0.7) 1px, transparent 1.1px),
-    radial-gradient(circle, rgba(255,255,255,0.55) 0.9px, transparent 1px);
-  background-size: 140px 140px, 220px 220px, 320px 320px;
-  background-position: 0 0, 40px 60px, 120px 30px;
-  opacity: 0.85;
-  transform: translateY(-120px);
-}
-
-@keyframes snowFall1 {
-  0% { transform: translateY(-140px); }
-  100% { transform: translateY(120vh); }
-}
-@keyframes snowFall2 {
-  0% { transform: translateY(-180px); }
-  100% { transform: translateY(120vh); }
-}
-
-.snow-layer::before {
-  animation: snowFall1 14s linear infinite;
-}
-.snow-layer::after {
-  opacity: 0.55;
-  filter: blur(0.2px);
-  animation: snowFall2 20s linear infinite;
-}
-/* ✅ 사이트 전체 가로 오버플로우 방지 */
-html, body {
-  width: 100%;
-  overflow-x: hidden;
-}
-
-/* ✅ 채팅/긴 텍스트 줄바꿈 강제 오버라이드(전역 nowrap 방어용) */
-[data-force-wrap="true"] {
-  white-space: pre-wrap !important;
-  overflow-wrap: anywhere !important;
-  word-break: break-all !important;
-}
-/* ====== 가로 스크롤 원천 차단(안전장치) ====== */
-html, body {
-  width: 100%;
-  overflow-x: hidden;
-}
-
-/* ====== 강제 줄바꿈 (전역 nowrap/important를 이김) ====== */
+/* Utility: Force Wrap for Chat/Posts */
 .force-wrap {
   white-space: pre-wrap !important;
   overflow-wrap: anywhere !important;
   word-break: break-all !important;
   max-width: 100% !important;
+}
+
+/* Transitions */
+.transition-standard {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Buttons */
+@utility btn-premium {
+  @apply inline-flex items-center justify-center rounded-lg px-4 py-2 text-sm font-semibold transition-all duration-200 active:scale-95 disabled:opacity-50;
+}
+
+@utility btn-primary {
+  @apply btn-premium bg-sky-500 text-white hover:bg-sky-400 shadow-lg shadow-sky-500/20;
+}
+
+@utility btn-secondary {
+  @apply btn-premium bg-slate-800 text-slate-100 hover:bg-slate-700 border border-slate-700;
+}
+
+@utility btn-ghost {
+  @apply btn-premium text-slate-400 hover:text-slate-100 hover:bg-slate-800/50;
 }

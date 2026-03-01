@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import Link from "next/link";
 
 function toEmail(username: string) {
   return `${username.trim().toLowerCase()}@school-board.test`;
@@ -41,47 +42,67 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="mx-auto max-w-md bg-white p-6">
-      <div className="mb-4 rounded-2xl bg-sky-600 px-5 py-4 text-white shadow">
-        <h1 className="text-2xl font-extrabold">로그인</h1>
-        <div className="mt-1 text-sm text-white/85">아이디/비밀번호를 입력하세요</div>
-      </div>
+    <div className="flex min-h-screen items-center justify-center bg-slate-950 px-4 py-12 relative overflow-hidden">
+      {/* Abstract Background Blobs */}
+      <div className="absolute -top-24 -left-24 h-96 w-96 rounded-full bg-sky-500/10 blur-[120px]" />
+      <div className="absolute -bottom-24 -right-24 h-96 w-96 rounded-full bg-indigo-500/10 blur-[120px]" />
 
-      <div className="rounded-2xl border border-black/15 bg-white p-5 shadow-sm space-y-3">
-        <input
-          className="w-full rounded-xl border border-black/15 bg-white p-3 text-slate-900 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-sky-400/40"
-          placeholder="아이디"
-          value={username}
-          onChange={(e) => setUsername(e.target.value)}
-        />
-
-        <input
-          className="w-full rounded-xl border border-black/15 bg-white p-3 text-slate-900 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-sky-400/40"
-          placeholder="비밀번호"
-          type="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-        />
-
-        <button
-          className="w-full rounded-xl bg-sky-600 p-3 font-semibold text-white hover:bg-sky-500 disabled:opacity-60"
-          onClick={onLogin}
-          disabled={loading}
-        >
-          {loading ? "로그인 중..." : "로그인"}
-        </button>
-
-        <div className="flex gap-2">
-          <a className="flex-1 rounded-xl border border-black/15 p-3 text-center text-slate-900 hover:bg-slate-50" href="/signup">
-            회원가입
-          </a>
-          <a className="flex-1 rounded-xl border border-black/15 p-3 text-center text-slate-900 hover:bg-slate-50" href="/community/free">
-            홈으로
-          </a>
+      <main className="glass w-full max-w-[440px] rounded-[2.5rem] p-8 sm:p-12 relative z-10">
+        <div className="mb-10 text-center">
+          <div className="inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-sky-500 text-3xl shadow-lg shadow-sky-500/20 mb-6">
+            🟦
+          </div>
+          <h1 className="text-3xl font-black tracking-tight text-white mb-2">Welcome Back</h1>
+          <p className="text-sm font-medium text-slate-500 uppercase tracking-widest">Square Community</p>
         </div>
 
-        {msg && <div className="text-sm font-semibold text-rose-600">{msg}</div>}
-      </div>
-    </main>
+        <div className="grid gap-4">
+          <div className="space-y-1">
+            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Username</label>
+            <input
+              className="w-full rounded-2xl bg-white/[0.03] border border-white/5 p-4 text-white placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-sky-500/40 transition-all"
+              placeholder="아이디를 입력하세요"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+            />
+          </div>
+
+          <div className="space-y-1">
+            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Password</label>
+            <input
+              className="w-full rounded-2xl bg-white/[0.03] border border-white/5 p-4 text-white placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-sky-500/40 transition-all"
+              placeholder="••••••••"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
+          </div>
+
+          <button
+            className="btn-primary w-full py-4 text-sm mt-4"
+            onClick={onLogin}
+            disabled={loading}
+          >
+            {loading ? "AUTHENTICATING..." : "LOG IN"}
+          </button>
+
+          {msg && (
+            <div className="mt-2 text-center text-xs font-bold text-rose-400 animate-pulse">
+              {msg}
+            </div>
+          )}
+
+          <div className="mt-8 flex items-center justify-center gap-6">
+            <Link href="/signup" className="text-xs font-black text-sky-400 hover:text-sky-300 uppercase tracking-widest transition-colors">
+              Create Account
+            </Link>
+            <div className="h-4 w-px bg-white/10" />
+            <Link href="/community/free" className="text-xs font-black text-slate-500 hover:text-slate-400 uppercase tracking-widest transition-colors">
+              Back to Home
+            </Link>
+          </div>
+        </div>
+      </main>
+    </div>
   );
 }

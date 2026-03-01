@@ -15,19 +15,18 @@ type JobPost = {
 };
 
 const GROUPS: { title: string; items: string[] }[] = [
-  { title: "과학", items: ["물리", "화학", "생명과학", "지구과학"] },
-  { title: "수학/정보", items: ["수학", "컴공", "AI/데이터", "로봇"] },
-  { title: "인문/사회", items: ["사회", "경제"] },
-  { title: "진로/기타", items: ["의료보건", "교사/교육", "디자인", "영상", "음악", "미술", "체육"] },
-  { title: "활동", items: ["대회/공모전", "스터디", "프로젝트", "봉사"] },
+  { title: "🧪 과학", items: ["물리", "화학", "생명과학", "지구과학"] },
+  { title: "💻 수학/정보", items: ["수학", "컴공", "AI/데이터", "로봇"] },
+  { title: "📚 인문/사회", items: ["사회", "경제"] },
+  { title: "🎨 진로/기타", items: ["의료보건", "교사/교육", "디자인", "영상", "음악", "미술", "체육"] },
+  { title: "🏃 활동", items: ["대회/공모전", "스터디", "프로젝트", "봉사"] },
 ];
 
 function fmtCompactDate(iso: string) {
   const d = new Date(iso);
-  const yy = String(d.getFullYear()).slice(2);
   const mm = String(d.getMonth() + 1).padStart(2, "0");
   const dd = String(d.getDate()).padStart(2, "0");
-  return `${yy}/${mm}/${dd}`;
+  return `${mm}.${dd}`;
 }
 
 function Chip({
@@ -44,10 +43,10 @@ function Chip({
       type="button"
       onClick={onClick}
       className={
-        "border px-2 py-1 text-[11px] font-semibold whitespace-nowrap " +
+        "rounded-full px-4 py-1.5 text-xs font-bold transition-all " +
         (active
-          ? "border-sky-700 bg-sky-700 text-white"
-          : "border-slate-300 bg-white text-slate-800 hover:bg-slate-50")
+          ? "bg-sky-500 text-white shadow-lg shadow-sky-500/20"
+          : "bg-white/5 text-slate-400 hover:bg-white/10 hover:text-slate-200 focus:outline-none")
       }
     >
       {children}
@@ -65,7 +64,6 @@ export default function JobsClient() {
   const [before, setBefore] = useState<string | null>(null);
   const [tag, setTag] = useState<string>("");
 
-  // 내 관심사
   const [myInterests, setMyInterests] = useState<string[]>([]);
   const [saveMsg, setSaveMsg] = useState<string | null>(null);
 
@@ -97,7 +95,6 @@ export default function JobsClient() {
     if (!me.userId) return;
     const next = myInterests.includes(x) ? myInterests.filter((v) => v !== x) : [...myInterests, x];
     setMyInterests(next);
-    // 자동 저장(원하면 버튼 저장으로 바꿀 수 있음)
     saveInterests(next);
   }
 
@@ -160,18 +157,28 @@ export default function JobsClient() {
   const myInterestSet = useMemo(() => new Set(myInterests), [myInterests]);
 
   return (
-    <>
-      <div className="mb-4 border border-slate-400 bg-white">
-        <div className="border-b border-slate-200 px-4 py-3">
-          <div className="text-[15px] font-extrabold text-slate-900">구인구직</div>
-          <div className="mt-1 text-[12px] text-slate-600">
-            과제/프로젝트 같이할 사람, 스터디, 대회 팀원, 관심사 공유 등 자유롭게 모집할 수 있어요.
+    <div className="space-y-8">
+      {/* Search & Filter Header */}
+      <section className="glass rounded-[2rem] p-8">
+        <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <h2 className="text-2xl font-black text-white flex items-center gap-3">
+              <span className="text-3xl">🤝</span> 구인구직
+            </h2>
+            <p className="mt-1 text-xs font-bold text-slate-500 uppercase tracking-widest">
+              Find your partners & collaborators
+            </p>
           </div>
+          <Link href="/community/free/jobs/new" className="btn-primary py-3 px-8 text-sm self-start lg:self-center">
+            모집글 올리기
+          </Link>
         </div>
 
-        <div className="px-4 py-3">
-          <div className="text-[12px] font-bold text-slate-900">관심사 필터</div>
-          <div className="mt-2 flex flex-wrap gap-2">
+        <div className="mt-8">
+          <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-4">
+            Interest Filter
+          </h3>
+          <div className="flex flex-wrap gap-2">
             <Chip active={tag === ""} onClick={() => setTag("")}>전체</Chip>
             {GROUPS.flatMap((g) => g.items).map((x) => (
               <Chip key={x} active={tag === x} onClick={() => setTag(tag === x ? "" : x)}>
@@ -179,120 +186,105 @@ export default function JobsClient() {
               </Chip>
             ))}
           </div>
+        </div>
 
-          <div className="mt-4 border-t border-slate-200 pt-3">
-            <div className="flex items-center justify-between gap-2">
-              <div className="text-[12px] font-bold text-slate-900">나의 관심사</div>
-              {!me.userId ? (
-                <div className="text-[11px] text-slate-500">로그인하면 저장할 수 있어요</div>
-              ) : saveMsg ? (
-                <div className="text-[11px] text-emerald-600">{saveMsg}</div>
-              ) : (
-                <div className="text-[11px] text-slate-500">눌러서 선택/해제 (자동 저장)</div>
-              )}
-            </div>
-
-            <div className="mt-2 space-y-2">
-              {GROUPS.map((g) => (
-                <div key={g.title}>
-                  <div className="text-[11px] font-semibold text-slate-600">{g.title}</div>
-                  <div className="mt-1 flex flex-wrap gap-2">
-                    {g.items.map((x) => (
-                      <Chip
-                        key={x}
-                        active={myInterestSet.has(x)}
-                        onClick={() => toggleMyInterest(x)}
-                      >
-                        {x}
-                      </Chip>
-                    ))}
-                  </div>
+        {/* My Interests Quick Select */}
+        <div className="mt-8 rounded-2xl bg-white/[0.03] p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h4 className="text-[10px] font-black text-sky-400 uppercase tracking-[0.2em]">
+              My Custom Interests
+            </h4>
+            {saveMsg && <span className="text-[10px] font-bold text-emerald-400 animate-pulse">{saveMsg}</span>}
+          </div>
+          <div className="space-y-4">
+            {GROUPS.map((g) => (
+              <div key={g.title} className="flex flex-col gap-2">
+                <span className="text-[10px] font-bold text-slate-600 uppercase">{g.title}</span>
+                <div className="flex flex-wrap gap-2">
+                  {g.items.map((x) => (
+                    <button
+                      key={x}
+                      onClick={() => toggleMyInterest(x)}
+                      className={`text-[11px] font-bold px-3 py-1 rounded-lg transition-all ${myInterestSet.has(x)
+                          ? "bg-sky-500/20 text-sky-400 border border-sky-500/30"
+                          : "bg-white/[0.02] text-slate-500 border border-transparent hover:bg-white/5"
+                        }`}
+                    >
+                      {myInterestSet.has(x) ? "✓ " : "+ "}{x}
+                    </button>
+                  ))}
                 </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="mt-4 flex justify-end">
-            <Link
-              href="/community/free/jobs/new"
-              className="border border-emerald-400 bg-emerald-300 px-3 py-2 text-[12px] font-semibold text-black hover:bg-emerald-200"
-            >
-              글쓰기
-            </Link>
+              </div>
+            ))}
           </div>
         </div>
-      </div>
+      </section>
 
-      {loading ? (
-        <div className="text-slate-600 text-sm">불러오는 중…</div>
-      ) : posts.length === 0 ? (
-        <div className="border border-slate-300 bg-white p-4 text-slate-700 text-sm">
-          {effectiveQ ? "검색 결과가 없습니다." : "아직 구인구직 글이 없습니다."}
-        </div>
-      ) : (
-        <div className="overflow-hidden border border-slate-400 bg-white">
-          <div className="border-b border-slate-400 bg-white">
-            <div className="grid grid-cols-12 items-center px-3 py-2 text-[11px] font-semibold text-slate-900">
-              <div className="col-span-7 sm:col-span-8">제목</div>
-              <div className="hidden sm:block sm:col-span-2">작성자</div>
-              <div className="col-span-3 sm:col-span-2 text-right">작성일</div>
-            </div>
+      {/* Main Content List */}
+      <div className="space-y-4">
+        {loading ? (
+          <div className="grid gap-4">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="h-24 animate-pulse rounded-2xl bg-white/5" />
+            ))}
           </div>
-
-          <ul className="divide-y divide-slate-200">
+        ) : posts.length === 0 ? (
+          <div className="glass rounded-[2rem] p-20 text-center">
+            <div className="text-5xl mb-6">🏜️</div>
+            <p className="text-sm font-medium text-slate-500">
+              아직 {effectiveQ || tag ? "조건에 맞는" : ""} 구인 글이 없습니다.<br />
+              직접 새로운 모집을 시작해보세요!
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {posts.map((p) => {
-              const href = `/community/free/${encodeURIComponent(p.id)}`; // 기존 상세페이지 재사용
               const username = p.author?.username ?? "unknown";
               const date = fmtCompactDate(p.created_at);
               const tags = Array.isArray(p.tags) ? p.tags : [];
 
               return (
-                <li key={p.id} className="hover:bg-slate-50">
-                  <div className="grid grid-cols-12 items-start gap-2 px-3 py-2.5">
-                    <div className="col-span-7 sm:col-span-8 min-w-0">
-                      <Link href={href} className="block min-w-0 truncate font-semibold text-slate-900" title={p.title}>
-                        {p.title}
-                      </Link>
-                      {tags.length ? (
-                        <div className="mt-1 flex flex-wrap gap-1">
-                          {tags.slice(0, 6).map((t) => (
-                            <span key={t} className="border border-slate-300 bg-white px-1.5 py-0.5 text-[10px] font-semibold text-slate-700">
-                              #{t}
-                            </span>
-                          ))}
-                        </div>
-                      ) : null}
+                <Link
+                  key={p.id}
+                  href={`/community/free/${p.id}`}
+                  className="glass-hover group flex flex-col justify-between rounded-2xl bg-white/[0.03] p-6 transition-all hover:bg-white/10"
+                >
+                  <div>
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{date}</span>
+                      <span className="text-[10px] font-bold text-slate-600">👤 {username}</span>
                     </div>
-
-                    <div className="hidden sm:block sm:col-span-2 min-w-0 truncate text-slate-800 text-[12px]">
-                      {username}
-                    </div>
-
-                    <div className="col-span-3 sm:col-span-2 text-right text-[12px] text-slate-700">
-                      {date}
-                    </div>
+                    <h3 className="text-base font-bold text-slate-200 group-hover:text-sky-400 line-clamp-2 leading-snug">
+                      {p.title}
+                    </h3>
                   </div>
-                </li>
+
+                  {tags.length > 0 && (
+                    <div className="mt-4 flex flex-wrap gap-1.5">
+                      {tags.slice(0, 4).map((t) => (
+                        <span key={t} className="rounded-lg bg-sky-500/10 px-2 py-0.5 text-[9px] font-black text-sky-400/80 uppercase">
+                          #{t}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </Link>
               );
             })}
-          </ul>
-
-          <div className="border-t border-slate-200 p-3">
-            {hasMore ? (
-              <button
-                type="button"
-                className="w-full border border-slate-300 bg-white py-2 text-[12px] font-semibold text-slate-800 hover:bg-slate-50 disabled:opacity-60"
-                onClick={loadMore}
-                disabled={busy}
-              >
-                {busy ? "불러오는 중…" : "더 보기"}
-              </button>
-            ) : (
-              <div className="text-center text-[11px] text-slate-400">끝</div>
-            )}
           </div>
-        </div>
-      )}
-    </>
+        )}
+
+        {hasMore && (
+          <button
+            type="button"
+            className="btn-secondary w-full py-4 mt-4"
+            onClick={loadMore}
+            disabled={busy}
+          >
+            {busy ? "LOADING..." : "SHOW MORE"}
+          </button>
+        )}
+      </div>
+    </div>
   );
 }
