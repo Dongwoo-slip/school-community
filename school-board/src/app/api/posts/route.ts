@@ -18,28 +18,13 @@ export async function GET(req: Request) {
 
     const { data: posts, error } = await sb
       .from("posts")
-      .select("id,title,created_at,view_count,author_id,poll,image_urls")
+      .select("*, author:profiles(username, role, points)")
       .eq("board", board)
       .order("created_at", { ascending: false });
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-    const ids = Array.from(new Set((posts ?? []).map((p: any) => p.author_id).filter(Boolean)));
-    const profileMap = new Map<string, { username: string | null; role: string | null }>();
-
-    if (ids.length > 0) {
-      const { data: profiles } = await sb.from("profiles").select("id,username,role").in("id", ids);
-      (profiles ?? []).forEach((pr: any) => {
-        profileMap.set(pr.id, { username: pr.username ?? null, role: pr.role ?? "user" });
-      });
-    }
-
-    const result = (posts ?? []).map((p: any) => ({
-      ...p,
-      author: profileMap.get(p.author_id) ?? { username: null, role: "user" },
-    }));
-
-    return NextResponse.json({ data: result });
+    return NextResponse.json({ data: posts ?? [] });
   } catch (e: any) {
     return NextResponse.json({ error: e?.message ?? "unknown error" }, { status: 500 });
   }
@@ -56,16 +41,34 @@ export async function POST(req: Request) {
   const body = await req.json().catch(() => null);
   if (!body) return NextResponse.json({ error: "입력값이 올바르지 않습니다." }, { status: 400 });
 
-  const board = body.board ?? "free";
-  const title = String(body.title ?? "").trim();
-  const content = String(body.content ?? "").trim();
+  const board = String(body.board ?? "free").trim();
+  const title = String(body.title ?? "").trim().slice(0, 200);
+  const content = String(body.content ?? "").trim().slice(0, 5000);
 
   if (title.length < 1) return NextResponse.json({ error: "제목을 입력하세요" }, { status: 400 });
   if (content.length < 1) return NextResponse.json({ error: "본문을 입력하세요" }, { status: 400 });
 
   const image_urls = Array.isArray(body.image_urls)
-    ? body.image_urls.map((x: any) => String(x ?? "").trim()).filter(Boolean)
+    ? body.image_urls.map((x: any) => String(x ?? "").trim()).filter(Boolean).slice(0, 10)
     : [];
+
+  const sb = admin();
+
+  // ✅ 도배 방지: 30초 이내 작성 여부 확인
+  const { data: lastPost } = await sb
+    .from("posts")
+    .select("created_at")
+    .eq("author_id", user.id)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (lastPost) {
+    const diff = Date.now() - new Date(lastPost.created_at).getTime();
+    if (diff < 30000) {
+      return NextResponse.json({ error: "너무 자주 글을 올릴 수 없습니다. 30초 후에 다시 시도하세요." }, { status: 429 });
+    }
+  }
 
   // ✅ 투표(옵션 텍스트만 받으면 서버에서 id 붙여 저장)
   let poll: any = null;
@@ -83,7 +86,7 @@ export async function POST(req: Request) {
     };
   }
 
-  const sb = admin();
+
   const { data, error } = await sb
     .from("posts")
     .insert({
@@ -97,7 +100,25 @@ export async function POST(req: Request) {
     })
     .select("id")
     .single();
-
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (!data) return NextResponse.json({ error: "Failed to create post" }, { status: 500 });
+
+  // ✅ 포인트 증정 (+10) 및 첫 게시물 배지 부여
+  try {
+    const { data: current } = await sb.from("profiles").select("points, badge").eq("id", user.id).maybeSingle();
+    const nextPoints = (Number(current?.points) || 0) + 10;
+
+    // 첫 게시물인지 확인
+    const { count } = await sb.from("posts").select("*", { count: "exact", head: true }).eq("author_id", user.id);
+    const badges = Array.isArray(current?.badge) ? [...current.badge] : [];
+    if (count === 1 && !badges.includes("First Step")) {
+      badges.push("First Step");
+    }
+
+    await sb.from("profiles").update({ points: nextPoints, badge: badges }).eq("id", user.id);
+  } catch (e) {
+    console.error("Failed to update points/badges:", e);
+  }
+
   return NextResponse.json({ id: data.id });
 }

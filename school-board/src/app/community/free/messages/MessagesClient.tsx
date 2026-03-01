@@ -19,7 +19,7 @@ function fmtTime(iso: string) {
   const dd = String(d.getDate()).padStart(2, "0");
   const hh = String(d.getHours()).padStart(2, "0");
   const mi = String(d.getMinutes()).padStart(2, "0");
-  return `${mm}/${dd} ${hh}:${mi}`;
+  return `${mm}.${dd} ${hh}:${mi}`;
 }
 
 function norm(r: Dm): Dm {
@@ -51,7 +51,6 @@ export default function MessagesClient() {
       setRows(arr);
       setUnreadServer(typeof json?.unread === "number" ? json.unread : 0);
 
-      // ✅ 쪽지함 들어오면 읽음 처리
       await fetch("/api/messages/read", { method: "POST", credentials: "include" }).catch(() => null);
     } finally {
       setLoading(false);
@@ -63,47 +62,83 @@ export default function MessagesClient() {
   }, []);
 
   const unreadCount = useMemo(() => {
-    // 서버 unread 우선
     if (typeof unreadServer === "number") return unreadServer;
     return rows.filter((r) => !r.read && (r.recipient_id ?? r.receiver_id) === me.userId).length;
   }, [rows, me.userId, unreadServer]);
 
   return (
-    <div className="border border-slate-300 bg-white p-4 text-slate-900">
-      <div className="flex items-center justify-between">
-        <div className="text-[14px] font-extrabold text-slate-900">✉ 쪽지함</div>
-        <div className="text-[12px] text-slate-700">미확인 {unreadCount}</div>
-      </div>
+    <div className="space-y-8">
+      {/* Header Section */}
+      <section className="glass rounded-[2rem] p-8">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-2xl font-black text-white flex items-center gap-3">
+              <span className="text-3xl">✉️</span> 쪽지함
+            </h2>
+            <p className="mt-1 text-xs font-bold text-slate-500 uppercase tracking-widest">
+              Private messages & Notifications
+            </p>
+          </div>
+          <div className="flex flex-col items-end">
+            <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">Unread</span>
+            <span className="text-2xl font-black text-sky-400">{unreadCount}</span>
+          </div>
+        </div>
+      </section>
 
-      <div className="mt-2 text-[12px] text-slate-600">
-        {me.userId ? "관리자 쪽지는 여기서 확인할 수 있어요." : "로그인이 필요합니다."}
-      </div>
-
-      {loading ? <div className="mt-3 text-[12px] text-slate-700">불러오는 중…</div> : null}
-      {err ? <div className="mt-3 text-[12px] text-rose-600">{err}</div> : null}
-
-      {!loading && !err && rows.length === 0 ? (
-        <div className="mt-3 text-[12px] text-slate-700">쪽지가 없습니다.</div>
-      ) : null}
-
-      <ul className="mt-3 divide-y divide-slate-100">
-        {rows.map((m) => {
-          const recipient = (m.recipient_id ?? m.receiver_id) ?? "";
-          const isReceived = recipient === me.userId;
-          return (
-            <li key={m.id} className="py-2">
-              <div className="flex items-center justify-between gap-2">
-                <div className="text-[12px] font-semibold text-slate-900">
-                  {isReceived ? "관리자로부터" : "내가 보냄"}
-                  {!m.read && isReceived ? <span className="ml-2 text-[11px] text-rose-600 font-extrabold">NEW</span> : null}
+      {/* Message List */}
+      <div className="space-y-4">
+        {loading ? (
+          <div className="grid gap-4">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="h-24 animate-pulse rounded-2xl bg-white/5" />
+            ))}
+          </div>
+        ) : err ? (
+          <div className="glass rounded-2xl p-8 text-center border-rose-500/20">
+            <p className="text-sm font-bold text-rose-400">{err}</p>
+          </div>
+        ) : rows.length === 0 ? (
+          <div className="glass rounded-[2rem] p-20 text-center">
+            <div className="text-5xl mb-6">🏜️</div>
+            <p className="text-sm font-medium text-slate-500 italic">
+              받거나 보낸 쪽지가 없습니다.
+            </p>
+          </div>
+        ) : (
+          <div className="grid gap-4">
+            {rows.map((m) => {
+              const recipient = (m.recipient_id ?? m.receiver_id) ?? "";
+              const isReceived = recipient === me.userId;
+              return (
+                <div
+                  key={m.id}
+                  className={`glass-hover flex flex-col rounded-2xl p-6 transition-all ${!m.read && isReceived ? "bg-sky-500/5 ring-1 ring-sky-500/30" : "bg-white/[0.03]"
+                    }`}
+                >
+                  <div className="mb-4 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className={`h-8 w-8 rounded-lg flex items-center justify-center text-lg ${isReceived ? "bg-indigo-500/20 text-indigo-400" : "bg-sky-500/20 text-sky-400"}`}>
+                        {isReceived ? "📥" : "📤"}
+                      </div>
+                      <span className="text-xs font-black text-white uppercase tracking-wider">
+                        {isReceived ? "관리자로부터" : "내가 보냄"}
+                      </span>
+                      {!m.read && isReceived && (
+                        <span className="rounded-full bg-rose-500 px-2 py-0.5 text-[8px] font-black text-white uppercase">New</span>
+                      )}
+                    </div>
+                    <span className="text-[10px] font-bold text-slate-500">{fmtTime(m.created_at)}</span>
+                  </div>
+                  <div className="text-sm font-medium leading-relaxed text-slate-300 whitespace-pre-wrap">
+                    {m.content}
+                  </div>
                 </div>
-                <div className="text-[11px] text-slate-500">{fmtTime(m.created_at)}</div>
-              </div>
-              <div className="mt-1 text-[12px] text-slate-900 whitespace-pre-wrap break-words">{m.content}</div>
-            </li>
-          );
-        })}
-      </ul>
+              );
+            })}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

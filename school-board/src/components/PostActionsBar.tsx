@@ -81,20 +81,22 @@ export default function PostActionsBar({ postId }: Props) {
   }, [postId]);
 
   return (
-    <div className="mt-4 border border-slate-200 bg-white px-3 py-2">
-      <div className="flex flex-wrap items-center gap-2">
+    <div className="mt-8 overflow-hidden rounded-2xl glass border-0">
+      <div className="flex flex-wrap items-center gap-3 p-4">
         <button
           type="button"
           disabled={loading || busy}
           onClick={() => act("like")}
           className={
-            "inline-flex items-center gap-1 border px-3 py-1.5 text-[12px] font-semibold disabled:opacity-60 " +
-            (mine.like ? "border-sky-600 bg-sky-50 text-sky-800" : "border-slate-300 bg-white text-slate-800 hover:bg-slate-50")
+            "flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-black transition-all disabled:opacity-50 " +
+            (mine.like
+              ? "bg-sky-500 text-white shadow-lg shadow-sky-500/30"
+              : "bg-white/5 text-slate-300 hover:bg-white/10 hover:text-white")
           }
         >
-          <span className="text-[14px] leading-none">👍</span>
+          <span className="text-sm">👍</span>
           <span>좋아요</span>
-          <span className="ml-1 text-slate-600">({counts.like})</span>
+          <span className={mine.like ? "text-white/80" : "text-sky-400"}>{counts.like}</span>
         </button>
 
         <button
@@ -102,31 +104,37 @@ export default function PostActionsBar({ postId }: Props) {
           disabled={loading || busy}
           onClick={() => act("dislike")}
           className={
-            "inline-flex items-center gap-1 border px-3 py-1.5 text-[12px] font-semibold disabled:opacity-60 " +
-            (mine.dislike ? "border-rose-500 bg-rose-50 text-rose-700" : "border-slate-300 bg-white text-slate-800 hover:bg-slate-50")
+            "flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-black transition-all disabled:opacity-50 " +
+            (mine.dislike
+              ? "bg-rose-500 text-white shadow-lg shadow-rose-500/30"
+              : "bg-white/5 text-slate-300 hover:bg-white/10 hover:text-white")
           }
         >
-          <span className="text-[14px] leading-none">👎</span>
+          <span className="text-sm">👎</span>
           <span>싫어요</span>
-          <span className="ml-1 text-slate-600">({counts.dislike})</span>
+          <span className={mine.dislike ? "text-white/80" : "text-rose-400"}>{counts.dislike}</span>
         </button>
 
-        <div className="h-5 w-px bg-slate-200 mx-1" />
+        <div className="h-6 w-px bg-white/10 mx-2 hidden sm:block" />
 
         <button
           type="button"
           disabled={loading || busy || mine.report}
           onClick={() => act("report")}
           className={
-            "inline-flex items-center gap-1 border px-3 py-1.5 text-[12px] font-semibold disabled:opacity-60 " +
-            (mine.report ? "border-amber-400 bg-amber-50 text-amber-800" : "border-slate-300 bg-white text-slate-800 hover:bg-slate-50")
+            "flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-black transition-all disabled:opacity-50 " +
+            (mine.report
+              ? "bg-amber-500/20 text-amber-500 border border-amber-500/30"
+              : "bg-white/5 text-slate-400 hover:bg-rose-500/10 hover:text-rose-400")
           }
         >
-          <span className="text-[14px] leading-none">🚩</span>
+          <span className="text-sm">🚩</span>
           <span>{reportLabel}</span>
         </button>
 
-        <div className="ml-auto text-[11px] text-slate-500">{loading ? "불러오는 중…" : busy ? "처리 중…" : ""}</div>
+        <div className="ml-auto text-[10px] font-bold uppercase tracking-widest text-slate-600">
+          {loading ? "Syncing..." : busy ? "Sending..." : ""}
+        </div>
       </div>
     </div>
   );

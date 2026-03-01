@@ -36,33 +36,21 @@ export async function GET(_req: Request, ctx: any) {
 
   const { data: post, error } = await sb
     .from("posts")
-    .select("id,title,content,created_at,view_count,author_id,image_urls,poll,like_count,dislike_count,report_count")
+    .select("*, author:profiles(username, role, points)")
     .eq("id", id)
     .maybeSingle();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   if (!post) return NextResponse.json({ error: "게시물을 찾을 수 없습니다." }, { status: 404 });
 
-  // 조회수 +1
+  // 조회수 +1 (비동기로 실행하여 응답 속도에 영향을 주지 않음)
   const nextView = (post.view_count ?? 0) + 1;
-  await sb.from("posts").update({ view_count: nextView }).eq("id", id);
-
-  // 작성자 프로필
-  let author: { username: string | null; role: string | null } | null = null;
-  if (post.author_id) {
-    const { data: profile } = await sb
-      .from("profiles")
-      .select("username,role")
-      .eq("id", post.author_id)
-      .maybeSingle();
-    if (profile) author = profile;
-  }
+  sb.from("posts").update({ view_count: nextView }).eq("id", id).then(() => { });
 
   return NextResponse.json({
     data: {
       ...post,
       view_count: nextView,
-      author,
       like_count: post.like_count ?? 0,
       dislike_count: post.dislike_count ?? 0,
       report_count: post.report_count ?? 0,

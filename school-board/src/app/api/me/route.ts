@@ -20,20 +20,27 @@ export async function GET() {
     });
   }
 
-  // ✅ profiles에서 username/role/grade/class_no + interests까지 가져오기
-  const { data: prof } = await sb
+  // ✅ profiles에서 username/role/grade/class_no + interests/points/badge까지 가져오기
+  const { data: prof, error: profErr } = await sb
     .from("profiles")
-    .select("username, role, grade, class_no, interests")
+    .select("username, role, grade, class_no, interests, points, badge")
     .eq("id", user.id)
     .maybeSingle();
 
+  if (profErr) {
+    console.error("Profile Fetch Error:", profErr);
+  }
+
+  const p: any = prof;
   return NextResponse.json({
     userId: user.id,
-    role: prof?.role ?? "user",
-    username: prof?.username ?? null,
-    grade: prof?.grade ?? 2,
-    classNo: prof?.class_no ?? 7,
-    interests: Array.isArray(prof?.interests) ? prof!.interests : [],
+    role: p?.role ?? "user",
+    username: p?.username ?? null,
+    grade: p?.grade ?? 2,
+    classNo: p?.class_no ?? 7,
+    interests: Array.isArray(p?.interests) ? p.interests : [],
+    points: Number(p?.points) || 0,
+    badge: Array.isArray(p?.badge) ? p.badge : [],
   });
 }
 

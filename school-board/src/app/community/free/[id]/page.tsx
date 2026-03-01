@@ -4,8 +4,8 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import PostActionsBar from "@/components/PostActionsBar";
-
-type Me = { userId: string | null; role: string; username: string | null };
+import { useFreeBoard } from "../layout";
+import { getTier } from "@/lib/tiers";
 
 type Poll = { question?: string; options?: { id: string; text: string }[] };
 
@@ -16,7 +16,7 @@ type PostDetail = {
   created_at: string | null;
   view_count: number | null;
   author_id?: string | null;
-  author?: { username: string | null; role: string | null } | null;
+  author?: { username: string | null; role: string | null; points?: number } | null;
   image_urls?: string[] | null;
   poll?: Poll | null;
 };
@@ -27,7 +27,7 @@ type Comment = {
   content: string;
   created_at: string;
   author_id?: string | null;
-  author?: { username: string | null; role: string | null } | null;
+  author?: { username: string | null; role: string | null; points?: number } | null;
 };
 
 function fmt(iso?: string | null) {
@@ -46,7 +46,7 @@ export default function FreePostDetailPage() {
   const raw = (params as any)?.id as string | string[] | undefined;
   const id = Array.isArray(raw) ? raw[0] : raw;
 
-  const [me, setMe] = useState<Me>({ userId: null, role: "guest", username: null });
+  const { me, onLogout } = useFreeBoard();
 
   const [post, setPost] = useState<PostDetail | null>(null);
   const [comments, setComments] = useState<Comment[]>([]);
@@ -61,11 +61,6 @@ export default function FreePostDetailPage() {
   const [myVote, setMyVote] = useState<string | null>(null);
   const [pollLoading, setPollLoading] = useState(false);
 
-  async function loadMe() {
-    const res = await fetch("/api/me", { cache: "no-store" });
-    const json = await res.json().catch(() => ({}));
-    setMe({ userId: json.userId ?? null, role: json.role ?? "guest", username: json.username ?? null });
-  }
 
   async function loadPoll(postId: string) {
     setPollLoading(true);
@@ -85,8 +80,15 @@ export default function FreePostDetailPage() {
     setErrorMsg(null);
 
     try {
-      const resPost = await fetch(`/api/posts/${encodeURIComponent(postId)}`, { cache: "no-store" });
-      const jsonPost = await resPost.json().catch(() => ({}));
+      const [resPost, resComm] = await Promise.all([
+        fetch(`/api/posts/${encodeURIComponent(postId)}`, { cache: "no-store" }),
+        fetch(`/api/comments?post_id=${encodeURIComponent(postId)}`, { cache: "no-store" })
+      ]);
+
+      const [jsonPost, jsonComm] = await Promise.all([
+        resPost.json().catch(() => ({})),
+        resComm.json().catch(() => ({}))
+      ]);
 
       if (!resPost.ok) {
         setPost(null);
@@ -97,28 +99,17 @@ export default function FreePostDetailPage() {
 
       const p = (jsonPost?.data ?? null) as PostDetail | null;
       setPost(p);
-
-      const resC = await fetch(`/api/comments?post_id=${encodeURIComponent(postId)}`, { cache: "no-store" });
-      const jsonC = await resC.json().catch(() => ({}));
-      setComments(jsonC?.data ?? []);
+      setComments(jsonComm?.data ?? []);
 
       if (p?.poll && Array.isArray(p.poll.options) && p.poll.options.length >= 2) {
-        await loadPoll(postId);
-      } else {
-        setPollCounts({});
-        setPollTotal(0);
-        setMyVote(null);
+        // Poll은 결과가 늦게 로드되어도 되므로 개별 처리 (또는 위 Promise.all에 추가 가능)
+        loadPoll(postId);
       }
     } finally {
       setLoading(false);
     }
   }
 
-  async function onLogout() {
-    await fetch("/logout", { method: "POST" }).catch(() => null);
-    await loadMe();
-    router.refresh();
-  }
 
   const canDelete = useMemo(() => {
     if (!me.userId || !post) return false;
@@ -201,7 +192,6 @@ export default function FreePostDetailPage() {
   }
 
   useEffect(() => {
-    loadMe();
     if (!id || typeof id !== "string" || id.length === 0) return;
     loadPostAndComments(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -265,12 +255,19 @@ export default function FreePostDetailPage() {
 
                   <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-slate-400">
                     <div className="flex items-center gap-2">
-                      <div className="h-6 w-6 rounded-full bg-slate-700 flex items-center justify-center text-[10px] text-white font-bold">
-                        {post.author?.username?.charAt(0).toUpperCase() ?? "?"}
-                      </div>
-                      <span className="font-semibold text-slate-200">{post.author?.username ?? "unknown"}</span>
+                      {(() => {
+                        const t = getTier(post.author?.points || 0, post.author?.role || undefined);
+                        return (
+                          <div className="flex items-center gap-2 rounded-full bg-white/5 pl-1.5 pr-3 py-1 border border-white/5">
+                            <span className="text-sm" title={t.name}>{t.icon}</span>
+                            <span className={`font-bold ${t.color}`}>{post.author?.username || "unknown"}</span>
+                          </div>
+                        );
+                      })()}
                       {post.author?.role === "admin" && (
-                        <span className="rounded bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-bold text-amber-500">ADMIN</span>
+                        <span className="inline-flex items-center rounded-full bg-emerald-400/10 px-2.5 py-0.5 text-[10px] font-black uppercase tracking-widest text-emerald-400 ring-1 ring-inset ring-emerald-400/20 shadow-sm shadow-emerald-400/20 animate-pulse-subtle">
+                          Admin
+                        </span>
                       )}
                     </div>
                     <span className="text-slate-600">|</span>
@@ -425,15 +422,20 @@ export default function FreePostDetailPage() {
               <div key={c.id} className="glass group rounded-2xl p-6 transition-all hover:bg-white/10">
                 <div className="mb-3 flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <div className="h-7 w-7 rounded-full bg-slate-800 flex items-center justify-center text-[10px] text-slate-400 font-bold">
-                      {c.author?.username?.charAt(0).toUpperCase() ?? "?"}
-                    </div>
-                    <div>
-                      <span className="text-sm font-bold text-slate-100">{c.author?.username ?? "unknown"}</span>
-                      {c.author?.role === "admin" && (
-                        <span className="ml-2 text-[10px] font-bold text-amber-500">ADMIN</span>
-                      )}
-                    </div>
+                    {(() => {
+                      const t = getTier(c.author?.points || 0, c.author?.role || undefined);
+                      return (
+                        <div className="flex items-center gap-2">
+                          <span title={t.name}>{t.icon}</span>
+                          <span className={`text-sm font-bold ${t.color}`}>{c.author?.username || "unknown"}</span>
+                        </div>
+                      );
+                    })()}
+                    {c.author?.role === "admin" && (
+                      <span className="inline-flex items-center rounded-full bg-emerald-400/10 px-2 py-0.5 text-[9px] font-black uppercase tracking-widest text-emerald-400 ring-1 ring-inset ring-emerald-400/20 shadow-sm shadow-emerald-400/20">
+                        Admin
+                      </span>
+                    )}
                   </div>
                   <span className="text-[10px] text-slate-500">{fmt(c.created_at)}</span>
                 </div>

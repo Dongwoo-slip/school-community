@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import React, { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import AnonymousChatBox from "@/components/AnonymousChatBox";
+import { getTier, TIERS } from "@/lib/tiers";
 
 // ... types remain same ...
 type Poll = { question?: string; options?: { id: string; text: string }[] };
@@ -15,9 +17,9 @@ type Post = {
   poll?: Poll | null;
   image_urls?: string[] | null;
   author_id?: string | null;
-  author?: { username: string | null; role: string | null };
+  author?: { username: string | null; role: string | null; points?: number };
 };
-type Me = { userId: string | null; role: string; username: string | null };
+type Me = { userId: string | null; role: string; username: string | null; points: number; badge: string[] };
 type Noti = {
   id: string;
   type: string;
@@ -97,7 +99,7 @@ function fmtNotiTime(iso: string) {
 
 export default function FreeLayout({ children }: { children: ReactNode }) {
   const router = useRouter();
-  const [me, setMe] = useState<Me>({ userId: null, role: "guest", username: null });
+  const [me, setMe] = useState<Me>({ userId: null, role: "guest", username: null, points: 0, badge: [] });
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [visitors, setVisitors] = useState<number | null>(null);
@@ -107,12 +109,18 @@ export default function FreeLayout({ children }: { children: ReactNode }) {
   const [notis, setNotis] = useState<Noti[]>([]);
   const [unread, setUnread] = useState(0);
   const [dmUnread, setDmUnread] = useState(0);
+  const [guideOpen, setGuideOpen] = useState(false);
 
-  // ... load functions remain same ...
   async function loadMe() {
     const res = await fetch("/api/me", { cache: "no-store", credentials: "include" });
     const json = await res.json().catch(() => ({}));
-    setMe({ userId: json.userId ?? null, role: json.role ?? "guest", username: json.username ?? null });
+    setMe({
+      userId: json.userId ?? null,
+      role: json.role ?? "guest",
+      username: json.username ?? null,
+      points: Number(json.points) || 0,
+      badge: Array.isArray(json.badge) ? json.badge : [],
+    });
   }
   async function loadPosts() {
     const res = await fetch("/api/posts?board=free", { cache: "no-store" });
@@ -178,9 +186,18 @@ export default function FreeLayout({ children }: { children: ReactNode }) {
       if (!target || target.closest("[data-noti-root='1']")) return;
       setNotiOpen(false);
     }
+    function onDocDownGuide(e: MouseEvent) {
+      const target = e.target as HTMLElement | null;
+      if (!target || target.closest("[data-guide-root='1']")) return;
+      setGuideOpen(false);
+    }
     if (notiOpen) document.addEventListener("mousedown", onDocDown);
-    return () => document.removeEventListener("mousedown", onDocDown);
-  }, [notiOpen]);
+    if (guideOpen) document.addEventListener("mousedown", onDocDownGuide);
+    return () => {
+      document.removeEventListener("mousedown", onDocDown);
+      document.removeEventListener("mousedown", onDocDownGuide);
+    };
+  }, [notiOpen, guideOpen]);
 
   const orderedPosts = useMemo(() => {
     const admin = posts.filter((p) => p.author?.role === "admin");
@@ -263,7 +280,66 @@ export default function FreeLayout({ children }: { children: ReactNode }) {
                       <span className="text-xl">{unread > 0 ? "🔔" : "🔕"}</span>
                       {unread > 0 && <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-rose-500 ring-2 ring-[#0f172a]" />}
                     </button>
-                    <Link href="/community/free/me" className="btn-ghost hidden px-2 sm:block" title="내 정보">
+                    {/* 포인트 및 등급 가이드 (클릭 시 토글, 데스크탑은 호버 가능) */}
+                    <div className="hidden items-center gap-2 sm:flex" data-guide-root="1">
+                      <div className="group relative">
+                        <button
+                          onClick={() => setGuideOpen(!guideOpen)}
+                          className="flex items-center gap-2 rounded-full bg-white/5 border border-white/5 pl-2 pr-3 py-1 hover:bg-white/10 transition-colors cursor-pointer"
+                        >
+                          {(() => {
+                            const t = getTier(me.points, me.role);
+                            return (
+                              <>
+                                <span className="text-sm" title={t.name}>{t.icon}</span>
+                                <div className="flex flex-col items-start leading-none">
+                                  <span className={`text-[9px] font-black uppercase tracking-tighter ${t.color}`}>{t.name}</span>
+                                  <span className="text-[11px] font-black text-white">{me.points.toLocaleString()}<span className="ml-0.5 text-[8px] opacity-60">EXP</span></span>
+                                </div>
+                              </>
+                            );
+                          })()}
+                        </button>
+
+                        {/* 툴팁: 포인트 및 등급 가이드 */}
+                        <div className={`
+                          absolute right-0 top-full mt-2 w-64 rounded-2xl glass border border-white/10 p-5 shadow-2xl z-[100] transition-all
+                          ${guideOpen ? 'opacity-100 visible translate-y-0' : 'opacity-0 invisible translate-y-2 group-hover:opacity-100 group-hover:visible group-hover:translate-y-0'}
+                        `}>
+                          <h4 className="text-xs font-black text-white mb-3 flex items-center gap-2">
+                            <span className="text-sky-400">📊</span> 성취 가이드
+                          </h4>
+
+                          <div className="space-y-4">
+                            <div>
+                              <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">획득 방법</div>
+                              <ul className="space-y-1.5 text-[10px] text-slate-300">
+                                <li className="flex justify-between"><span>게시글 작성</span> <span className="font-bold text-sky-400">+10 EXP</span></li>
+                                <li className="flex justify-between"><span>댓글 작성</span> <span className="font-bold text-sky-400">+5 EXP</span></li>
+                              </ul>
+                            </div>
+
+                            <div>
+                              <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">등급 기준</div>
+                              <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-[10px]">
+                                {TIERS.map(t => (
+                                  <div key={t.name} className="flex items-center justify-between group/t">
+                                    <span className="text-slate-400">{t.icon} {t.name}</span>
+                                    <span className="font-bold text-slate-200">{t.minPoints}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="mt-4 border-t border-white/5 pt-3">
+                            <p className="text-[9px] text-slate-500 leading-tight">활동을 통해 학교에서 자신의 가치를 증명하세요!</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <Link href="/community/free/me" className="btn-ghost px-2" title="내 정보">
                       👤
                     </Link>
                   </>
@@ -277,18 +353,26 @@ export default function FreeLayout({ children }: { children: ReactNode }) {
                   <Link href="/signup" className="btn-primary py-1.5 px-3 text-xs">가입하기</Link>
                 </div>
               ) : (
-                <button onClick={onLogout} className="btn-secondary py-1.5 px-3 text-xs">나가기</button>
+                <div className="flex items-center gap-2">
+                  {me.role === "admin" && (
+                    <Link href="/community/free/reports" className="btn-secondary py-1.5 px-3 text-xs relative border-rose-500/30 text-rose-400">
+                      신고함
+                      {reportUnread > 0 && <span className="absolute -right-1 -top-1 h-2 w-2 rounded-full bg-rose-500" />}
+                    </Link>
+                  )}
+                  <button onClick={onLogout} className="btn-secondary py-1.5 px-3 text-xs">나가기</button>
+                </div>
               )}
             </div>
           </div>
 
           {/* Nav Tabs */}
           <nav className="flex items-center gap-1 border-t border-white/5 py-2 overflow-x-auto no-scrollbar">
-            <TabLink href="/community/free">🏠 메인</TabLink>
-            <TabLink href="/community/free/all">📜 전체글</TabLink>
-            <TabLink href="/community/free/jobs">💼 구인구직</TabLink>
-            <TabLink href="/community/free/meal">🍱 급식</TabLink>
-            <TabLink href="/community/free/best">🔥 베스트</TabLink>
+            <TabLink href="/community/free">메인</TabLink>
+            <TabLink href="/community/free/all">전체글</TabLink>
+            <TabLink href="/community/free/jobs">구인구직</TabLink>
+            <TabLink href="/community/free/meal">급식</TabLink>
+            <TabLink href="/community/free/best">베스트</TabLink>
           </nav>
         </div>
 
@@ -337,17 +421,26 @@ export default function FreeLayout({ children }: { children: ReactNode }) {
                   </h3>
                 </div>
                 <div className="p-4 space-y-3">
-                  {top3.map((p, i) => (
-                    <Link
-                      key={p.id}
-                      href={`/community/free/${p.id}`}
-                      className="glass-hover flex flex-col rounded-xl bg-white/5 p-3"
-                    >
-                      <span className="text-[10px] font-bold text-sky-400 uppercase">Top {i + 1}</span>
-                      <span className="mt-1 truncate text-sm font-medium text-slate-200">{p.title}</span>
-                      <span className="mt-2 text-[10px] text-slate-500">조회 {p.view_count}회</span>
-                    </Link>
-                  ))}
+                  {top3.map((p, i) => {
+                    const t = getTier(p.author?.points || 0, p.author?.role || undefined);
+                    return (
+                      <Link
+                        key={p.id}
+                        href={`/community/free/${p.id}`}
+                        className="glass-hover flex flex-col rounded-xl bg-white/5 p-3"
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-bold text-sky-400 uppercase tracking-widest">Top {i + 1}</span>
+                          <span className="text-[10px]" title={t.name}>{t.icon}</span>
+                        </div>
+                        <span className="mt-1 truncate text-sm font-medium text-slate-200">{p.title}</span>
+                        <div className="mt-2 flex items-center justify-between text-[10px]">
+                          <span className={`font-bold ${t.color}`}>{p.author?.username || "익명"}</span>
+                          <span className="text-slate-500">조회 {p.view_count}회</span>
+                        </div>
+                      </Link>
+                    );
+                  })}
                 </div>
               </div>
 
@@ -357,14 +450,8 @@ export default function FreeLayout({ children }: { children: ReactNode }) {
                 <StatCard label="Total Visit" value={visitors} />
               </div>
 
-              {/* Chat Status */}
-              <div className="glass rounded-2xl p-6 text-center">
-                <div className="mb-3 text-3xl">🧩</div>
-                <h4 className="text-sm font-bold text-white">채팅 서비스 점검</h4>
-                <p className="mt-2 text-xs leading-relaxed text-slate-500">
-                  더 쾌적한 환경을 위해 서비스 안정화 작업 중입니다. 조금만 기다려 주세요!
-                </p>
-              </div>
+              {/* Chat Box */}
+              <AnonymousChatBox />
             </div>
           </aside>
         </div>

@@ -51,10 +51,26 @@ export async function POST(req: Request) {
   if (!user) return NextResponse.json({ error: "로그인이 필요합니다." }, { status: 401 });
 
   const body = await req.json().catch(() => ({}));
-  const content = String(body?.content ?? "").trim();
+  const content = String(body?.content ?? "").trim().slice(0, 500);
   if (!content) return NextResponse.json({ error: "내용이 비었습니다." }, { status: 400 });
 
   const sb = admin();
+
+  // ✅ 도배 방지: 3초 이내 작성 여부 확인
+  const { data: lastMsg } = await sb
+    .from("chat_messages")
+    .select("created_at")
+    .eq("user_id", user.id)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (lastMsg) {
+    const diff = Date.now() - new Date(lastMsg.created_at).getTime();
+    if (diff < 3000) {
+      return NextResponse.json({ error: "너무 자주 메시지를 보낼 수 없습니다. 3초 후에 다시 시도하세요." }, { status: 429 });
+    }
+  }
 
   // ✅ username 컬럼 없이 insert
   const row = {
@@ -62,7 +78,6 @@ export async function POST(req: Request) {
     user_id: user.id,
     anon_id: makeAnonId(user.id),
   };
-
   const { data: inserted, error } = await sb
     .from("chat_messages")
     .insert(row)

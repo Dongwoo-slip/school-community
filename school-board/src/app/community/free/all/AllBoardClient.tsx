@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useMemo } from "react";
 import { useSearchParams } from "next/navigation";
 import { useFreeBoard } from "../layout";
+import { getTier } from "@/lib/tiers";
 
 const KST_DATE = new Intl.DateTimeFormat("ko-KR", {
   timeZone: "Asia/Seoul",
@@ -17,7 +18,7 @@ export default function AllBoardClient() {
   const mine = sp.get("mine") === "1";
 
   const visiblePosts = useMemo(() => {
-    let arr = orderedPosts.filter((p) => p.author?.role !== "admin");
+    let arr = orderedPosts;
     if (mine && me.userId) {
       arr = arr.filter((p: any) => (p?.author_id ?? null) === me.userId);
     }
@@ -80,8 +81,23 @@ export default function AllBoardClient() {
                     </h3>
                     {hasPoll && <span className="text-xs" title="투표 포함">🗳️</span>}
                   </div>
-                  <div className="mt-2 flex items-center gap-4 text-[10px] text-slate-500 font-bold uppercase tracking-widest">
-                    <span>{p.author?.username || "익명"}</span>
+                  <div className="mt-2 flex items-center gap-4 text-[10px] font-bold uppercase tracking-widest leading-none">
+                    <div className="flex items-center gap-1.5">
+                      {(() => {
+                        const t = getTier(p.author?.points || 0, p.author?.role || undefined);
+                        return (
+                          <>
+                            <span title={t.name}>{t.icon}</span>
+                            <span className={t.color}>{p.author?.username || "익명"}</span>
+                            {p.author?.role === "admin" && (
+                              <span className="inline-flex items-center rounded-full bg-emerald-400/10 px-1.5 py-0.5 text-[8px] font-black uppercase tracking-widest text-emerald-400 ring-1 ring-inset ring-emerald-400/20 shadow-sm shadow-emerald-400/20">
+                                Admin
+                              </span>
+                            )}
+                          </>
+                        );
+                      })()}
+                    </div>
                     <span className="flex items-center gap-1">👀 {p.view_count} VIEW</span>
                     {p.like_count > 0 && <span className="text-rose-400">❤️ {p.like_count} LIKE</span>}
                   </div>

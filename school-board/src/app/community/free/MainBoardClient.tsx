@@ -4,6 +4,7 @@ import TimetableWidget from "@/components/TimetableWidget";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useFreeBoard } from "./layout";
+import { getTier } from "@/lib/tiers";
 
 function PostRow({ post, index }: { post: any; index: number }) {
   return (
@@ -19,7 +20,22 @@ function PostRow({ post, index }: { post: any; index: number }) {
           {post.title}
         </h4>
         <div className="mt-1 flex items-center gap-3 text-[10px] text-slate-500 font-medium">
-          <span>👤 {post.author?.username || "익명"}</span>
+          <div className="flex items-center gap-1">
+            {(() => {
+              const t = getTier(post.author?.points || 0, post.author?.role || undefined);
+              return (
+                <>
+                  <span title={t.name}>{t.icon}</span>
+                  <span className={`font-bold ${t.color}`}>{post.author?.username || "익명"}</span>
+                  {post.author?.role === "admin" && (
+                    <span className="inline-flex items-center rounded-full bg-emerald-400/10 px-1.5 py-0.5 text-[8px] font-black uppercase tracking-widest text-emerald-400 ring-1 ring-inset ring-emerald-400/20">
+                      Admin
+                    </span>
+                  )}
+                </>
+              );
+            })()}
+          </div>
           <span>👀 {post.view_count}회</span>
           <span>📅 {new Date(post.created_at).toLocaleDateString()}</span>
         </div>

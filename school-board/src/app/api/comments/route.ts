@@ -21,30 +21,12 @@ export async function GET(req: Request) {
 
   const { data: comments, error } = await sb
     .from("comments")
-    .select("id,post_id,content,created_at,author_id,parent_id")
+    .select("*, author:profiles(username, role, points)")
     .eq("post_id", post_id)
     .order("created_at", { ascending: true });
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-
-  const ids = Array.from(new Set((comments ?? []).map((c: any) => c.author_id).filter(Boolean)));
-  const profileMap = new Map<string, { username: string | null; role: string | null }>();
-
-  if (ids.length > 0) {
-    const { data: profiles, error: pErr } = await sb.from("profiles").select("id,username,role").in("id", ids);
-    if (!pErr) {
-      (profiles ?? []).forEach((pr: any) => {
-        profileMap.set(pr.id, { username: pr.username ?? null, role: pr.role ?? "user" });
-      });
-    }
-  }
-
-  const result = (comments ?? []).map((c: any) => ({
-    ...c,
-    author: profileMap.get(c.author_id) ?? { username: null, role: "user" },
-  }));
-
-  return NextResponse.json({ data: result });
+  return NextResponse.json({ data: comments ?? [] });
 }
 
 // POST /api/comments  (로그인 필요)
@@ -60,7 +42,7 @@ export async function POST(req: Request) {
   if (!body) return NextResponse.json({ error: "입력값이 올바르지 않습니다." }, { status: 400 });
 
   const post_id = String(body.post_id ?? "").trim();
-  const content = String(body.content ?? "").trim();
+  const content = String(body.content ?? "").trim().slice(0, 1000);
   const parent_id_raw = body.parent_id ?? null;
   const parent_id = parent_id_raw ? String(parent_id_raw).trim() : null;
 
@@ -68,6 +50,22 @@ export async function POST(req: Request) {
   if (content.length < 1) return NextResponse.json({ error: "댓글을 입력해주세요." }, { status: 400 });
 
   const sb = admin();
+
+  // ✅ 도배 방지: 10초 이내 작성 여부 확인
+  const { data: lastComment } = await sb
+    .from("comments")
+    .select("created_at")
+    .eq("author_id", user.id)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (lastComment) {
+    const diff = Date.now() - new Date(lastComment.created_at).getTime();
+    if (diff < 10000) {
+      return NextResponse.json({ error: "너무 자주 댓글을 달 수 없습니다. 10초 후에 다시 시도하세요." }, { status: 429 });
+    }
+  }
 
   // parent_id가 있으면 같은 post의 댓글인지 최소 검증
   if (parent_id) {
@@ -90,5 +88,15 @@ export async function POST(req: Request) {
   const { data, error } = await sb.from("comments").insert(insertRow).select("id").single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  // ✅ 포인트 증정 (+5)
+  try {
+    const { data: current } = await sb.from("profiles").select("points").eq("id", user.id).maybeSingle();
+    const nextPoints = (Number(current?.points) || 0) + 5;
+    await sb.from("profiles").update({ points: nextPoints }).eq("id", user.id);
+  } catch (e) {
+    console.error("Failed to update points:", e);
+  }
+
   return NextResponse.json({ id: data.id });
 }
