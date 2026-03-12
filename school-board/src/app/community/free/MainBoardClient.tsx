@@ -1,43 +1,29 @@
 "use client";
 
 import TimetableWidget from "@/components/TimetableWidget";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import Link from "next/link";
 import { useFreeBoard } from "./layout";
 import { getTier } from "@/lib/tiers";
 
 function PostRow({ post, index }: { post: any; index: number }) {
+  const t = getTier(post.author?.points || 0, post.author?.role || undefined);
+  const isAdmin = post.author?.role === "admin";
   return (
     <Link
       href={`/community/free/${post.id}`}
-      className="glass-hover group flex items-center gap-4 rounded-xl bg-white/[0.03] p-4 transition-all hover:bg-white/10"
+      className="post-row"
     >
-      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-sky-500/10 text-xs font-black text-sky-400">
-        {String(index + 1).padStart(2, '0')}
-      </div>
-      <div className="min-w-0 flex-1">
-        <h4 className="truncate text-sm font-bold text-slate-200 group-hover:text-sky-400">
+      <span style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--text-faint)', minWidth: 20 }}>{String(index + 1).padStart(2, '0')}</span>
+      <div style={{ minWidth: 0, flex: 1 }}>
+        <div style={{ fontSize: '0.875rem', fontWeight: 500, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {isAdmin && <span style={{ fontSize: '0.65rem', fontWeight: 800, background: 'rgba(52,211,153,0.12)', color: 'var(--accent-mint)', borderRadius: 4, padding: '0.05rem 0.4rem', marginRight: '0.4rem' }}>공지</span>}
           {post.title}
-        </h4>
-        <div className="mt-1 flex items-center gap-3 text-[10px] text-slate-500 font-medium">
-          <div className="flex items-center gap-1">
-            {(() => {
-              const t = getTier(post.author?.points || 0, post.author?.role || undefined);
-              return (
-                <>
-                  <span title={t.name}>{t.icon}</span>
-                  <span className={`font-bold ${t.color}`}>{post.author?.username || "익명"}</span>
-                  {post.author?.role === "admin" && (
-                    <span className="inline-flex items-center rounded-full bg-emerald-400/10 px-1.5 py-0.5 text-[8px] font-black uppercase tracking-widest text-emerald-400 ring-1 ring-inset ring-emerald-400/20">
-                      Admin
-                    </span>
-                  )}
-                </>
-              );
-            })()}
-          </div>
-          <span>👀 {post.view_count}회</span>
-          <span>📅 {new Date(post.created_at).toLocaleDateString()}</span>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginTop: 3, fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+          <span className={t.color}>{t.icon} {post.author?.username || "익명"}</span>
+          <span>👀 {post.view_count}</span>
+          <span>{new Date(post.created_at).toLocaleDateString("ko-KR", { month: "2-digit", day: "2-digit" })}</span>
         </div>
       </div>
     </Link>
@@ -46,84 +32,73 @@ function PostRow({ post, index }: { post: any; index: number }) {
 
 export default function MainBoardClient() {
   const { orderedPosts, loading } = useFreeBoard();
-  const latestPosts = useMemo(() => orderedPosts.slice(0, 8), [orderedPosts]);
+  const latestPosts = useMemo(() => orderedPosts.slice(0, 10), [orderedPosts]);
 
   return (
-    <div className="space-y-8">
-      {/* Hero Highlight */}
-      <section className="glass relative overflow-hidden rounded-[2rem] p-8 sm:p-12">
-        <div className="absolute -right-20 -top-20 h-64 w-64 rounded-full bg-sky-500/10 blur-[100px]" />
-        <div className="absolute -left-20 -bottom-20 h-64 w-64 rounded-full bg-indigo-500/10 blur-[100px]" />
-
-        <div className="relative z-10 max-w-2xl">
-          <span className="inline-block rounded-full bg-sky-500/10 px-4 py-1.5 text-[10px] font-black uppercase tracking-[0.2em] text-sky-400">
-            Official Community
-          </span>
-          <h2 className="mt-4 text-4xl sm:text-5xl font-black tracking-tighter text-white">
-            CHJHS <span className="text-sky-500">Square</span>
-          </h2>
-          <p className="mt-6 text-base sm:text-lg leading-relaxed text-slate-400 font-medium">
-            청주고 학생들을 위한 가장 자유로운 공간.<br className="hidden sm:block" />
-            익명으로 나누는 우리들의 진짜 이야기, 지금 시작해보세요.
-          </p>
-          <div className="mt-8 flex flex-wrap gap-4">
-            <Link href="/community/free/new" className="btn-primary py-3 px-8 text-sm">
-              글쓰기
-            </Link>
-            <Link href="/community/free/all" className="btn-secondary py-3 px-8 text-sm">
-              전체글 보기
-            </Link>
-          </div>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+      {/* Hero Banner */}
+      <div style={{
+        background: 'linear-gradient(135deg, rgba(56,189,248,0.2) 0%, rgba(56,189,248,0.05) 100%)',
+        border: '1px solid rgba(56,189,248,0.2)',
+        borderRadius: 12,
+        padding: '1.5rem',
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+          <span style={{ fontSize: '0.65rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--brand-light)', background: 'var(--brand-dim)', padding: '0.2rem 0.6rem', borderRadius: 99 }}>청주고등학교</span>
         </div>
-      </section>
+        <h2 style={{ fontSize: '1.75rem', fontWeight: 900, color: 'var(--text-primary)', lineHeight: 1.2 }}>
+          CJHS <span style={{ color: 'var(--brand-light)' }}>Square</span>
+        </h2>
+        <p style={{ fontSize: '0.875rem', color: 'var(--text-secondary)', marginTop: '0.5rem', lineHeight: 1.6 }}>
+          우리들의 이야기, 자유롭게 나눠요.
+        </p>
+        <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1rem' }}>
+          <Link href="/community/free/new" className="btn-primary" style={{ fontSize: '0.8rem', padding: '0.45rem 1rem' }}>
+            글쓰기
+          </Link>
+          <Link href="/community/free/all" className="btn-secondary" style={{ fontSize: '0.8rem', padding: '0.45rem 1rem' }}>
+            전체글 보기
+          </Link>
+        </div>
+      </div>
 
       {/* Main Grid */}
-      <div className="grid grid-cols-1 gap-8 xl:grid-cols-2">
-        {/* Latest Posts */}
-        <section className="glass flex flex-col rounded-[2rem] p-8">
-          <div className="mb-8 flex items-center justify-between">
-            <h3 className="text-xl font-bold text-white flex items-center gap-2">
-              <span className="text-2xl">🗞️</span> 최신 소식
-            </h3>
-            <Link href="/community/free/all" className="text-xs font-bold text-sky-400 hover:text-sky-300 uppercase tracking-widest">
-              View All →
-            </Link>
-          </div>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1.25rem' }}>
 
-          <div className="flex-1 space-y-3">
+        {/* Timetable */}
+        <TimetableWidget />
+
+        {/* Latest Posts */}
+        <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 10, overflow: 'hidden' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.65rem 1rem', borderBottom: '1px solid var(--border-subtle)' }}>
+            <span style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--text-primary)' }}>최신글</span>
+            <Link href="/community/free/all" style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--brand-light)' }}>전체보기 →</Link>
+          </div>
+          <div>
             {loading ? (
               Array.from({ length: 5 }).map((_, i) => (
-                <div key={i} className="h-16 animate-pulse rounded-xl bg-white/5" />
+                <div key={i} style={{ height: 52, background: 'var(--bg-elevated)', margin: '0.5rem', borderRadius: 6, animation: 'pulse 1.5s infinite' }} />
               ))
             ) : latestPosts.length === 0 ? (
-              <div className="flex h-full flex-col items-center justify-center py-20 text-slate-600">
-                <span className="text-4xl">📭</span>
-                <p className="mt-4 text-sm font-medium">첫 번째 소식을 남겨주세요.</p>
+              <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                아직 게시글이 없습니다. 첫 글을 남겨보세요!
               </div>
             ) : (
               latestPosts.map((p, i) => <PostRow key={p.id} post={p} index={i} />)
             )}
           </div>
-        </section>
+        </div>
 
-        {/* Timetable & Others */}
-        <section className="space-y-8">
-          <TimetableWidget />
-
-          {/* Meal Card */}
-          <div className="glass overflow-hidden rounded-[2rem] p-8">
-            <div className="mb-6 flex items-center gap-3">
-              <span className="text-2xl">🍱</span>
-              <h3 className="text-sm font-bold text-white uppercase tracking-widest">Today's Meal</h3>
-            </div>
-            <div className="rounded-2xl bg-white/[0.03] p-8 text-center">
-              <div className="text-4xl mb-4">🍗</div>
-              <p className="text-sm font-medium text-slate-500 italic">
-                오늘의 급식 정보를 가져오고 있습니다...
-              </p>
-            </div>
+        {/* Meal placeholder */}
+        <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 10, padding: '1rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.75rem' }}>
+            <span style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--text-primary)' }}>오늘의 급식</span>
+            <Link href="/community/free/meal" style={{ marginLeft: 'auto', fontSize: '0.7rem', fontWeight: 700, color: 'var(--brand-light)' }}>자세히 →</Link>
           </div>
-        </section>
+          <div style={{ textAlign: 'center', padding: '1.5rem', color: 'var(--text-muted)', fontSize: '0.8rem', borderRadius: 8, background: 'var(--bg-elevated)' }}>
+            급식 탭에서 확인하세요
+          </div>
+        </div>
       </div>
     </div>
   );

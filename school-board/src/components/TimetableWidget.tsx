@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 type TT = {
   ok: boolean;
+  hasData?: boolean;
   error?: string;
   grade?: string;
   classNm?: string;
@@ -84,6 +85,8 @@ export default function TimetableWidget() {
   const busy = loading || !initDone;
   const days = data?.ok ? data.days ?? [] : [];
   const grid = data?.ok ? data.grid ?? [] : [];
+  const hasData = data?.ok ? (data.hasData ?? false) : false;
+  const noData = data?.ok && !data.hasData && !busy;
 
   return (
     <section className="glass overflow-hidden rounded-2xl w-full">
@@ -91,8 +94,7 @@ export default function TimetableWidget() {
       <div className="bg-white/5 px-4 py-4 sm:px-6">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2">
-            <span className="text-xl">📅</span>
-            <h3 className="text-sm font-bold text-white uppercase tracking-widest">TimeTable</h3>
+            <h3 className="text-sm font-bold text-white uppercase tracking-widest">CJHS TimeTable</h3>
           </div>
 
           <div className="flex items-center gap-1.5">
@@ -123,71 +125,87 @@ export default function TimetableWidget() {
             disabled={busy}
             className="btn-ghost py-1 px-3 text-[11px]"
           >
-            ← 이전
+            ← 이전주
           </button>
-          <div className="text-[11px] font-bold text-sky-400">
-            {days.length ? rangeLabel(days) : busy ? "..." : "정보 없음"}
-          </div>
+          <button
+            onClick={() => setWeekOffset(0)}
+            disabled={busy || weekOffset === 0}
+            className="flex flex-col items-center group"
+          >
+            <div className="text-[11px] font-bold text-sky-400 group-hover:text-sky-300">
+              {days.length ? rangeLabel(days) : busy ? "..." : "정보 없음"}
+            </div>
+            {weekOffset !== 0 && (
+              <span className="text-[8px] font-black text-slate-500 uppercase tracking-tighter">오늘로 돌아가기</span>
+            )}
+          </button>
           <button
             onClick={() => setWeekOffset(v => v + 1)}
             disabled={busy}
             className="btn-ghost py-1 px-3 text-[11px]"
           >
-            다음 →
+            다음주 →
           </button>
         </div>
       </div>
 
       {/* Grid */}
-      <div className="p-1 sm:p-2">
-        <div className="overflow-x-auto no-scrollbar">
-          <div className="min-w-[500px] md:min-w-0">
-            {/* Table Header */}
-            <div className="grid grid-cols-[40px_1fr_1fr_1fr_1fr_1fr] gap-1 sm:gap-2 mb-1 sm:mb-2">
-              <div className="flex items-center justify-center rounded-lg bg-white/5 py-2 text-[10px] font-bold text-slate-500 uppercase">
-                교시
-              </div>
-              {Array.from({ length: 5 }, (_, i) => {
-                const h = dayHeader(days[i] ?? "", i);
-                return (
-                  <div key={i} className="flex flex-col items-center justify-center rounded-lg bg-white/5 py-2">
-                    <span className="text-[10px] font-black text-white">{h.name}</span>
-                    <span className="text-[9px] text-slate-500">{h.date}</span>
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* Table Body */}
-            <div className="space-y-1 sm:space-y-2">
-              {Array.from({ length: 7 }, (_, p) => (
-                <div key={p} className="grid grid-cols-[40px_1fr_1fr_1fr_1fr_1fr] gap-1 sm:gap-2">
-                  <div className="flex items-center justify-center rounded-lg bg-sky-500/10 text-[11px] font-black text-sky-400">
-                    {p + 1}
-                  </div>
-                  {Array.from({ length: 5 }, (_, c) => {
-                    const subject = grid?.[p]?.[c] || "공강";
-                    const isBlank = !grid?.[p]?.[c];
-                    return (
-                      <div
-                        key={c}
-                        className={`flex items-center justify-center rounded-lg p-2 text-center transition-all ${isBlank
-                          ? "bg-white/[0.02] text-slate-600"
-                          : "bg-white/5 text-slate-200 hover:bg-white/10 hover:scale-[1.02]"
-                          }`}
-                      >
-                        <span className="truncate text-[11px] font-medium leading-tight">
-                          {subject}
-                        </span>
-                      </div>
-                    );
-                  })}
+      {noData ? (
+        <div className="p-8 text-center">
+          <p className="text-sm font-bold text-slate-400">이번 주 시간표가 없습니다</p>
+          <p className="mt-1 text-[10px] text-slate-600">학교에서 NEIS에 시간표를 아직 등록하지 않았거나,<br />방학 기간일 수 있습니다.</p>
+        </div>
+      ) : (
+        <div className="p-1 sm:p-2">
+          <div className="overflow-x-auto no-scrollbar">
+            <div className="min-w-[500px] md:min-w-0">
+              {/* Table Header */}
+              <div className="grid grid-cols-[40px_1fr_1fr_1fr_1fr_1fr] gap-1 sm:gap-2 mb-1 sm:mb-2">
+                <div className="flex items-center justify-center rounded-lg bg-white/5 py-2 text-[10px] font-bold text-slate-500 uppercase">
+                  교시
                 </div>
-              ))}
+                {Array.from({ length: 5 }, (_, i) => {
+                  const h = dayHeader(days[i] ?? "", i);
+                  return (
+                    <div key={i} className="flex flex-col items-center justify-center rounded-lg bg-white/5 py-2">
+                      <span className="text-[10px] font-black text-white">{h.name}</span>
+                      <span className="text-[9px] text-slate-500">{h.date}</span>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Table Body */}
+              <div className="space-y-1 sm:space-y-2">
+                {Array.from({ length: 7 }, (_, p) => (
+                  <div key={p} className="grid grid-cols-[40px_1fr_1fr_1fr_1fr_1fr] gap-1 sm:gap-2">
+                    <div className="flex items-center justify-center rounded-lg bg-sky-500/10 text-[11px] font-black text-sky-400">
+                      {p + 1}
+                    </div>
+                    {Array.from({ length: 5 }, (_, c) => {
+                      const subject = grid?.[p]?.[c] || "";
+                      const isBlank = !grid?.[p]?.[c];
+                      return (
+                        <div
+                          key={c}
+                          className={`flex items-center justify-center rounded-lg p-2 text-center transition-all ${isBlank
+                            ? "bg-white/[0.02] text-slate-600"
+                            : "bg-white/5 text-slate-200 hover:bg-white/10 hover:scale-[1.02]"
+                            }`}
+                        >
+                          <span className="truncate text-[11px] font-medium leading-tight">
+                            {isBlank ? "·" : subject}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      )}
 
       {!data?.ok && !busy && data?.error && (
         <div className="px-6 py-4 text-center text-[11px] text-rose-400 bg-rose-500/10">

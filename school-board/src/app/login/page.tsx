@@ -8,6 +8,17 @@ function toEmail(username: string) {
   return `${username.trim().toLowerCase()}@school-board.test`;
 }
 
+const FIELD_STYLE = {
+  width: '100%',
+  padding: '0.75rem 1rem',
+  borderRadius: 8,
+  border: '1px solid var(--border-subtle)',
+  background: 'var(--bg-elevated)',
+  color: 'var(--text-primary)',
+  fontSize: '0.9rem',
+  outline: 'none',
+} as const;
+
 export default function LoginPage() {
   const supabase = createClient();
   const [username, setUsername] = useState("");
@@ -17,92 +28,77 @@ export default function LoginPage() {
 
   async function onLogin() {
     setMsg(null);
-
     const u = username.trim().toLowerCase();
-    if (!/^[a-z0-9_]{3,20}$/.test(u)) {
-      return setMsg("아이디는 영문/숫자/_ 만 가능 (3~20자)");
-    }
-    if (password.length < 4) return setMsg("비밀번호는 6글자 이상");
-
+    if (!/^[a-z0-9_]{3,20}$/.test(u)) return setMsg("아이디는 영문/숫자/_ 만 가능 (3~20자)");
+    if (password.length < 4) return setMsg("비밀번호는 4글자 이상");
     setLoading(true);
     try {
-      const { error } = await supabase.auth.signInWithPassword({
-        email: toEmail(u),
-        password,
-      });
-
+      const { error } = await supabase.auth.signInWithPassword({ email: toEmail(u), password });
       if (error) return setMsg("아이디 또는 비밀번호가 올바르지 않습니다.");
-
       const params = new URLSearchParams(location.search);
-      const next = params.get("next") ?? "/community/free";
-      location.href = next;
-    } finally {
-      setLoading(false);
-    }
+      location.href = params.get("next") ?? "/community/free";
+    } finally { setLoading(false); }
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-950 px-4 py-12 relative overflow-hidden">
-      {/* Abstract Background Blobs */}
-      <div className="absolute -top-24 -left-24 h-96 w-96 rounded-full bg-sky-500/10 blur-[120px]" />
-      <div className="absolute -bottom-24 -right-24 h-96 w-96 rounded-full bg-indigo-500/10 blur-[120px]" />
+    <div style={{ minHeight: '100dvh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-base)', padding: '2rem 1rem' }}>
+      <div style={{ width: '100%', maxWidth: 380 }}>
 
-      <main className="glass w-full max-w-[440px] rounded-[2.5rem] p-8 sm:p-12 relative z-10">
-        <div className="mb-10 text-center">
-          <div className="inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-sky-500 text-3xl shadow-lg shadow-sky-500/20 mb-6">
-            🟦
-          </div>
-          <h1 className="text-3xl font-black tracking-tight text-white mb-2">Welcome Back</h1>
-          <p className="text-sm font-medium text-slate-500 uppercase tracking-widest">Square Community</p>
+        {/* Logo */}
+        <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
+          <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 44, height: 44, background: 'var(--brand)', borderRadius: 12, fontSize: '1rem', fontWeight: 900, color: 'white', marginBottom: '0.75rem' }}>SQ</div>
+          <h1 style={{ fontSize: '1.4rem', fontWeight: 900, color: 'var(--text-primary)', letterSpacing: '-0.03em' }}>Square 로그인</h1>
+          <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>청주고등학교 커뮤니티</p>
         </div>
 
-        <div className="grid gap-4">
-          <div className="space-y-1">
-            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Username</label>
+        {/* Form card */}
+        <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 12, padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          <div>
+            <label style={{ fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted)', display: 'block', marginBottom: '0.4rem' }}>아이디</label>
             <input
-              className="w-full rounded-2xl bg-white/[0.03] border border-white/5 p-4 text-white placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-sky-500/40 transition-all"
+              style={FIELD_STYLE}
               placeholder="아이디를 입력하세요"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && onLogin()}
+              autoComplete="username"
             />
           </div>
-
-          <div className="space-y-1">
-            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Password</label>
+          <div>
+            <label style={{ fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted)', display: 'block', marginBottom: '0.4rem' }}>비밀번호</label>
             <input
-              className="w-full rounded-2xl bg-white/[0.03] border border-white/5 p-4 text-white placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-sky-500/40 transition-all"
-              placeholder="••••••••"
+              style={FIELD_STYLE}
+              placeholder="비밀번호"
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && onLogin()}
+              autoComplete="current-password"
             />
           </div>
 
-          <button
-            className="btn-primary w-full py-4 text-sm mt-4"
-            onClick={onLogin}
-            disabled={loading}
-          >
-            {loading ? "AUTHENTICATING..." : "LOG IN"}
-          </button>
-
           {msg && (
-            <div className="mt-2 text-center text-xs font-bold text-rose-400 animate-pulse">
+            <div style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--accent-red)', background: 'rgba(248,113,113,0.08)', border: '1px solid rgba(248,113,113,0.15)', borderRadius: 8, padding: '0.6rem 0.8rem' }}>
               {msg}
             </div>
           )}
 
-          <div className="mt-8 flex items-center justify-center gap-6">
-            <Link href="/signup" className="text-xs font-black text-sky-400 hover:text-sky-300 uppercase tracking-widest transition-colors">
-              Create Account
-            </Link>
-            <div className="h-4 w-px bg-white/10" />
-            <Link href="/community/free" className="text-xs font-black text-slate-500 hover:text-slate-400 uppercase tracking-widest transition-colors">
-              Back to Home
-            </Link>
-          </div>
+          <button
+            className="btn-primary"
+            style={{ width: '100%', justifyContent: 'center', padding: '0.8rem', fontSize: '0.9rem', marginTop: '0.25rem' }}
+            onClick={onLogin}
+            disabled={loading}
+          >
+            {loading ? "로그인 중..." : "로그인"}
+          </button>
         </div>
-      </main>
+
+        {/* Links */}
+        <div style={{ textAlign: 'center', marginTop: '1.25rem', display: 'flex', justifyContent: 'center', gap: '1.5rem' }}>
+          <Link href="/signup" style={{ fontSize: '0.78rem', color: 'var(--brand-light)', fontWeight: 600 }}>회원가입</Link>
+          <Link href="/community/free" style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>홈으로</Link>
+        </div>
+      </div>
     </div>
   );
 }

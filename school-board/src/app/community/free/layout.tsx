@@ -57,12 +57,16 @@ function TabLink({ href, children }: { href: string; children: ReactNode }) {
   return (
     <Link
       href={href}
-      className={
-        "transition-standard relative flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-bold " +
-        (active
-          ? "bg-sky-500/10 text-sky-400 after:absolute after:bottom-[-2px] after:left-2 after:right-2 after:h-[2px] after:bg-sky-500 after:content-['']"
-          : "text-slate-400 hover:bg-white/5 hover:text-slate-200")
-      }
+      style={{
+        padding: '0.55rem 0.85rem',
+        fontSize: '0.825rem',
+        fontWeight: active ? 700 : 500,
+        color: active ? 'var(--brand-light)' : 'var(--text-secondary)',
+        borderBottom: active ? '2px solid var(--brand)' : '2px solid transparent',
+        transition: 'all 0.15s ease',
+        whiteSpace: 'nowrap',
+        marginBottom: '-1px',
+      }}
     >
       {children}
     </Link>
@@ -71,9 +75,9 @@ function TabLink({ href, children }: { href: string; children: ReactNode }) {
 
 function StatCard({ label, value }: { label: string; value: number | null }) {
   return (
-    <div className="glass flex-1 rounded-xl p-3 text-center">
-      <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{label}</div>
-      <div className="mt-1 text-lg font-black text-white">{value === null ? "-" : value.toLocaleString()}</div>
+    <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: 8, padding: '0.6rem 0.75rem', flex: 1, textAlign: 'center' }}>
+      <div style={{ fontSize: '0.6rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-muted)' }}>{label}</div>
+      <div style={{ fontSize: '1.1rem', fontWeight: 900, color: 'var(--text-primary)', marginTop: '0.15rem' }}>{value === null ? '-' : value.toLocaleString()}</div>
     </div>
   );
 }
@@ -230,170 +234,158 @@ export default function FreeLayout({ children }: { children: ReactNode }) {
 
   return (
     <FreeCtx.Provider value={ctxValue}>
-      <header className="sticky top-0 z-50 glass border-b-0">
+      {/* ── Header ── */}
+      <header style={{ background: 'var(--bg-surface)', borderBottom: '1px solid var(--border-subtle)' }} className="sticky top-0 z-50">
         <div className="mx-auto max-w-6xl px-4 sm:px-6">
-          <div className="flex h-16 items-center justify-between gap-4">
+          <div className="flex h-14 items-center justify-between gap-4">
+
             {/* Logo */}
-            <Link href="/community/free" className="group flex items-center gap-2">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-sky-500 font-black text-white shadow-lg shadow-sky-500/30 transition-transform group-hover:scale-110">
+            <Link href="/community/free" className="flex items-center gap-2.5 shrink-0 group">
+              <div style={{ background: 'var(--brand)', borderRadius: 8 }} className="flex h-8 w-8 items-center justify-center text-[11px] font-black text-white tracking-tight group-hover:opacity-90 transition-opacity">
                 SQ
               </div>
-              <div className="hidden flex-col sm:flex">
-                <span className="text-xl font-black tracking-tight text-white">Square</span>
-                <span className="text-[10px] font-bold text-sky-400 uppercase tracking-widest">CheongJu High</span>
+              <div className="hidden sm:flex flex-col leading-none">
+                <span className="text-[15px] font-black text-white tracking-tight">Square</span>
+                <span style={{ color: 'var(--text-muted)', fontSize: '0.6rem', letterSpacing: '0.08em' }} className="uppercase font-bold">청주고등학교</span>
               </div>
             </Link>
 
-            {/* Desktop Search */}
-            <div className="hidden flex-1 justify-center md:flex">
-              <form className="relative w-full max-w-sm" onSubmit={(e) => e.preventDefault()}>
+            {/* Search */}
+            <div className="hidden md:flex flex-1 justify-center px-6">
+              <form className="relative w-full max-w-xs" onSubmit={(e) => e.preventDefault()}>
                 <input
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
-                  placeholder="제목으로 게시글 검색..."
-                  className="w-full rounded-full border border-white/5 bg-white/5 px-6 py-2 text-sm text-slate-200 placeholder:text-slate-500 outline-none focus:bg-white/10 focus:ring-2 focus:ring-sky-500/30"
+                  placeholder="게시글 검색..."
+                  className="w-full px-4 py-1.5 text-sm rounded-lg"
+                  style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', color: 'var(--text-primary)', outline: 'none' }}
                 />
-                <button type="submit" className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-sky-400">
-                  🔍
-                </button>
+                <span className="absolute right-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>⌕</span>
               </form>
             </div>
 
-            {/* User Controls */}
-            <div className="flex items-center gap-3" data-noti-root="1">
-              {/* Notification & DM Icons */}
-              <div className="flex items-center gap-1">
-                {me.userId && (
-                  <>
-                    <Link href="/community/free/messages" className="btn-ghost relative px-2 hover:bg-white/5" title="쪽지">
-                      <span className="text-xl">✉️</span>
-                      {dmUnread > 0 && <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-rose-500 ring-2 ring-[#0f172a]" />}
-                    </Link>
-                    <button
-                      onClick={async () => {
-                        const next = !notiOpen; setNotiOpen(next);
-                        if (next) { await loadNotifications(); await markNotificationsRead(); }
-                      }}
-                      className="btn-ghost relative px-2 hover:bg-white/5"
-                      title="알림"
-                    >
-                      <span className="text-xl">{unread > 0 ? "🔔" : "🔕"}</span>
-                      {unread > 0 && <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-rose-500 ring-2 ring-[#0f172a]" />}
-                    </button>
-                    {/* 포인트 및 등급 가이드 (클릭 시 토글, 데스크탑은 호버 가능) */}
-                    <div className="hidden items-center gap-2 sm:flex" data-guide-root="1">
-                      <div className="group relative">
-                        <button
-                          onClick={() => setGuideOpen(!guideOpen)}
-                          className="flex items-center gap-2 rounded-full bg-white/5 border border-white/5 pl-2 pr-3 py-1 hover:bg-white/10 transition-colors cursor-pointer"
-                        >
-                          {(() => {
-                            const t = getTier(me.points, me.role);
-                            return (
-                              <>
-                                <span className="text-sm" title={t.name}>{t.icon}</span>
-                                <div className="flex flex-col items-start leading-none">
-                                  <span className={`text-[9px] font-black uppercase tracking-tighter ${t.color}`}>{t.name}</span>
-                                  <span className="text-[11px] font-black text-white">{me.points.toLocaleString()}<span className="ml-0.5 text-[8px] opacity-60">EXP</span></span>
-                                </div>
-                              </>
-                            );
-                          })()}
-                        </button>
+            {/* Right controls */}
+            <div className="flex items-center gap-1" data-noti-root="1">
+              {me.userId && (
+                <>
+                  <Link href="/community/free/messages" className="btn-ghost relative" title="쪽지" style={{ padding: '0.35rem 0.55rem', fontSize: '1rem' }}>
+                    ✉️
+                    {dmUnread > 0 && <span className="absolute right-0.5 top-0.5 h-1.5 w-1.5 rounded-full" style={{ background: 'var(--accent-red)' }} />}
+                  </Link>
+                  <button
+                    onClick={async () => {
+                      const next = !notiOpen; setNotiOpen(next);
+                      if (next) { await loadNotifications(); await markNotificationsRead(); }
+                    }}
+                    className="btn-ghost relative"
+                    style={{ padding: '0.35rem 0.55rem', fontSize: '1rem' }}
+                    title="알림"
+                  >
+                    {unread > 0 ? '🔔' : '🔕'}
+                    {unread > 0 && <span className="absolute right-0.5 top-0.5 h-1.5 w-1.5 rounded-full" style={{ background: 'var(--accent-red)' }} />}
+                  </button>
 
-                        {/* 툴팁: 포인트 및 등급 가이드 */}
-                        <div className={`
-                          absolute right-0 top-full mt-2 w-64 rounded-2xl glass border border-white/10 p-5 shadow-2xl z-[100] transition-all
-                          ${guideOpen ? 'opacity-100 visible translate-y-0' : 'opacity-0 invisible translate-y-2 group-hover:opacity-100 group-hover:visible group-hover:translate-y-0'}
-                        `}>
-                          <h4 className="text-xs font-black text-white mb-3 flex items-center gap-2">
-                            <span className="text-sky-400">📊</span> 성취 가이드
-                          </h4>
-
-                          <div className="space-y-4">
-                            <div>
-                              <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">획득 방법</div>
-                              <ul className="space-y-1.5 text-[10px] text-slate-300">
-                                <li className="flex justify-between"><span>게시글 작성</span> <span className="font-bold text-sky-400">+10 EXP</span></li>
-                                <li className="flex justify-between"><span>댓글 작성</span> <span className="font-bold text-sky-400">+5 EXP</span></li>
-                              </ul>
-                            </div>
-
-                            <div>
-                              <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">등급 기준</div>
-                              <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 text-[10px]">
-                                {TIERS.map(t => (
-                                  <div key={t.name} className="flex items-center justify-between group/t">
-                                    <span className="text-slate-400">{t.icon} {t.name}</span>
-                                    <span className="font-bold text-slate-200">{t.minPoints}</span>
-                                  </div>
-                                ))}
+                  {/* EXP Pill */}
+                  <div className="hidden sm:block" data-guide-root="1">
+                    <div className="relative group">
+                      <button
+                        onClick={() => setGuideOpen(!guideOpen)}
+                        className="flex items-center gap-1.5 cursor-pointer transition-opacity hover:opacity-80"
+                        style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-mild)', borderRadius: 8, padding: '0.3rem 0.65rem' }}
+                      >
+                        {(() => {
+                          const t = getTier(me.points, me.role);
+                          return (
+                            <>
+                              <span className="text-sm">{t.icon}</span>
+                              <div className="flex flex-col items-start leading-none gap-0.5">
+                                <span className={`text-[8px] font-black uppercase tracking-wider ${t.color}`}>{t.name}</span>
+                                <span className="text-[11px] font-bold" style={{ color: 'var(--text-primary)' }}>{me.points.toLocaleString()}<span className="ml-0.5 text-[8px]" style={{ color: 'var(--text-muted)' }}>EXP</span></span>
                               </div>
-                            </div>
-                          </div>
+                            </>
+                          );
+                        })()}
+                      </button>
 
-                          <div className="mt-4 border-t border-white/5 pt-3">
-                            <p className="text-[9px] text-slate-500 leading-tight">활동을 통해 학교에서 자신의 가치를 증명하세요!</p>
+                      {/* EXP Guide Dropdown */}
+                      <div className={`absolute right-0 top-full mt-2 w-60 z-[100] transition-all ${guideOpen ? 'opacity-100 visible translate-y-0' : 'opacity-0 invisible translate-y-1 group-hover:opacity-100 group-hover:visible group-hover:translate-y-0'
+                        }`} style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-mild)', borderRadius: 10, boxShadow: '0 8px 32px rgba(0,0,0,0.4)', padding: '1rem' }}>
+                        <div className="text-xs font-black mb-3" style={{ color: 'var(--text-primary)' }}>📊 활동 가이드</div>
+                        <div className="space-y-2 mb-3">
+                          <div className="flex justify-between text-xs" style={{ color: 'var(--text-secondary)' }}>
+                            <span>게시글 작성</span><span className="font-bold" style={{ color: 'var(--brand-light)' }}>+10 EXP</span>
+                          </div>
+                          <div className="flex justify-between text-xs" style={{ color: 'var(--text-secondary)' }}>
+                            <span>댓글 작성</span><span className="font-bold" style={{ color: 'var(--brand-light)' }}>+5 EXP</span>
+                          </div>
+                        </div>
+                        <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: '0.6rem' }}>
+                          <div className="text-[9px] font-bold mb-2 uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>등급 기준</div>
+                          <div className="grid grid-cols-2 gap-1">
+                            {TIERS.map(t => (
+                              <div key={t.name} className="flex items-center gap-1">
+                                <span className="text-xs">{t.icon}</span>
+                                <span className={`text-[10px] font-semibold ${t.color}`}>{t.name}</span>
+                                <span className="text-[9px] ml-auto" style={{ color: 'var(--text-muted)' }}>{t.minPoints}</span>
+                              </div>
+                            ))}
                           </div>
                         </div>
                       </div>
                     </div>
+                  </div>
 
-                    <Link href="/community/free/me" className="btn-ghost px-2" title="내 정보">
-                      👤
-                    </Link>
-                  </>
-                )}
-              </div>
+                  <Link href="/community/free/me" className="btn-ghost" title="내 정보" style={{ padding: '0.35rem 0.55rem', fontSize: '1rem' }}>👤</Link>
+                </>
+              )}
 
-              {/* Login/Signup or Logout */}
               {!me.userId ? (
                 <div className="flex items-center gap-2">
-                  <Link href="/login" className="btn-ghost text-xs">로그인</Link>
-                  <Link href="/signup" className="btn-primary py-1.5 px-3 text-xs">가입하기</Link>
+                  <Link href="/login" className="btn-ghost" style={{ fontSize: '0.8rem' }}>로그인</Link>
+                  <Link href="/signup" className="btn-primary" style={{ fontSize: '0.8rem', padding: '0.4rem 0.8rem' }}>가입하기</Link>
                 </div>
               ) : (
-                <div className="flex items-center gap-2">
-                  {me.role === "admin" && (
-                    <Link href="/community/free/reports" className="btn-secondary py-1.5 px-3 text-xs relative border-rose-500/30 text-rose-400">
+                <div className="flex items-center gap-1.5">
+                  {me.role === 'admin' && (
+                    <Link href="/community/free/reports" className="relative" style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--accent-red)', background: 'rgba(248,113,113,0.1)', border: '1px solid rgba(248,113,113,0.2)', borderRadius: 6, padding: '0.3rem 0.65rem' }}>
                       신고함
-                      {reportUnread > 0 && <span className="absolute -right-1 -top-1 h-2 w-2 rounded-full bg-rose-500" />}
+                      {reportUnread > 0 && <span className="absolute -right-1 -top-1 h-2 w-2 rounded-full" style={{ background: 'var(--accent-red)' }} />}
                     </Link>
                   )}
-                  <button onClick={onLogout} className="btn-secondary py-1.5 px-3 text-xs">나가기</button>
+                  <button onClick={onLogout} className="btn-ghost" style={{ fontSize: '0.8rem', padding: '0.4rem 0.75rem' }}>로그아웃</button>
                 </div>
               )}
             </div>
           </div>
 
           {/* Nav Tabs */}
-          <nav className="flex items-center gap-1 border-t border-white/5 py-2 overflow-x-auto no-scrollbar">
+          <nav className="flex items-center overflow-x-auto no-scrollbar" style={{ gap: 0, borderTop: '1px solid var(--border-subtle)' }}>
             <TabLink href="/community/free">메인</TabLink>
             <TabLink href="/community/free/all">전체글</TabLink>
             <TabLink href="/community/free/jobs">구인구직</TabLink>
-            <TabLink href="/community/free/meal">급식</TabLink>
+            <TabLink href="/community/free/meal">급식표</TabLink>
             <TabLink href="/community/free/best">베스트</TabLink>
           </nav>
         </div>
 
-        {/* Notifications Popover */}
+        {/* Notification popover */}
         {notiOpen && (
-          <div className="absolute right-4 top-16 w-80 overflow-hidden rounded-2xl glass shadow-2xl">
-            <div className="bg-white/5 px-4 py-3 text-xs font-bold text-slate-400 border-b border-white/5 uppercase">알림 목록</div>
-            <div className="max-h-72 overflow-y-auto">
+          <div className="absolute right-4 top-14 w-72 z-50 overflow-hidden" style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-mild)', borderRadius: 10, boxShadow: '0 8px 32px rgba(0,0,0,0.4)' }}>
+            <div className="px-4 py-2.5" style={{ borderBottom: '1px solid var(--border-subtle)', fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-muted)' }}>알림</div>
+            <div className="max-h-64 overflow-y-auto">
               {notis.length === 0 ? (
-                <div className="p-8 text-center text-xs text-slate-600">새로운 알림이 없습니다.</div>
+                <div className="p-6 text-center text-xs" style={{ color: 'var(--text-muted)' }}>새 알림이 없습니다.</div>
               ) : (
-                <div className="divide-y divide-white/5">
+                <div>
                   {notis.map(n => (
                     <Link
                       key={n.id}
-                      href={n.post_id ? `/community/free/${n.post_id}` : "/community/free"}
-                      className="block p-4 hover:bg-white/5"
+                      href={n.post_id ? `/community/free/${n.post_id}` : '/community/free'}
+                      className="block px-4 py-3 transition-colors hover:bg-white/5"
                       onClick={() => setNotiOpen(false)}
                     >
-                      <div className="text-sm text-slate-200">{n.type} 관련 새로운 소식</div>
-                      <div className="mt-1 text-[10px] text-slate-500">{fmtNotiTime(n.created_at)}</div>
+                      <div className="text-sm" style={{ color: 'var(--text-primary)' }}>{n.type} 관련 새로운 소식</div>
+                      <div className="text-[10px] mt-0.5" style={{ color: 'var(--text-muted)' }}>{fmtNotiTime(n.created_at)}</div>
                     </Link>
                   ))}
                 </div>
@@ -403,40 +395,41 @@ export default function FreeLayout({ children }: { children: ReactNode }) {
         )}
       </header>
 
-      <main className="mx-auto mt-8 max-w-6xl px-4 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-1 gap-8 lg:grid-cols-12">
-          {/* Main Content */}
+      {/* ── Main Content ── */}
+      <main className="mx-auto max-w-6xl px-4 sm:px-6" style={{ paddingTop: '1.5rem', paddingBottom: '3rem' }}>
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+          {/* Content */}
           <section className="lg:col-span-8 xl:col-span-9">
             {children}
           </section>
 
           {/* Sidebar */}
-          <aside className="hidden space-y-8 lg:mt-0 lg:block lg:col-span-4 xl:col-span-3">
-            <div className="sticky top-28 space-y-8">
-              {/* Top 3 Posts */}
-              <div className="glass overflow-hidden rounded-2xl">
-                <div className="bg-white/5 px-6 py-4 border-b border-white/5">
-                  <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                    <span className="text-lg">🔥</span> 오늘의 핫이슈
-                  </h3>
+          <aside className="hidden lg:block lg:col-span-4 xl:col-span-3">
+            <div className="sticky top-20 space-y-4">
+
+              {/* Hot Issue */}
+              <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 10, overflow: 'hidden' }}>
+                <div style={{ padding: '0.65rem 1rem', borderBottom: '1px solid var(--border-subtle)', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                  <span style={{ fontSize: '0.75rem' }}>🔥</span>
+                  <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--text-primary)' }}>핫이슈</span>
                 </div>
-                <div className="p-4 space-y-3">
+                <div style={{ padding: '0.5rem' }}>
                   {top3.map((p, i) => {
                     const t = getTier(p.author?.points || 0, p.author?.role || undefined);
                     return (
                       <Link
                         key={p.id}
                         href={`/community/free/${p.id}`}
-                        className="glass-hover flex flex-col rounded-xl bg-white/5 p-3"
+                        className="glass-hover"
+                        style={{ display: 'flex', alignItems: 'flex-start', gap: '0.6rem', padding: '0.6rem 0.5rem', borderRadius: 8 }}
                       >
-                        <div className="flex items-center justify-between">
-                          <span className="text-[10px] font-bold text-sky-400 uppercase tracking-widest">Top {i + 1}</span>
-                          <span className="text-[10px]" title={t.name}>{t.icon}</span>
-                        </div>
-                        <span className="mt-1 truncate text-sm font-medium text-slate-200">{p.title}</span>
-                        <div className="mt-2 flex items-center justify-between text-[10px]">
-                          <span className={`font-bold ${t.color}`}>{p.author?.username || "익명"}</span>
-                          <span className="text-slate-500">조회 {p.view_count}회</span>
+                        <span style={{ fontSize: '0.7rem', fontWeight: 900, color: 'var(--brand)', minWidth: 16, marginTop: 2 }}>0{i + 1}</span>
+                        <div style={{ minWidth: 0, flex: 1 }}>
+                          <div style={{ fontSize: '0.8rem', fontWeight: 500, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.title}</div>
+                          <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginTop: 2 }}>
+                            <span className={t.color}>{p.author?.username || '익명'}</span>
+                            <span style={{ marginLeft: '0.4rem' }}>👀 {p.view_count}</span>
+                          </div>
                         </div>
                       </Link>
                     );
@@ -445,12 +438,12 @@ export default function FreeLayout({ children }: { children: ReactNode }) {
               </div>
 
               {/* Stats */}
-              <div className="flex gap-4">
-                <StatCard label="Total User" value={members} />
-                <StatCard label="Total Visit" value={visitors} />
+              <div className="flex gap-3">
+                <StatCard label="멤버" value={members} />
+                <StatCard label="방문" value={visitors} />
               </div>
 
-              {/* Chat Box */}
+              {/* Chat */}
               <AnonymousChatBox />
             </div>
           </aside>

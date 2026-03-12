@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
+import { getTier } from "@/lib/tiers";
 
 type Poll = { question?: string; options?: { id: string; text: string }[] };
 
@@ -12,24 +13,8 @@ type Row = {
   view_count: number | null;
   like_count: number | null;
   poll?: Poll | null;
-  author?: { username: string | null; role: string | null };
+  author?: { username: string | null; role: string | null; points?: number };
 };
-
-function fmtCompactDate(iso: string) {
-  const d = new Date(iso);
-  const yy = String(d.getFullYear()).slice(2);
-  const mm = String(d.getMonth() + 1).padStart(2, "0");
-  const dd = String(d.getDate()).padStart(2, "0");
-  return `${yy}/${mm}/${dd}`;
-}
-
-function NoticeBadge() {
-  return (
-    <span className="inline-flex items-center justify-center bg-amber-500/15 px-2 py-1 text-[11px] font-semibold text-amber-800 ring-1 ring-amber-400/40">
-      공지
-    </span>
-  );
-}
 
 export default function BestPostsClient() {
   const [loading, setLoading] = useState(true);
@@ -52,112 +37,94 @@ export default function BestPostsClient() {
 
   useEffect(() => {
     load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const list = useMemo(() => rows, [rows]);
-
   return (
-    <>
-      <div className="mb-3 border border-slate-300 bg-white p-3 text-[12px] text-slate-700">
-        개념글 기준: <span className="font-semibold">좋아요 {likeTh}개 이상</span> 또는{" "}
-        <span className="font-semibold">조회 {viewTh}회 이상</span>
+    <div className="space-y-6">
+      {/* Criteria Highlight */}
+      <div className="glass flex items-center gap-4 rounded-2xl bg-white/[0.03] p-4 text-xs font-bold text-slate-400">
+        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-sky-500/10 text-lg">💡</span>
+        <div>
+          <p className="text-white">베스트 게시글 선정 기준</p>
+          <p className="mt-0.5 opacity-60">
+            좋아요 <span className="text-rose-400">{likeTh}개</span> 이상 또는 조회{" "}
+            <span className="text-sky-400">{viewTh}회</span> 이상
+          </p>
+        </div>
       </div>
 
       {loading ? (
-        <div className="text-slate-600 text-sm">불러오는 중…</div>
-      ) : list.length === 0 ? (
-        <div className="border border-slate-300 bg-white p-4 text-slate-700 text-sm">
-          조건을 만족하는 글이 없습니다.
+        <div className="grid gap-4">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div key={i} className="h-24 animate-pulse rounded-2xl bg-white/5" />
+          ))}
+        </div>
+      ) : rows.length === 0 ? (
+        <div className="glass rounded-[2rem] p-12 text-center">
+          <div className="text-4xl mb-4">🌪️</div>
+          <p className="text-sm font-medium text-slate-500">조건을 만족하는 베스트 게시글이 아직 없습니다.</p>
         </div>
       ) : (
-        <div className="overflow-hidden border border-slate-400 bg-white">
-          {/* 헤더 */}
-          <div className="border-b border-slate-300 bg-slate-50">
-            <div
-              className={[
-                "grid items-center px-3 py-2 text-[11px] font-semibold text-slate-900",
-                // ✅ 폭 고정: 번호 / 제목 / 작성자 / 좋아요 / 조회 / 작성일
-                "grid-cols-[56px_1fr_120px_84px_84px_96px]",
-                "gap-2",
-              ].join(" ")}
-            >
-              <div className="text-center">번호</div>
-              <div>제목</div>
-              <div className="hidden sm:block">작성자</div>
-              <div className="text-right tabular-nums">좋아요</div>
-              <div className="text-right tabular-nums">조회</div>
-              <div className="hidden sm:block text-right">작성일</div>
-            </div>
-          </div>
+        <div className="grid gap-4">
+          {rows.map((p, idx) => {
+            const date = new Date(p.created_at).toLocaleDateString();
+            const hasPoll = !!p.poll && Array.isArray(p.poll.options) && p.poll.options.length >= 2;
 
-          {/* 목록 */}
-          <ul className="divide-y divide-slate-200">
-            {list.map((p, idx) => {
-              const isAdmin = p.author?.role === "admin";
-              const href = `/community/free/${encodeURIComponent(p.id)}`;
-              const date = fmtCompactDate(p.created_at);
-              const hasPoll = !!p.poll && Array.isArray(p.poll.options) && p.poll.options.length >= 2;
+            return (
+              <Link
+                key={p.id}
+                href={`/community/free/${p.id}`}
+                className="glass-hover group flex items-center gap-6 rounded-2xl bg-white/[0.03] p-5 transition-all hover:bg-white/10"
+              >
+                {/* Ranking Index */}
+                <div className="flex h-12 w-12 shrink-0 flex-col items-center justify-center rounded-xl bg-amber-500/10 font-bold text-amber-500 ring-1 ring-amber-500/20">
+                  <span className="text-[10px] opacity-60 leading-none mb-0.5">BEST</span>
+                  <span className="text-xs">{String(idx + 1).padStart(2, '0')}</span>
+                </div>
 
-              return (
-                <li key={p.id} className={isAdmin ? "bg-amber-50" : "hover:bg-slate-50"}>
-                  <div
-                    className={[
-                      "grid items-center px-3 py-2.5 text-[13px] text-slate-900",
-                      "grid-cols-[56px_1fr_120px_84px_84px_96px]",
-                      "gap-2",
-                    ].join(" ")}
-                  >
-                    {/* 번호 */}
-                    <div className="text-center">
-                      {isAdmin ? (
-                        <NoticeBadge />
-                      ) : (
-                        <span className="inline-flex w-[44px] justify-center border border-slate-300 bg-white px-2 py-1 text-[11px] text-slate-800 tabular-nums">
-                          {idx + 1}
-                        </span>
-                      )}
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <h3 className="truncate text-base font-bold text-slate-200 group-hover:text-sky-400 transition-colors">
+                      {p.title}
+                    </h3>
+                    {hasPoll && <span className="text-xs" title="투표 포함">🗳️</span>}
+                  </div>
+
+                  <div className="mt-2 flex items-center gap-4 text-[10px] font-bold uppercase tracking-widest leading-none">
+                    <div className="flex items-center gap-1.5 text-slate-500">
+                      {(() => {
+                        const t = getTier(p.author?.points || 0, p.author?.role || undefined);
+                        return (
+                          <>
+                            <span title={t.name}>{t.icon}</span>
+                            <span className={t.color}>{p.author?.username || "익명"}</span>
+                            {p.author?.role === "admin" && (
+                              <span className="inline-flex items-center rounded-full bg-emerald-400/10 px-1.5 py-0.5 text-[8px] font-black uppercase tracking-widest text-emerald-400 ring-1 ring-inset ring-emerald-400/20">
+                                Admin
+                              </span>
+                            )}
+                          </>
+                        );
+                      })()}
                     </div>
-
-                    {/* 제목 */}
-                    <div className="min-w-0">
-                      <Link
-                        href={href}
-                        className="block truncate font-medium text-slate-900 hover:underline"
-                        title={p.title ?? ""}
-                      >
-                        {p.title ?? "(제목 없음)"}
-                        {hasPoll ? <span className="ml-1">🗳️</span> : null}
-                      </Link>
-                    </div>
-
-                    {/* 작성자 */}
-                    <div className="hidden sm:block min-w-0 truncate text-[12px] text-slate-700">
-                      {p.author?.username ?? "unknown"}
-                      {isAdmin ? <span className="ml-1 text-amber-600 font-semibold">★</span> : null}
-                    </div>
-
-                    {/* 좋아요 */}
-                    <div className="text-right text-[12px] text-slate-700 tabular-nums">
-                      👍 {p.like_count ?? 0}
-                    </div>
-
-                    {/* 조회 */}
-                    <div className="text-right text-[12px] text-slate-700 tabular-nums">
-                      {p.view_count ?? 0}
-                    </div>
-
-                    {/* 작성일 */}
-                    <div className="hidden sm:block text-right text-[12px] text-slate-600 tabular-nums">
-                      {date}
+                    <div className="flex items-center gap-3 text-slate-500">
+                      <span className="flex items-center gap-1">👀 {p.view_count} VIEW</span>
+                      <span className="flex items-center gap-1 text-rose-400">❤️ {p.like_count} LIKE</span>
+                      <span className="opacity-40">{date}</span>
                     </div>
                   </div>
-                </li>
-              );
-            })}
-          </ul>
+                </div>
+
+                <div className="hidden sm:block text-slate-700 group-hover:text-sky-400 transition-colors">
+                  <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </div>
+              </Link>
+            );
+          })}
         </div>
       )}
-    </>
+    </div>
   );
 }

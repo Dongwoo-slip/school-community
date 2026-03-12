@@ -45,7 +45,7 @@ export default function FreeBoardClient() {
       {/* 배너 */}
       <div className="mb-4 border-y-2 border-sky-700 bg-white">
         <div className="border-b border-sky-700 bg-sky-50 px-4 py-2 text-[12px] font-semibold text-sky-900">
-          CheongJu High School Community - Sqaure
+          Seowon High School Community - Square
         </div>
 
         <div className="px-5 py-4 sm:px-6">

@@ -1,29 +1,23 @@
-//import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import VisitTracker from "@/components/VisitTracker";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
-
 export const metadata = {
-  title: "School Board",
-  description: "학교 커뮤니티",
+  title: "Square | 청주고등학교 커뮤니티",
+  description: "청주고등학교 학생들을 위한 커뮤니티 Square",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="ko">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-dvh`}
-      >
+      <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link
+          href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&family=Inter:wght@400;500;600;700;900&display=swap"
+          rel="stylesheet"
+        />
+      </head>
+      <body className="antialiased min-h-dvh">
         <VisitTracker />
         {children}
       </body>

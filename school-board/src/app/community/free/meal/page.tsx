@@ -40,7 +40,7 @@ export default function MealPage() {
   const [lunch, setLunch] = useState<string[]>([]);
   const [dinner, setDinner] = useState<string[]>([]);
 
-  const title = useMemo(() => `급식 정보`, [ymd]);
+  const title = useMemo(() => `청주고등학교 급식 정보`, [ymd]);
 
   async function load(targetYmd: string) {
     setLoading(true);
@@ -72,10 +72,10 @@ export default function MealPage() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="text-3xl font-black text-white flex items-center gap-3">
-            <span className="text-4xl">🍱</span> {title}
+            {title}
           </h2>
           <p className="mt-1 text-xs font-bold text-sky-400 uppercase tracking-widest">
-            {fmtYMD(ymd)} Daily Menu
+            청주고 {fmtYMD(ymd)} Daily Menu
           </p>
         </div>
 
@@ -88,9 +88,9 @@ export default function MealPage() {
           </button>
           <button
             onClick={() => setYmd(todayYMD())}
-            className="btn-secondary px-6 py-2"
+            className="btn-secondary px-6 py-2 min-w-[120px]"
           >
-            오늘
+            {ymd === todayYMD() ? "오늘" : fmtYMD(ymd)}
           </button>
           <button
             onClick={() => setYmd(addDays(ymd, 1))}
@@ -107,7 +107,7 @@ export default function MealPage() {
         <div className="glass overflow-hidden rounded-[2rem] p-8">
           <div className="mb-6 flex items-center justify-between">
             <h3 className="text-xl font-bold text-white flex items-center gap-3">
-              <span className="text-2xl">🌞</span> 점심
+              점심
             </h3>
             <span className="rounded-full bg-sky-500/10 px-3 py-1 text-[10px] font-black text-sky-400 uppercase tracking-widest">
               Lunch
@@ -142,7 +142,7 @@ export default function MealPage() {
         <div className="glass overflow-hidden rounded-[2rem] p-8">
           <div className="mb-6 flex items-center justify-between">
             <h3 className="text-xl font-bold text-white flex items-center gap-3">
-              <span className="text-2xl">🌙</span> 저녁
+              저녁
             </h3>
             <span className="rounded-full bg-indigo-500/10 px-3 py-1 text-[10px] font-black text-indigo-400 uppercase tracking-widest">
               Dinner

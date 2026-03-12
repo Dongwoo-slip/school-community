@@ -89,6 +89,7 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({
       ok: true,
+      hasData: rows.length > 0,
       grade,
       classNm,
       weekOffset,
