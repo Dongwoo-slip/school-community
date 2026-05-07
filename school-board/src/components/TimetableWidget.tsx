@@ -89,17 +89,18 @@ export default function TimetableWidget() {
   const noData = data?.ok && !data.hasData && !busy;
 
   return (
-    <section className="glass overflow-hidden rounded-2xl w-full">
+    <section className="glass overflow-hidden w-full">
       {/* Header */}
-      <div className="bg-white/5 px-4 py-4 sm:px-6">
+      <div className="timetable-header px-4 py-4 sm:px-6" style={{ background: 'var(--bg-surface)', borderBottom: '1px solid var(--border-subtle)' }}>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2">
-            <h3 className="text-sm font-bold text-white uppercase tracking-widest">CJHS TimeTable</h3>
+            <h3 className="text-sm font-bold uppercase tracking-widest" style={{ color: 'var(--text-primary)' }}>CJHS TimeTable</h3>
           </div>
 
-          <div className="flex items-center gap-1.5">
+          <div className="timetable-controls flex items-center gap-1.5">
             <select
-              className="rounded-lg bg-white/5 border border-white/10 px-2 py-1 text-[11px] font-bold text-slate-200 outline-none focus:ring-2 focus:ring-sky-500/30"
+              className="border px-2 py-1 text-[11px] font-bold outline-none"
+              style={{ background: 'var(--bg-elevated)', borderColor: 'var(--border-subtle)', color: 'var(--text-primary)' }}
               value={grade}
               onChange={(e) => { markTouched(); setGrade(e.target.value); setWeekOffset(0); }}
               disabled={busy}
@@ -107,7 +108,8 @@ export default function TimetableWidget() {
               {[1, 2, 3].map(v => <option key={v} value={v}>{v}학년</option>)}
             </select>
             <select
-              className="rounded-lg bg-white/5 border border-white/10 px-2 py-1 text-[11px] font-bold text-slate-200 outline-none focus:ring-2 focus:ring-sky-500/30"
+              className="border px-2 py-1 text-[11px] font-bold outline-none"
+              style={{ background: 'var(--bg-elevated)', borderColor: 'var(--border-subtle)', color: 'var(--text-primary)' }}
               value={classNm}
               onChange={(e) => { markTouched(); setClassNm(e.target.value); setWeekOffset(0); }}
               disabled={busy}
@@ -119,7 +121,7 @@ export default function TimetableWidget() {
           </div>
         </div>
 
-        <div className="mt-4 flex items-center justify-between gap-2">
+        <div className="timetable-week-nav mt-4 flex items-center justify-between gap-2">
           <button
             onClick={() => setWeekOffset(v => v - 1)}
             disabled={busy}
@@ -132,7 +134,7 @@ export default function TimetableWidget() {
             disabled={busy || weekOffset === 0}
             className="flex flex-col items-center group"
           >
-            <div className="text-[11px] font-bold text-sky-400 group-hover:text-sky-300">
+            <div className="text-[11px] font-bold" style={{ color: 'var(--brand)' }}>
               {days.length ? rangeLabel(days) : busy ? "..." : "정보 없음"}
             </div>
             {weekOffset !== 0 && (
@@ -156,20 +158,20 @@ export default function TimetableWidget() {
           <p className="mt-1 text-[10px] text-slate-600">학교에서 NEIS에 시간표를 아직 등록하지 않았거나,<br />방학 기간일 수 있습니다.</p>
         </div>
       ) : (
-        <div className="p-1 sm:p-2">
+        <div className="timetable-body p-1 sm:p-2">
           <div className="overflow-x-auto no-scrollbar">
-            <div className="min-w-[500px] md:min-w-0">
+            <div className="timetable-grid">
               {/* Table Header */}
-              <div className="grid grid-cols-[40px_1fr_1fr_1fr_1fr_1fr] gap-1 sm:gap-2 mb-1 sm:mb-2">
-                <div className="flex items-center justify-center rounded-lg bg-white/5 py-2 text-[10px] font-bold text-slate-500 uppercase">
+              <div className="timetable-row gap-1 sm:gap-2 mb-1 sm:mb-2">
+                <div className="timetable-cell timetable-day flex items-center justify-center py-2 text-[10px] font-bold uppercase" style={{ background: 'var(--bg-elevated)', color: 'var(--text-muted)' }}>
                   교시
                 </div>
                 {Array.from({ length: 5 }, (_, i) => {
                   const h = dayHeader(days[i] ?? "", i);
                   return (
-                    <div key={i} className="flex flex-col items-center justify-center rounded-lg bg-white/5 py-2">
-                      <span className="text-[10px] font-black text-white">{h.name}</span>
-                      <span className="text-[9px] text-slate-500">{h.date}</span>
+                    <div key={i} className="timetable-cell timetable-day flex flex-col items-center justify-center py-2" style={{ background: 'var(--bg-elevated)' }}>
+                      <span className="timetable-day-name text-[10px] font-black" style={{ color: 'var(--text-primary)' }}>{h.name}</span>
+                      <span className="timetable-day-date text-[9px]" style={{ color: 'var(--text-muted)' }}>{h.date}</span>
                     </div>
                   );
                 })}
@@ -178,8 +180,8 @@ export default function TimetableWidget() {
               {/* Table Body */}
               <div className="space-y-1 sm:space-y-2">
                 {Array.from({ length: 7 }, (_, p) => (
-                  <div key={p} className="grid grid-cols-[40px_1fr_1fr_1fr_1fr_1fr] gap-1 sm:gap-2">
-                    <div className="flex items-center justify-center rounded-lg bg-sky-500/10 text-[11px] font-black text-sky-400">
+                  <div key={p} className="timetable-row gap-1 sm:gap-2">
+                    <div className="timetable-cell timetable-period flex items-center justify-center text-[11px] font-black" style={{ background: 'var(--brand-dim)', color: 'var(--brand)' }}>
                       {p + 1}
                     </div>
                     {Array.from({ length: 5 }, (_, c) => {
@@ -188,12 +190,14 @@ export default function TimetableWidget() {
                       return (
                         <div
                           key={c}
-                          className={`flex items-center justify-center rounded-lg p-2 text-center transition-all ${isBlank
-                            ? "bg-white/[0.02] text-slate-600"
-                            : "bg-white/5 text-slate-200 hover:bg-white/10 hover:scale-[1.02]"
-                            }`}
+                          className="timetable-cell flex items-center justify-center p-2 text-center transition-all"
+                          style={{
+                            background: isBlank ? '#f8fafc' : 'var(--bg-elevated)',
+                            color: isBlank ? 'var(--text-faint)' : 'var(--text-primary)',
+                            border: '1px solid var(--border-subtle)'
+                          }}
                         >
-                          <span className="truncate text-[11px] font-medium leading-tight">
+                          <span className="timetable-subject text-[11px] font-medium leading-tight">
                             {isBlank ? "·" : subject}
                           </span>
                         </div>
@@ -208,12 +212,12 @@ export default function TimetableWidget() {
       )}
 
       {!data?.ok && !busy && data?.error && (
-        <div className="px-6 py-4 text-center text-[11px] text-rose-400 bg-rose-500/10">
+        <div className="px-6 py-4 text-center text-[11px]" style={{ color: 'var(--accent-red)', background: 'rgba(200,45,63,0.08)' }}>
           시간표 정보를 불러올 수 없습니다.
         </div>
       )}
 
-      <div className="bg-white/5 px-6 py-2 text-[10px] text-slate-600">
+      <div className="px-6 py-2 text-[10px]" style={{ background: 'var(--bg-elevated)', color: 'var(--text-secondary)', borderTop: '1px solid var(--border-subtle)' }}>
         * 학년/반 설정을 통해 다른 학급의 시간표도 확인할 수 있습니다.
       </div>
     </section>

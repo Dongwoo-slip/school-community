@@ -57,12 +57,14 @@ function TabLink({ href, children }: { href: string; children: ReactNode }) {
   return (
     <Link
       href={href}
+      className="community-tab-link"
       style={{
         padding: '0.55rem 0.85rem',
         fontSize: '0.825rem',
         fontWeight: active ? 700 : 500,
         color: active ? 'var(--brand-light)' : 'var(--text-secondary)',
-        borderBottom: active ? '2px solid var(--brand)' : '2px solid transparent',
+        borderBottom: active ? '3px solid var(--brand)' : '3px solid transparent',
+        background: active ? 'var(--brand-dim)' : 'transparent',
         transition: 'all 0.15s ease',
         whiteSpace: 'nowrap',
         marginBottom: '-1px',
@@ -75,7 +77,7 @@ function TabLink({ href, children }: { href: string; children: ReactNode }) {
 
 function StatCard({ label, value }: { label: string; value: number | null }) {
   return (
-    <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', borderRadius: 8, padding: '0.6rem 0.75rem', flex: 1, textAlign: 'center' }}>
+    <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 4, padding: '0.6rem 0.75rem', flex: 1, textAlign: 'center' }}>
       <div style={{ fontSize: '0.6rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-muted)' }}>{label}</div>
       <div style={{ fontSize: '1.1rem', fontWeight: 900, color: 'var(--text-primary)', marginTop: '0.15rem' }}>{value === null ? '-' : value.toLocaleString()}</div>
     </div>
@@ -235,17 +237,17 @@ export default function FreeLayout({ children }: { children: ReactNode }) {
   return (
     <FreeCtx.Provider value={ctxValue}>
       {/* ── Header ── */}
-      <header style={{ background: 'var(--bg-surface)', borderBottom: '1px solid var(--border-subtle)' }} className="sticky top-0 z-50">
-        <div className="mx-auto max-w-6xl px-4 sm:px-6">
-          <div className="flex h-14 items-center justify-between gap-4">
+      <header style={{ background: 'rgba(255,255,255,0.96)', borderBottom: '1px solid var(--border-mild)', boxShadow: '0 1px 0 rgba(15,23,42,0.04)' }} className="sticky top-0 z-50 backdrop-blur">
+        <div className="mx-auto max-w-6xl px-3 sm:px-6">
+          <div className="mobile-header-row flex h-14 items-center justify-between gap-4">
 
             {/* Logo */}
             <Link href="/community/free" className="flex items-center gap-2.5 shrink-0 group">
-              <div style={{ background: 'var(--brand)', borderRadius: 8 }} className="flex h-8 w-8 items-center justify-center text-[11px] font-black text-white tracking-tight group-hover:opacity-90 transition-opacity">
+              <div style={{ background: 'var(--brand)', borderRadius: 4 }} className="flex h-8 w-8 items-center justify-center text-[11px] font-black text-white tracking-tight group-hover:opacity-90 transition-opacity">
                 SQ
               </div>
               <div className="hidden sm:flex flex-col leading-none">
-                <span className="text-[15px] font-black text-white tracking-tight">Square</span>
+                <span className="text-[15px] font-black tracking-tight" style={{ color: 'var(--text-primary)' }}>Square</span>
                 <span style={{ color: 'var(--text-muted)', fontSize: '0.6rem', letterSpacing: '0.08em' }} className="uppercase font-bold">청주고등학교</span>
               </div>
             </Link>
@@ -257,7 +259,7 @@ export default function FreeLayout({ children }: { children: ReactNode }) {
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   placeholder="게시글 검색..."
-                  className="w-full px-4 py-1.5 text-sm rounded-lg"
+                  className="w-full px-4 py-1.5 text-sm"
                   style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)', color: 'var(--text-primary)', outline: 'none' }}
                 />
                 <span className="absolute right-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>⌕</span>
@@ -265,7 +267,7 @@ export default function FreeLayout({ children }: { children: ReactNode }) {
             </div>
 
             {/* Right controls */}
-            <div className="flex items-center gap-1" data-noti-root="1">
+            <div className="mobile-header-actions flex min-w-0 items-center justify-end gap-1" data-noti-root="1">
               {me.userId && (
                 <>
                   <Link href="/community/free/messages" className="btn-ghost relative" title="쪽지" style={{ padding: '0.35rem 0.55rem', fontSize: '1rem' }}>
@@ -291,7 +293,7 @@ export default function FreeLayout({ children }: { children: ReactNode }) {
                       <button
                         onClick={() => setGuideOpen(!guideOpen)}
                         className="flex items-center gap-1.5 cursor-pointer transition-opacity hover:opacity-80"
-                        style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-mild)', borderRadius: 8, padding: '0.3rem 0.65rem' }}
+                        style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-mild)', borderRadius: 4, padding: '0.3rem 0.65rem' }}
                       >
                         {(() => {
                           const t = getTier(me.points, me.role);
@@ -309,7 +311,7 @@ export default function FreeLayout({ children }: { children: ReactNode }) {
 
                       {/* EXP Guide Dropdown */}
                       <div className={`absolute right-0 top-full mt-2 w-60 z-[100] transition-all ${guideOpen ? 'opacity-100 visible translate-y-0' : 'opacity-0 invisible translate-y-1 group-hover:opacity-100 group-hover:visible group-hover:translate-y-0'
-                        }`} style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-mild)', borderRadius: 10, boxShadow: '0 8px 32px rgba(0,0,0,0.4)', padding: '1rem' }}>
+                        }`} style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-mild)', borderRadius: 4, boxShadow: '0 12px 28px rgba(15,23,42,0.12)', padding: '1rem' }}>
                         <div className="text-xs font-black mb-3" style={{ color: 'var(--text-primary)' }}>📊 활동 가이드</div>
                         <div className="space-y-2 mb-3">
                           <div className="flex justify-between text-xs" style={{ color: 'var(--text-secondary)' }}>
@@ -340,19 +342,19 @@ export default function FreeLayout({ children }: { children: ReactNode }) {
               )}
 
               {!me.userId ? (
-                <div className="flex items-center gap-2">
+                <div className="mobile-auth-actions flex items-center gap-2">
                   <Link href="/login" className="btn-ghost" style={{ fontSize: '0.8rem' }}>로그인</Link>
                   <Link href="/signup" className="btn-primary" style={{ fontSize: '0.8rem', padding: '0.4rem 0.8rem' }}>가입하기</Link>
                 </div>
               ) : (
-                <div className="flex items-center gap-1.5">
+                <div className="mobile-member-actions flex items-center gap-1.5">
                   {me.role === 'admin' && (
-                    <Link href="/community/free/reports" className="relative" style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--accent-red)', background: 'rgba(248,113,113,0.1)', border: '1px solid rgba(248,113,113,0.2)', borderRadius: 6, padding: '0.3rem 0.65rem' }}>
+                    <Link href="/community/free/reports" className="admin-report-link relative" style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--accent-red)', background: 'rgba(200,45,63,0.08)', border: '1px solid rgba(200,45,63,0.22)', borderRadius: 4, padding: '0.3rem 0.65rem' }}>
                       신고함
                       {reportUnread > 0 && <span className="absolute -right-1 -top-1 h-2 w-2 rounded-full" style={{ background: 'var(--accent-red)' }} />}
                     </Link>
                   )}
-                  <button onClick={onLogout} className="btn-ghost" style={{ fontSize: '0.8rem', padding: '0.4rem 0.75rem' }}>로그아웃</button>
+                  <button onClick={onLogout} className="logout-button btn-ghost" style={{ fontSize: '0.8rem', padding: '0.4rem 0.75rem' }}>로그아웃</button>
                 </div>
               )}
             </div>
@@ -370,7 +372,7 @@ export default function FreeLayout({ children }: { children: ReactNode }) {
 
         {/* Notification popover */}
         {notiOpen && (
-          <div className="absolute right-4 top-14 w-72 z-50 overflow-hidden" style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-mild)', borderRadius: 10, boxShadow: '0 8px 32px rgba(0,0,0,0.4)' }}>
+          <div className="notification-popover absolute z-50 overflow-hidden" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-mild)', borderRadius: 4, boxShadow: '0 12px 28px rgba(15,23,42,0.12)' }}>
             <div className="px-4 py-2.5" style={{ borderBottom: '1px solid var(--border-subtle)', fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-muted)' }}>알림</div>
             <div className="max-h-64 overflow-y-auto">
               {notis.length === 0 ? (
@@ -381,7 +383,8 @@ export default function FreeLayout({ children }: { children: ReactNode }) {
                     <Link
                       key={n.id}
                       href={n.post_id ? `/community/free/${n.post_id}` : '/community/free'}
-                      className="block px-4 py-3 transition-colors hover:bg-white/5"
+                      className="block px-4 py-3 transition-colors"
+                      style={{ borderBottom: '1px solid var(--border-subtle)' }}
                       onClick={() => setNotiOpen(false)}
                     >
                       <div className="text-sm" style={{ color: 'var(--text-primary)' }}>{n.type} 관련 새로운 소식</div>
@@ -396,8 +399,8 @@ export default function FreeLayout({ children }: { children: ReactNode }) {
       </header>
 
       {/* ── Main Content ── */}
-      <main className="mx-auto max-w-6xl px-4 sm:px-6" style={{ paddingTop: '1.5rem', paddingBottom: '3rem' }}>
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+      <main className="community-main mx-auto max-w-6xl px-4 sm:px-6">
+        <div className="community-shell-grid grid grid-cols-1 lg:grid-cols-12">
           {/* Content */}
           <section className="lg:col-span-8 xl:col-span-9">
             {children}
@@ -408,7 +411,7 @@ export default function FreeLayout({ children }: { children: ReactNode }) {
             <div className="sticky top-20 space-y-4">
 
               {/* Hot Issue */}
-              <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 10, overflow: 'hidden' }}>
+              <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 4, overflow: 'hidden' }}>
                 <div style={{ padding: '0.65rem 1rem', borderBottom: '1px solid var(--border-subtle)', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                   <span style={{ fontSize: '0.75rem' }}>🔥</span>
                   <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--text-primary)' }}>핫이슈</span>
@@ -421,7 +424,7 @@ export default function FreeLayout({ children }: { children: ReactNode }) {
                         key={p.id}
                         href={`/community/free/${p.id}`}
                         className="glass-hover"
-                        style={{ display: 'flex', alignItems: 'flex-start', gap: '0.6rem', padding: '0.6rem 0.5rem', borderRadius: 8 }}
+                        style={{ display: 'flex', alignItems: 'flex-start', gap: '0.6rem', padding: '0.6rem 0.5rem', borderRadius: 4 }}
                       >
                         <span style={{ fontSize: '0.7rem', fontWeight: 900, color: 'var(--brand)', minWidth: 16, marginTop: 2 }}>0{i + 1}</span>
                         <div style={{ minWidth: 0, flex: 1 }}>

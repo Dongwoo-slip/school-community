@@ -13,16 +13,16 @@ export default function Home() {
       overflow: 'hidden',
       background: 'var(--bg-base)',
     }}>
-      {/* Subtle glow */}
-      <div style={{ position: 'absolute', top: '-15%', left: '-10%', width: 400, height: 400, borderRadius: '50%', background: 'rgba(124,111,247,0.06)', filter: 'blur(80px)', pointerEvents: 'none' }} />
-      <div style={{ position: 'absolute', bottom: '-15%', right: '-10%', width: 400, height: 400, borderRadius: '50%', background: 'rgba(124,111,247,0.04)', filter: 'blur(80px)', pointerEvents: 'none' }} />
+      {/* Angular frame lines */}
+      <div style={{ position: 'absolute', top: 24, left: 24, width: 120, height: 120, borderTop: '2px solid var(--border-mild)', borderLeft: '2px solid var(--border-mild)', pointerEvents: 'none' }} />
+      <div style={{ position: 'absolute', bottom: 24, right: 24, width: 120, height: 120, borderRight: '2px solid var(--border-mild)', borderBottom: '2px solid var(--border-mild)', pointerEvents: 'none' }} />
 
       <div style={{ maxWidth: 480, width: '100%', position: 'relative', zIndex: 1 }}>
 
         {/* Logo mark */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '2rem' }}>
           <div style={{
-            width: 44, height: 44, borderRadius: 12,
+            width: 44, height: 44, borderRadius: 4,
             background: 'var(--brand)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             fontSize: '1rem', fontWeight: 900, color: 'white', letterSpacing: '-0.05em',
@@ -65,7 +65,7 @@ export default function Home() {
               color: 'var(--text-secondary)',
               background: 'var(--bg-elevated)',
               border: '1px solid var(--border-subtle)',
-              borderRadius: 99, padding: '0.3rem 0.75rem',
+              borderRadius: 4, padding: '0.3rem 0.75rem',
             }}>{f}</span>
           ))}
         </div>

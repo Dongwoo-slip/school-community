@@ -6,6 +6,11 @@ export const metadata = {
   description: "청주고등학교 학생들을 위한 커뮤니티 Square",
 };
 
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
+};
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="ko">

@@ -82,13 +82,13 @@ export default function AnonymousChatBox() {
   }
 
   return (
-    <div className="glass flex flex-col overflow-hidden rounded-[2rem] h-[500px]">
+    <div className="glass flex flex-col overflow-hidden h-[500px]">
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-white/5 bg-white/5 px-6 py-4">
-        <h3 className="text-sm font-bold text-white flex items-center gap-2">
+      <div className="flex items-center justify-between px-6 py-4" style={{ borderBottom: '1px solid var(--border-subtle)', background: 'var(--bg-surface)' }}>
+        <h3 className="text-sm font-bold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
           <span className="text-lg">💬</span> 실시간 익명 대화
         </h3>
-        <span className="rounded-full bg-emerald-500/10 px-2.5 py-1 text-[10px] font-black text-emerald-400 uppercase tracking-widest animate-pulse">
+        <span className="px-2.5 py-1 text-[10px] font-black uppercase tracking-widest animate-pulse" style={{ background: 'rgba(8,123,99,0.10)', color: 'var(--accent-mint)', border: '1px solid rgba(8,123,99,0.18)' }}>
           Live
         </span>
       </div>
@@ -100,10 +100,10 @@ export default function AnonymousChatBox() {
       >
         {loading ? (
           <div className="flex h-full items-center justify-center">
-            <div className="h-6 w-6 animate-spin rounded-full border-2 border-sky-500 border-t-transparent" />
+            <div className="h-6 w-6 animate-spin border-2 border-sky-500 border-t-transparent" />
           </div>
         ) : messages.length === 0 ? (
-          <div className="flex h-full flex-col items-center justify-center text-slate-600 italic text-xs">
+          <div className="flex h-full flex-col items-center justify-center italic text-xs" style={{ color: 'var(--text-secondary)' }}>
             아직 대화가 없습니다.<br />먼저 인사를 건네보세요!
           </div>
         ) : (
@@ -111,12 +111,14 @@ export default function AnonymousChatBox() {
             const isMe = m.user_id === me.userId;
             return (
               <div key={m.id} className={`flex flex-col ${isMe ? "items-end" : "items-start"}`}>
-                <span className="mb-1 text-[10px] font-bold text-slate-500">{m.anon_id}</span>
+                <span className="mb-1 text-[10px] font-bold" style={{ color: 'var(--text-muted)' }}>{m.anon_id}</span>
                 <div
-                  className={`max-w-[85%] rounded-2xl px-4 py-2 text-sm font-medium ${isMe
-                      ? "bg-sky-500 text-white rounded-tr-none shadow-lg shadow-sky-500/20"
-                      : "bg-white/10 text-slate-200 rounded-tl-none border border-white/5"
-                    }`}
+                  className="max-w-[85%] px-4 py-2 text-sm font-medium"
+                  style={{
+                    background: isMe ? 'var(--brand)' : 'var(--bg-elevated)',
+                    color: isMe ? '#fff' : 'var(--text-primary)',
+                    border: isMe ? '1px solid var(--brand)' : '1px solid var(--border-subtle)'
+                  }}
                 >
                   {m.content}
                 </div>
@@ -127,13 +129,14 @@ export default function AnonymousChatBox() {
       </div>
 
       {/* Footer / Input */}
-      <div className="border-t border-white/5 bg-white/[0.02] p-4">
+      <div className="p-4" style={{ borderTop: '1px solid var(--border-subtle)', background: 'var(--bg-elevated)' }}>
         <div className="mb-3 flex gap-2">
           {EMOJIS.map((e) => (
             <button
               key={e}
               onClick={() => onSend(e)}
-              className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/5 text-lg hover:bg-white/10 transition-colors"
+              className="flex h-8 w-8 items-center justify-center text-lg transition-colors"
+              style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}
             >
               {e}
             </button>
@@ -152,12 +155,14 @@ export default function AnonymousChatBox() {
             onChange={(e) => setInput(e.target.value)}
             placeholder={me.userId ? "메시지를 입력하세요..." : "로그인 후 대화가 가능합니다."}
             disabled={!me.userId || sending}
-            className="w-full rounded-2xl bg-white/5 border border-white/10 p-4 pr-16 text-sm text-white placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-sky-500/40 transition-all"
+            className="w-full border p-4 pr-16 text-sm focus:outline-none transition-all"
+            style={{ background: 'var(--bg-surface)', borderColor: 'var(--border-subtle)', color: 'var(--text-primary)' }}
           />
           <button
             type="submit"
             disabled={!me.userId || sending || !input.trim()}
-            className="absolute right-2 top-1/2 -translate-y-1/2 rounded-xl bg-sky-500 px-4 py-2 text-xs font-bold text-white hover:bg-sky-400 disabled:opacity-50 transition-all"
+            className="absolute right-2 top-1/2 -translate-y-1/2 px-4 py-2 text-xs font-bold text-white disabled:opacity-50 transition-all"
+            style={{ background: 'var(--brand)' }}
           >
             {sending ? "..." : "전송"}
           </button>

@@ -29,12 +29,12 @@ export default function AllBoardClient() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="board-list-header">
         <div>
-          <h2 className="text-2xl font-black text-white">
+          <h2 className="text-2xl font-black" style={{ color: 'var(--text-primary)' }}>
             {mine ? "내가 쓴 글" : "전체 게시글"}
           </h2>
-          <p className="mt-1 text-xs font-bold text-slate-500 uppercase tracking-widest">
+          <p className="mt-1 text-xs font-bold uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>
             {visiblePosts.length} posts found
           </p>
         </div>
@@ -46,11 +46,11 @@ export default function AllBoardClient() {
       {loading ? (
         <div className="grid gap-4">
           {Array.from({ length: 5 }).map((_, i) => (
-            <div key={i} className="h-24 animate-pulse rounded-2xl bg-white/5" />
+            <div key={i} className="h-24 animate-pulse" style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)' }} />
           ))}
         </div>
       ) : visiblePosts.length === 0 ? (
-        <div className="glass rounded-[2rem] p-12 text-center">
+        <div className="glass p-12 text-center">
           <div className="text-4xl mb-4">🔍</div>
           <p className="text-sm font-medium text-slate-500">
             {mine ? "아직 작성한 게시글이 없습니다." : "검색 결과가 없습니다."}
@@ -67,30 +67,31 @@ export default function AllBoardClient() {
               <Link
                 key={p.id}
                 href={`/community/free/${p.id}`}
-                className="glass-hover group flex items-center gap-6 rounded-2xl bg-white/[0.03] p-5 transition-all hover:bg-white/10"
+                className="board-post-card glass-hover group flex items-center gap-6 p-5 transition-all"
+                style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}
               >
-                <div className="flex h-12 w-12 shrink-0 flex-col items-center justify-center rounded-xl bg-sky-500/10 font-bold text-sky-400">
-                  <span className="text-[10px] text-slate-500 leading-none mb-0.5">#{num}</span>
-                  <span className="text-xs">{date}</span>
+                <div className="board-card-index flex h-12 w-12 shrink-0 flex-col items-center justify-center font-bold" style={{ background: 'var(--brand-dim)', color: 'var(--brand)', border: '1px solid rgba(31,126,219,0.18)' }}>
+                  <span className="text-[10px] leading-none mb-0.5" style={{ color: 'var(--text-muted)' }}>#{num}</span>
+                  <span className="text-xs" style={{ color: 'var(--brand)' }}>{date}</span>
                 </div>
 
                 <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <h3 className="truncate text-base font-bold text-slate-200 group-hover:text-sky-400">
+                  <div className="board-card-title-row flex items-center gap-2">
+                    <h3 className="board-card-title truncate text-base font-bold transition-colors" style={{ color: 'var(--text-primary)' }}>
                       {p.title}
                     </h3>
                     {hasPoll && <span className="text-xs" title="투표 포함">🗳️</span>}
                   </div>
-                  <div className="mt-2 flex items-center gap-4 text-[10px] font-bold uppercase tracking-widest leading-none">
+                  <div className="board-card-meta mt-2 flex items-center gap-4 text-[10px] font-bold uppercase tracking-widest leading-none">
                     <div className="flex items-center gap-1.5">
                       {(() => {
                         const t = getTier(p.author?.points || 0, p.author?.role || undefined);
                         return (
                           <>
                             <span title={t.name}>{t.icon}</span>
-                            <span className={t.color}>{p.author?.username || "익명"}</span>
+                            <span className={`board-card-author ${t.color}`}>{p.author?.username || "익명"}</span>
                             {p.author?.role === "admin" && (
-                              <span className="inline-flex items-center rounded-full bg-emerald-400/10 px-1.5 py-0.5 text-[8px] font-black uppercase tracking-widest text-emerald-400 ring-1 ring-inset ring-emerald-400/20 shadow-sm shadow-emerald-400/20">
+                              <span className="inline-flex items-center px-1.5 py-0.5 text-[8px] font-black uppercase tracking-widest ring-1 ring-inset ring-emerald-400/20" style={{ background: 'rgba(8,123,99,0.10)', color: 'var(--accent-mint)' }}>
                                 Admin
                               </span>
                             )}
@@ -99,11 +100,11 @@ export default function AllBoardClient() {
                       })()}
                     </div>
                     <span className="flex items-center gap-1">👀 {p.view_count} VIEW</span>
-                    {p.like_count > 0 && <span className="text-rose-400">❤️ {p.like_count} LIKE</span>}
+                    {p.like_count > 0 && <span style={{ color: 'var(--accent-red)' }}>❤️ {p.like_count} LIKE</span>}
                   </div>
                 </div>
 
-                <div className="hidden sm:block text-slate-700 group-hover:text-sky-400 transition-colors">
+                <div className="hidden sm:block transition-colors" style={{ color: 'var(--text-muted)' }}>
                   <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                   </svg>
