@@ -31,6 +31,18 @@ function normalizeScore(value: unknown) {
   return Math.round(score * 10) / 10;
 }
 
+function decodeStoredScore(value: unknown) {
+  const stored = Number(value);
+  if (!Number.isFinite(stored) || stored < 0) return null;
+  const score = stored > 5 ? stored / 10 : stored;
+  if (score > 5) return null;
+  return Math.round(score * 10) / 10;
+}
+
+function encodeStoredScore(score: number) {
+  return Math.round(score * 10);
+}
+
 async function getViewer() {
   const sb = await createAuthedClient();
   const { data } = await sb.auth.getUser();
@@ -72,7 +84,7 @@ export async function GET(req: Request) {
   for (const row of data ?? []) {
     const mealType = MEAL_TYPES.find((type) => String((row as any).key).endsWith(`:${type}`));
     if (!mealType) continue;
-    const score = normalizeScore((row as any).value);
+    const score = decodeStoredScore((row as any).value);
     ratings[mealType] = score;
   }
 
@@ -104,7 +116,7 @@ export async function POST(req: Request) {
 
   const { error } = await supabaseAdmin
     .from("site_stats")
-    .upsert({ key: ratingKey(ymd, mealType), value: score }, { onConflict: "key" });
+    .upsert({ key: ratingKey(ymd, mealType), value: encodeStoredScore(score) }, { onConflict: "key" });
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });

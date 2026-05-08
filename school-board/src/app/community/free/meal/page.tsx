@@ -93,7 +93,6 @@ function RatingEditor({
 
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <StarPreview score={parsed ?? score} />
       <input
         type="number"
         min="0"
@@ -109,7 +108,7 @@ function RatingEditor({
         type="button"
         disabled={saving || parsed === null}
         onClick={() => parsed !== null && onSave(parsed)}
-        className="h-8 border border-slate-300 bg-slate-950 px-3 text-xs font-black text-white disabled:opacity-50"
+        className="h-8 border border-emerald-600 bg-emerald-600 px-3 text-xs font-black text-white shadow-sm hover:bg-emerald-500 disabled:opacity-50"
       >
         {saving ? "저장중" : "저장"}
       </button>
@@ -148,9 +147,11 @@ function MealCard({
           <h3 className="shrink-0 whitespace-nowrap text-base font-black text-slate-950">{title}</h3>
           <span className="min-w-0 truncate text-[10px] font-black uppercase tracking-widest text-slate-500">{label}</span>
         </div>
-        {canRate ? (
-          <RatingEditor score={score} saving={saving} onSave={onRate} />
-        ) : null}
+        <div className="flex flex-col gap-2">
+          <StarPreview score={score} />
+          {score === null ? <p className="text-[11px] font-bold text-slate-400">아직 평가 안 됨</p> : null}
+          {canRate ? <RatingEditor score={score} saving={saving} onSave={onRate} /> : null}
+        </div>
       </div>
 
       <div className="border border-slate-200 bg-slate-50 p-4">
