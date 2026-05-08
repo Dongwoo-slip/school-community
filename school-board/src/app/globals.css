@@ -411,16 +411,16 @@ a {
 }
 
 .timetable-cell {
-  min-height: 32px;
+  min-height: 44px;
 }
 
 .timetable-subject {
-  display: -webkit-box;
-  overflow: hidden;
+  display: block;
+  overflow: visible;
   white-space: normal;
   overflow-wrap: anywhere;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
+  word-break: keep-all;
+  line-height: 1.28;
 }
 
 .board-list-header {
@@ -595,7 +595,7 @@ a {
   }
 
   .timetable-cell {
-    min-height: 31px;
+    min-height: 42px;
     padding: 0.25rem 0.15rem !important;
   }
 
@@ -617,7 +617,7 @@ a {
 
   .timetable-subject {
     font-size: 0.58rem !important;
-    line-height: 1.18 !important;
+    line-height: 1.24 !important;
     font-weight: 700 !important;
   }
 
@@ -757,11 +757,12 @@ a {
   }
 
   .timetable-cell {
-    min-height: 30px;
+    min-height: 40px;
   }
 
   .timetable-subject {
     font-size: 0.54rem !important;
+    line-height: 1.22 !important;
   }
 
   .board-list-header h2 {

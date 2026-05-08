@@ -67,12 +67,12 @@ export const TIERS: Tier[] = [
 ];
 
 export const ADMIN_TIER: Tier = {
-    name: "관리자",
-    minPoints: -1,
-    icon: "🛡️",
-    color: "text-emerald-400",
-    bg: "bg-emerald-400/10",
-    border: "border-emerald-400/20",
+    name: "마스터",
+    minPoints: 750,
+    icon: "👑",
+    color: "text-rose-400",
+    bg: "bg-rose-400/10",
+    border: "border-rose-400/20",
 };
 
 export function getTier(points: number, role?: string): Tier {

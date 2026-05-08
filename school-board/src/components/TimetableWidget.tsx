@@ -57,7 +57,7 @@ export default function TimetableWidget() {
         if (!res.ok) return;
         const me = await res.json().catch(() => ({}));
         const g = me?.grade ?? me?.school_grade ?? null;
-        const c = me?.classNm ?? me?.class_no ?? null;
+        const c = me?.classNo ?? me?.class_no ?? me?.classNm ?? null;
         const gg = clampInt(g, 1, 3);
         const cc = clampInt(c, 1, 11);
         if (!ignore && !touchedRef.current) {
@@ -197,7 +197,7 @@ export default function TimetableWidget() {
                             border: '1px solid var(--border-subtle)'
                           }}
                         >
-                          <span className="timetable-subject text-[11px] font-medium leading-tight">
+                          <span className="timetable-subject text-[11px] font-medium leading-snug">
                             {isBlank ? "·" : subject}
                           </span>
                         </div>
