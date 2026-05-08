@@ -118,6 +118,34 @@ export default function FreePostDetailPage() {
     return false;
   }, [me.userId, me.role, post]);
 
+  const canArchive = useMemo(() => {
+    return !!me.userId && me.role === "admin" && !!post;
+  }, [me.userId, me.role, post]);
+
+  async function onArchivePost() {
+    if (!id) return;
+    if (!confirm("이 글만 보관함으로 숨길까요? 방문자에게는 삭제된 것처럼 보입니다.")) return;
+
+    setBusy(true);
+    try {
+      const res = await fetch("/api/admin/archive", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ id }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok || !json?.ok) {
+        alert(json?.error ?? "보관 실패");
+        return;
+      }
+      router.push("/community/free/admin/archive");
+      router.refresh();
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function onDeletePost() {
     if (!id) return;
     if (!confirm("정말 삭제할까요?")) return;
@@ -277,15 +305,29 @@ export default function FreePostDetailPage() {
                   </div>
                 </div>
 
-                {canDelete && (
-                  <button
-                    type="button"
-                    disabled={busy}
-                    onClick={onDeletePost}
-                    className="btn-premium border border-rose-500/30 bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 py-2 px-4 shadow-lg shadow-rose-500/10"
-                  >
-                    삭제
-                  </button>
+                {(canArchive || canDelete) && (
+                  <div className="flex shrink-0 flex-wrap justify-end gap-2">
+                    {canArchive && (
+                      <button
+                        type="button"
+                        disabled={busy}
+                        onClick={onArchivePost}
+                        className="btn-secondary py-2 px-4"
+                      >
+                        보관
+                      </button>
+                    )}
+                    {canDelete && (
+                      <button
+                        type="button"
+                        disabled={busy}
+                        onClick={onDeletePost}
+                        className="btn-premium border border-rose-500/30 bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 py-2 px-4 shadow-lg shadow-rose-500/10"
+                      >
+                        삭제
+                      </button>
+                    )}
+                  </div>
                 )}
               </div>
             </header>

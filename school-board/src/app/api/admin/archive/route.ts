@@ -62,15 +62,17 @@ export async function POST(req: Request) {
 
   const body = await req.json().catch(() => ({}));
   const board = String(body?.board ?? "free").trim() || "free";
+  const id = String(body?.id ?? "").trim();
 
   const sb = admin();
-  const { data, error } = await sb
+  let query = sb
     .from("posts")
     .update({ is_deleted: true, updated_at: new Date().toISOString() })
-    .eq("board", board)
-    .eq("is_deleted", false)
-    .select("id");
+    .eq("is_deleted", false);
 
+  query = id ? query.eq("id", id) : query.eq("board", board);
+
+  const { data, error } = await query.select("id");
   if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
   return NextResponse.json({ ok: true, archived: data?.length ?? 0 });
 }
