@@ -1,5 +1,6 @@
 import "./globals.css";
 import VisitTracker from "@/components/VisitTracker";
+import PopupNotice from "@/components/PopupNotice";
 
 export const metadata = {
   title: "Square | 청주고등학교 커뮤니티",
@@ -24,6 +25,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body className="antialiased min-h-dvh">
         <VisitTracker />
+        <PopupNotice />
         {children}
       </body>
     </html>

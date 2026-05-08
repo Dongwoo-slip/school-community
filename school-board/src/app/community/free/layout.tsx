@@ -461,6 +461,9 @@ export default function FreeLayout({ children }: { children: ReactNode }) {
                     <Link href="/community/free/admin/edits" className="btn-secondary" style={{ justifyContent: 'flex-start', fontSize: '0.75rem', padding: '0.45rem 0.65rem' }}>
                       수정 로그
                     </Link>
+                    <Link href="/community/free/admin/popup" className="btn-secondary" style={{ justifyContent: 'flex-start', fontSize: '0.75rem', padding: '0.45rem 0.65rem' }}>
+                      팝업 공지
+                    </Link>
                   </div>
                 </div>
               )}
