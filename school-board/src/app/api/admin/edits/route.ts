@@ -29,26 +29,18 @@ export async function GET() {
   if (!auth.ok) return NextResponse.json({ ok: false, error: auth.error }, { status: auth.status });
 
   const sb = admin();
-
   const { data, error } = await sb
     .from("deleted_posts")
     .select("id, post_id, title, content, author_id, deleted_by, deleted_at")
-    .not("title", "like", "[수정 로그]%")
+    .like("title", "[수정 로그]%")
     .order("deleted_at", { ascending: false })
     .limit(300);
 
   if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
 
   const rows = data ?? [];
-
-  // username 매핑 (author + deleted_by)
   const ids = Array.from(
-    new Set(
-      rows
-        .flatMap((r: any) => [r.author_id, r.deleted_by])
-        .filter(Boolean)
-        .map(String)
-    )
+    new Set(rows.flatMap((r: any) => [r.author_id, r.deleted_by]).filter(Boolean).map(String))
   );
 
   const map = new Map<string, string | null>();
@@ -60,7 +52,9 @@ export async function GET() {
   const out = rows.map((r: any) => ({
     ...r,
     author_username: r.author_id ? map.get(String(r.author_id)) ?? null : null,
-    deleted_by_username: r.deleted_by ? map.get(String(r.deleted_by)) ?? null : null,
+    edited_by_username: r.deleted_by ? map.get(String(r.deleted_by)) ?? null : null,
+    edited_at: r.deleted_at,
+    edited_by: r.deleted_by,
   }));
 
   return NextResponse.json({ ok: true, data: out });

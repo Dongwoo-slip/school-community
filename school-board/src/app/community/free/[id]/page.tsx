@@ -122,6 +122,12 @@ export default function FreePostDetailPage() {
     return !!me.userId && me.role === "admin" && !!post;
   }, [me.userId, me.role, post]);
 
+  const canEdit = useMemo(() => {
+    if (!me.userId || !post) return false;
+    if (me.role === "admin") return true;
+    return String(post.author_id) === String(me.userId);
+  }, [me.userId, me.role, post]);
+
   async function onArchivePost() {
     if (!id) return;
     if (!confirm("이 글만 보관함으로 숨길까요? 방문자에게는 삭제된 것처럼 보입니다.")) return;
@@ -325,8 +331,16 @@ export default function FreePostDetailPage() {
                   </div>
                 </div>
 
-                {(canArchive || canDelete) && (
+                {(canEdit || canArchive || canDelete) && (
                   <div className="flex shrink-0 flex-wrap justify-end gap-2">
+                    {canEdit && (
+                      <Link
+                        href={`/community/free/${encodeURIComponent(post.id)}/edit`}
+                        className="btn-secondary py-2 px-4"
+                      >
+                        수정
+                      </Link>
+                    )}
                     {canArchive && (
                       <button
                         type="button"
@@ -354,7 +368,7 @@ export default function FreePostDetailPage() {
 
             {/* Post Body */}
             <div className="p-6 sm:p-8">
-              <div className="text-lg leading-relaxed text-slate-300 whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
+              <div className="text-base leading-relaxed text-slate-300 whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
                 {post.content ?? ""}
               </div>
 

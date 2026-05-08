@@ -152,7 +152,7 @@ export default function NewFreePostPage() {
           <div className="space-y-2">
             <label className="text-[10px] font-black uppercase tracking-widest text-sky-400 ml-1">본문 내용</label>
             <textarea
-              className="w-full min-h-[400px] rounded-3xl border border-white/5 bg-white/5 px-6 py-6 text-base font-medium text-slate-200 placeholder:text-slate-600 outline-none focus:bg-white/10 focus:ring-2 focus:ring-sky-500/30 transition-all resize-none"
+              className="w-full min-h-[400px] rounded-3xl border border-white/5 bg-white/5 px-6 py-6 text-[15px] font-medium text-slate-200 placeholder:text-slate-600 outline-none focus:bg-white/10 focus:ring-2 focus:ring-sky-500/30 transition-all resize-none"
               placeholder="나누고 싶은 이야기를 자유롭게 작성해보세요..."
               value={content}
               onChange={(e) => setContent(e.target.value)}
