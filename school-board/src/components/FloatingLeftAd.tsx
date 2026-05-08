@@ -8,11 +8,11 @@ function getAdCfg(vw: number): AdCfg {
   const contentWidth = 1152;
   const gutter = Math.max(0, (vw - contentWidth) / 2);
 
-  if (vw < 1440 || gutter < 148) return { show: false, w: 0, h: 0, left: 0 };
+  if (vw < 1280 || gutter < 72) return { show: false, w: 0, h: 0, left: 0 };
 
-  const w = vw < 1700 ? 120 : 150;
-  const h = vw < 1700 ? 360 : 430;
-  const left = Math.max(12, Math.floor(gutter - w - 20));
+  const w = vw < 1440 ? 68 : vw < 1700 ? 96 : 140;
+  const h = vw < 1440 ? 300 : vw < 1700 ? 360 : 430;
+  const left = Math.max(8, Math.floor(gutter - w - 12));
   return { show: true, w, h, left };
 }
 

@@ -76,15 +76,15 @@ export default function PopupNotice() {
   const image = Array.isArray(popup.image_urls) ? popup.image_urls[0] : null;
   const layout = popupLayout(popup);
   const isSplit = layout === "split";
+  const popupBoxClass = [
+    "w-full border border-sky-500 bg-white shadow-2xl",
+    "max-h-[calc(100dvh-3rem)] overflow-y-auto",
+    isSplit ? "max-w-[760px] sm:flex" : "max-w-[390px]",
+  ].join(" ");
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-start justify-center overflow-y-auto bg-black/45 px-4 py-6 backdrop-blur-sm sm:items-center">
-      <div
-        className={[
-          "w-full border border-sky-500 bg-white shadow-2xl",
-          isSplit ? "max-w-[760px] sm:flex" : "max-w-[390px]",
-        ].join(" ")}
-      >
+    <div className="fixed inset-0 z-[100] flex items-start justify-center bg-black/45 px-4 py-6 backdrop-blur-sm sm:items-center">
+      <div className={popupBoxClass}>
         <div className={isSplit ? "border-b border-sky-500 bg-sky-50 p-4 sm:w-[42%] sm:border-b-0 sm:border-r" : "border-b border-sky-500 bg-sky-50 p-4"}>
           <div className="aspect-square w-full overflow-hidden border border-sky-200 bg-white">
             {image ? (
