@@ -18,7 +18,7 @@ export const TIERS: Tier[] = [
     },
     {
         name: "브론즈",
-        minPoints: 20,
+        minPoints: 10,
         icon: "🥉",
         color: "text-amber-600",
         bg: "bg-amber-600/10",
@@ -26,7 +26,7 @@ export const TIERS: Tier[] = [
     },
     {
         name: "실버",
-        minPoints: 50,
+        minPoints: 25,
         icon: "🥈",
         color: "text-slate-300",
         bg: "bg-slate-300/10",
@@ -34,7 +34,7 @@ export const TIERS: Tier[] = [
     },
     {
         name: "골드",
-        minPoints: 150,
+        minPoints: 75,
         icon: "🥇",
         color: "text-yellow-400",
         bg: "bg-yellow-400/10",
@@ -42,7 +42,7 @@ export const TIERS: Tier[] = [
     },
     {
         name: "플래티넘",
-        minPoints: 400,
+        minPoints: 200,
         icon: "💎",
         color: "text-emerald-400",
         bg: "bg-emerald-400/10",
@@ -50,7 +50,7 @@ export const TIERS: Tier[] = [
     },
     {
         name: "다이아몬드",
-        minPoints: 800,
+        minPoints: 400,
         icon: "🔮",
         color: "text-sky-400",
         bg: "bg-sky-400/10",
@@ -58,7 +58,7 @@ export const TIERS: Tier[] = [
     },
     {
         name: "마스터",
-        minPoints: 1500,
+        minPoints: 750,
         icon: "👑",
         color: "text-rose-400",
         bg: "bg-rose-400/10",
