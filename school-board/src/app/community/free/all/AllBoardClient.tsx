@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useFreeBoard } from "../layout";
 import { getTier } from "@/lib/tiers";
@@ -16,6 +16,7 @@ export default function AllBoardClient() {
   const { loading, orderedPosts, numberMap, query, me } = useFreeBoard();
   const sp = useSearchParams();
   const mine = sp.get("mine") === "1";
+  const [archivedCount, setArchivedCount] = useState<number | null>(null);
 
   const visiblePosts = useMemo(() => {
     let arr = orderedPosts;
@@ -26,6 +27,24 @@ export default function AllBoardClient() {
     if (!q) return arr;
     return arr.filter((p: any) => (p.title ?? "").toLowerCase().includes(q));
   }, [orderedPosts, query, mine, me.userId]);
+
+  useEffect(() => {
+    let alive = true;
+    async function loadArchivedCount() {
+      if (me.role !== "admin") {
+        setArchivedCount(null);
+        return;
+      }
+      const res = await fetch("/api/admin/archive", { cache: "no-store", credentials: "include" }).catch(() => null);
+      const json = await res?.json().catch(() => ({}));
+      if (!alive) return;
+      setArchivedCount(Array.isArray(json?.data) ? json.data.length : null);
+    }
+    loadArchivedCount();
+    return () => {
+      alive = false;
+    };
+  }, [me.role]);
 
   return (
     <div className="space-y-6">
@@ -38,9 +57,17 @@ export default function AllBoardClient() {
             {visiblePosts.length} posts found
           </p>
         </div>
-        <Link href="/community/free/new" className="btn-primary py-2.5 px-6 text-sm">
-          새 글 작성하기
-        </Link>
+        <div className="flex flex-wrap items-center gap-2">
+          {me.role === "admin" && archivedCount !== null ? (
+            <div className="border border-slate-200 bg-slate-50 px-3 py-2 text-right">
+              <div className="text-[10px] font-black uppercase tracking-widest text-slate-500">보관 글</div>
+              <div className="text-sm font-black text-slate-900">{archivedCount.toLocaleString()}개</div>
+            </div>
+          ) : null}
+          <Link href="/community/free/new" className="btn-primary py-2.5 px-6 text-sm">
+            새 글 작성하기
+          </Link>
+        </div>
       </div>
 
       {loading ? (
