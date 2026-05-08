@@ -10,6 +10,7 @@ type ChatMessage = {
   user_id: string;
   anon_id: string;
   created_at: string;
+  author_username?: string | null;
 };
 
 const EMOJIS = ["😀", "👍", "❤️", "🔥", "🚀"];
@@ -47,10 +48,19 @@ export default function AnonymousChatBox() {
       .on(
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "chat_messages" },
-        (payload) => {
+        async (payload) => {
           const newMessage = payload.new as ChatMessage;
           setMessages((prev) => [...prev, newMessage]);
           setTimeout(scrollToBottom, 50);
+
+          if (me.role === "admin") {
+            const res = await fetch("/api/chat?limit=1", { cache: "no-store", credentials: "include" }).catch(() => null);
+            const json = await res?.json().catch(() => ({}));
+            const enriched = Array.isArray(json?.data) ? json.data[0] : null;
+            if (enriched?.id === newMessage.id) {
+              setMessages((prev) => prev.map((m) => (m.id === enriched.id ? enriched : m)));
+            }
+          }
         }
       )
       .subscribe();
@@ -109,9 +119,12 @@ export default function AnonymousChatBox() {
         ) : (
           messages.map((m) => {
             const isMe = m.user_id === me.userId;
+            const label = me.role === "admin"
+              ? `${m.author_username || "아이디 없음"} · ${m.user_id}`
+              : m.anon_id;
             return (
               <div key={m.id} className={`flex flex-col ${isMe ? "items-end" : "items-start"}`}>
-                <span className="mb-1 text-[10px] font-bold" style={{ color: 'var(--text-muted)' }}>{m.anon_id}</span>
+                <span className="mb-1 max-w-full break-all text-[10px] font-bold" style={{ color: 'var(--text-muted)' }}>{label}</span>
                 <div
                   className="max-w-[85%] px-4 py-2 text-sm font-medium"
                   style={{

@@ -22,8 +22,16 @@ export async function GET(req: Request) {
   const before = url.searchParams.get("before"); // created_at
 
   const sb = admin();
+  const authed = await createAuthedClient();
+  const { data: authData } = await authed.auth.getUser();
+  const user = authData.user;
 
-  // ✅ username 컬럼을 절대 조회하지 않음
+  let isAdmin = false;
+  if (user?.id) {
+    const { data: profile } = await sb.from("profiles").select("role").eq("id", user.id).maybeSingle();
+    isAdmin = profile?.role === "admin";
+  }
+
   let q = sb
     .from("chat_messages")
     .select("id,content,user_id,anon_id,created_at")
@@ -40,7 +48,24 @@ export async function GET(req: Request) {
   const hasMore = arr.length > limit;
   const sliced = hasMore ? arr.slice(0, limit) : arr;
 
-  return NextResponse.json({ data: sliced, hasMore });
+  if (!isAdmin) {
+    return NextResponse.json({ data: sliced, hasMore });
+  }
+
+  const ids = Array.from(new Set(sliced.map((m: any) => m.user_id).filter(Boolean).map(String)));
+  const profileMap = new Map<string, string | null>();
+  if (ids.length) {
+    const { data: profiles } = await sb.from("profiles").select("id, username").in("id", ids);
+    (profiles ?? []).forEach((p: any) => profileMap.set(String(p.id), p.username ?? null));
+  }
+
+  return NextResponse.json({
+    data: sliced.map((m: any) => ({
+      ...m,
+      author_username: m.user_id ? profileMap.get(String(m.user_id)) ?? null : null,
+    })),
+    hasMore,
+  });
 }
 
 export async function POST(req: Request) {
