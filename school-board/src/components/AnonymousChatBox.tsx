@@ -63,6 +63,14 @@ export default function AnonymousChatBox() {
           }
         }
       )
+      .on(
+        "postgres_changes",
+        { event: "DELETE", schema: "public", table: "chat_messages" },
+        (payload) => {
+          const deleted = payload.old as Partial<ChatMessage>;
+          if (deleted?.id) setMessages((prev) => prev.filter((m) => m.id !== deleted.id));
+        }
+      )
       .subscribe();
 
     return () => {
@@ -89,6 +97,18 @@ export default function AnonymousChatBox() {
     } finally {
       setSending(false);
     }
+  }
+
+  async function onDeleteMessage(id: string) {
+    if (me.role !== "admin") return;
+    if (!confirm("이 채팅 메시지를 삭제할까요?")) return;
+    const res = await fetch(`/api/chat?id=${encodeURIComponent(id)}`, {
+      method: "DELETE",
+      credentials: "include",
+    });
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok) return alert(json?.error ?? "삭제 실패");
+    setMessages((prev) => prev.filter((m) => m.id !== id));
   }
 
   return (
@@ -135,6 +155,15 @@ export default function AnonymousChatBox() {
                 >
                   {m.content}
                 </div>
+                {me.role === "admin" && (
+                  <button
+                    type="button"
+                    onClick={() => onDeleteMessage(m.id)}
+                    className="mt-0.5 text-[10px] font-black text-rose-500 hover:underline"
+                  >
+                    삭제
+                  </button>
+                )}
               </div>
             );
           })

@@ -113,3 +113,24 @@ export async function POST(req: Request) {
 
   return NextResponse.json({ data: inserted });
 }
+
+export async function DELETE(req: Request) {
+  const authed = await createAuthedClient();
+  const { data } = await authed.auth.getUser();
+  const user = data.user;
+  if (!user) return NextResponse.json({ error: "로그인이 필요합니다." }, { status: 401 });
+
+  const sb = admin();
+  const { data: profile, error: profileError } = await sb.from("profiles").select("role").eq("id", user.id).maybeSingle();
+  if (profileError) return NextResponse.json({ error: profileError.message }, { status: 500 });
+  if (profile?.role !== "admin") return NextResponse.json({ error: "권한이 없습니다." }, { status: 403 });
+
+  const { searchParams } = new URL(req.url);
+  const id = searchParams.get("id");
+  if (!id) return NextResponse.json({ error: "id가 필요합니다." }, { status: 400 });
+
+  const { error } = await sb.from("chat_messages").delete().eq("id", id);
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  return NextResponse.json({ ok: true });
+}

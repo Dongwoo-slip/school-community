@@ -128,7 +128,7 @@ export default function AdminPopupPage() {
       <section className="border border-slate-300 bg-white p-5">
         <div className="mb-4">
           <h2 className="text-[16px] font-black text-slate-950">팝업 공지 관리</h2>
-          <p className="mt-1 text-[12px] font-medium text-slate-600">등록하면 방문자에게 공지 팝업으로 표시됩니다.</p>
+          <p className="mt-1 text-[12px] font-medium text-slate-600">등록하면 방문자에게 고정 틀 팝업으로 표시됩니다. 이미지는 정사각형에 맞춰 잘립니다.</p>
         </div>
 
         <div className="space-y-3">
@@ -163,7 +163,7 @@ export default function AdminPopupPage() {
               <img
                 src={previewUrl || imageUrl.trim()}
                 alt="팝업 이미지 미리보기"
-                className="max-h-64 w-full object-contain"
+                className="aspect-square w-full border border-slate-200 object-cover"
                 onError={(e) => {
                   e.currentTarget.style.display = "none";
                 }}
