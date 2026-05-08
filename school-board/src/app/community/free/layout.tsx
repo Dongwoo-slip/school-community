@@ -477,6 +477,12 @@ export default function FreeLayout({ children }: { children: ReactNode }) {
           </aside>
         </div>
       </main>
+      <footer className="mt-10 border-t border-slate-700 bg-slate-950 text-slate-300">
+        <div className="mx-auto flex max-w-6xl flex-col gap-1 px-4 py-5 text-[12px] sm:flex-row sm:items-center sm:justify-between sm:px-6">
+          <div className="font-bold text-slate-100">Square · 청주고등학교 커뮤니티</div>
+          <div>학생들의 이야기를 안전하고 깔끔하게 나누는 공간입니다.</div>
+        </div>
+      </footer>
     </FreeCtx.Provider>
   );
 }
