@@ -11,6 +11,11 @@ function admin() {
 
 // GET /api/comments?post_id=...
 export async function GET(req: Request) {
+  const authed = await createAuthedClient();
+  const { data: authData } = await authed.auth.getUser();
+  const user = authData.user;
+  if (!user) return NextResponse.json({ error: "로그인이 필요합니다.", data: [] }, { status: 401 });
+
   const { searchParams } = new URL(req.url);
   const post_id = searchParams.get("post_id");
 

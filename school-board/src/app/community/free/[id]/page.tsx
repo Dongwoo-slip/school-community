@@ -93,6 +93,10 @@ export default function FreePostDetailPage() {
       if (!resPost.ok) {
         setPost(null);
         setComments([]);
+        if (resPost.status === 401) {
+          router.push(`/login?next=/community/free/${encodeURIComponent(postId)}`);
+          return;
+        }
         setErrorMsg(jsonPost?.error ?? "게시글을 불러오지 못했습니다.");
         return;
       }

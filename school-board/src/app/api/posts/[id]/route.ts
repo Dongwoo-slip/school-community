@@ -29,12 +29,19 @@ async function getParamId(ctx: any): Promise<string | null> {
   }
 }
 
-// GET /api/posts/:id  (공개 상세 조회)
+// GET /api/posts/:id  (로그인한 사용자만 상세 조회)
 export async function GET(_req: Request, ctx: any) {
   const id = await getParamId(ctx);
   if (!id) return NextResponse.json({ error: "missing id" }, { status: 400 });
 
+  const authed = await createAuthedClient();
+  const { data: authData } = await authed.auth.getUser();
+  const user = authData.user;
+  if (!user) return NextResponse.json({ error: "로그인이 필요합니다." }, { status: 401 });
+
   const sb = admin();
+  const { data: profile } = await sb.from("profiles").select("role").eq("id", user.id).maybeSingle();
+  const role = profile?.role ?? "user";
 
   const { data: post, error } = await sb
     .from("posts")
@@ -46,16 +53,6 @@ export async function GET(_req: Request, ctx: any) {
   if (!post) return NextResponse.json({ error: "게시물을 찾을 수 없습니다." }, { status: 404 });
 
   if (post.is_deleted) {
-    const authed = await createAuthedClient();
-    const { data: authData } = await authed.auth.getUser();
-    const user = authData.user;
-    let role = "guest";
-
-    if (user?.id) {
-      const { data: profile } = await sb.from("profiles").select("role").eq("id", user.id).maybeSingle();
-      role = profile?.role ?? "user";
-    }
-
     if (role !== "admin") {
       return NextResponse.json({ error: "게시물을 찾을 수 없습니다." }, { status: 404 });
     }
