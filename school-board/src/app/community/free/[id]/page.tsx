@@ -197,6 +197,25 @@ export default function FreePostDetailPage() {
     }
   }
 
+  async function onDeleteComment(commentId: string) {
+    if (!id) return;
+    if (!confirm("댓글을 삭제할까요?")) return;
+
+    setBusy(true);
+    try {
+      const res = await fetch(`/api/comments/${encodeURIComponent(commentId)}`, { method: "DELETE" });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        alert(json?.error ?? "댓글 삭제 실패");
+        return;
+      }
+      await refreshAll();
+      await loadPostAndComments(id);
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function vote(optionId: string) {
     if (!id) return;
 
@@ -480,7 +499,19 @@ export default function FreePostDetailPage() {
                       </span>
                     )}
                   </div>
-                  <span className="text-[10px] text-slate-500">{fmt(c.created_at)}</span>
+                  <div className="flex shrink-0 items-center gap-2">
+                    <span className="text-[10px] text-slate-500">{fmt(c.created_at)}</span>
+                    {!!me.userId && (me.role === "admin" || String(c.author_id) === String(me.userId)) && (
+                      <button
+                        type="button"
+                        onClick={() => onDeleteComment(c.id)}
+                        disabled={busy}
+                        className="rounded border border-rose-200 bg-rose-50 px-2 py-1 text-[10px] font-black text-rose-600 hover:bg-rose-100 disabled:opacity-50"
+                      >
+                        삭제
+                      </button>
+                    )}
+                  </div>
                 </div>
 
                 <div className="text-sm leading-relaxed text-slate-300 whitespace-pre-wrap break-words [overflow-wrap:anywhere]">

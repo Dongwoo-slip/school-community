@@ -54,15 +54,17 @@ export async function GET(req: Request) {
 
   const rows = Array.isArray(json?.mealServiceDietInfo?.[1]?.row) ? json.mealServiceDietInfo[1].row : [];
 
+  let breakfast: string[] = [];
   let lunch: string[] = [];
   let dinner: string[] = [];
 
   for (const r of rows) {
     const code = String(r?.MMEAL_SC_CODE ?? "");
     const items = splitMenu(String(r?.DDISH_NM ?? ""));
+    if (code === "1") breakfast = items; // 조식
     if (code === "2") lunch = items; // 중식
     if (code === "3") dinner = items; // 석식
   }
 
-  return NextResponse.json({ ymd, lunch, dinner, ok: true });
+  return NextResponse.json({ ymd, breakfast, lunch, dinner, ok: true });
 }

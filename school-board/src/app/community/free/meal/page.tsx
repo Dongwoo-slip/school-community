@@ -2,8 +2,14 @@
 
 import { useEffect, useMemo, useState } from "react";
 
-type MealType = "lunch" | "dinner";
+type MealType = "breakfast" | "lunch" | "dinner";
 type Ratings = Record<MealType, number | null>;
+
+const MEALS: Array<{ type: MealType; title: string; label: string; color: string }> = [
+  { type: "breakfast", title: "조식", label: "Breakfast", color: "bg-emerald-500" },
+  { type: "lunch", title: "점심", label: "Lunch", color: "bg-sky-500" },
+  { type: "dinner", title: "저녁", label: "Dinner", color: "bg-indigo-500" },
+];
 
 function todayYMD() {
   const d = new Date();
@@ -35,42 +41,78 @@ function stripDish(raw: string) {
   return s;
 }
 
-function StarRating({
-  score,
-  editable,
-  saving,
-  onChange,
-}: {
-  score: number | null;
-  editable: boolean;
-  saving: boolean;
-  onChange: (score: number) => void;
-}) {
+function normalizeScore(value: unknown) {
+  if (value === null || value === undefined || value === "") return null;
+  const n = Number(value);
+  if (!Number.isFinite(n)) return null;
+  if (n < 0 || n > 5) return null;
+  return Math.round(n * 10) / 10;
+}
+
+function StarPreview({ score }: { score: number | null }) {
+  const value = score ?? 0;
+
   return (
-    <div className="flex items-center gap-1" aria-label={score ? `별점 ${score}점` : "별점 없음"}>
+    <div className="flex items-center gap-0.5" aria-label={`별점 ${value.toFixed(1)}점`}>
       {[1, 2, 3, 4, 5].map((n) => {
-        const active = (score ?? 0) >= n;
+        const fill = Math.max(0, Math.min(1, value - (n - 1)));
         return (
-          <button
-            key={n}
-            type="button"
-            disabled={!editable || saving}
-            onClick={() => onChange(n)}
-            className={[
-              "grid h-9 w-9 place-items-center border text-lg font-black transition",
-              active ? "border-amber-300 bg-amber-100 text-amber-500" : "border-slate-200 bg-white text-slate-300",
-              editable ? "hover:border-amber-300 hover:text-amber-500" : "cursor-default",
-              saving ? "opacity-60" : "",
-            ].join(" ")}
-            title={editable ? `${n}점 등록` : score ? `${score}점` : "아직 별점 없음"}
-          >
-            {active ? "★" : "☆"}
-          </button>
+          <span key={n} className="relative inline-block h-4 w-4 text-[15px] leading-4 text-slate-300">
+            <span>★</span>
+            <span
+              className="absolute left-0 top-0 overflow-hidden text-amber-400"
+              style={{ width: `${fill * 100}%` }}
+              aria-hidden="true"
+            >
+              ★
+            </span>
+          </span>
         );
       })}
-      <span className="ml-2 min-w-[42px] text-xs font-black text-slate-500">
-        {score ? `${score}/5` : "-/5"}
-      </span>
+      <span className="ml-1 text-[11px] font-black text-slate-500">{score === null ? "-/5" : `${score.toFixed(1)}/5`}</span>
+    </div>
+  );
+}
+
+function RatingEditor({
+  score,
+  saving,
+  onSave,
+}: {
+  score: number | null;
+  saving: boolean;
+  onSave: (score: number) => void;
+}) {
+  const [value, setValue] = useState(score === null ? "" : String(score));
+
+  useEffect(() => {
+    setValue(score === null ? "" : String(score));
+  }, [score]);
+
+  const parsed = normalizeScore(value);
+
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <StarPreview score={parsed ?? score} />
+      <input
+        type="number"
+        min="0"
+        max="5"
+        step="0.1"
+        inputMode="decimal"
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        className="h-8 w-20 border border-slate-300 bg-white px-2 text-right text-sm font-black text-slate-900 outline-none focus:border-sky-500"
+        placeholder="3.5"
+      />
+      <button
+        type="button"
+        disabled={saving || parsed === null}
+        onClick={() => parsed !== null && onSave(parsed)}
+        className="h-8 border border-slate-300 bg-slate-950 px-3 text-xs font-black text-white disabled:opacity-50"
+      >
+        {saving ? "저장중" : "저장"}
+      </button>
     </div>
   );
 }
@@ -78,46 +120,40 @@ function StarRating({
 function MealCard({
   title,
   label,
-  accent,
+  color,
   items,
   loading,
   err,
   score,
-  editable,
+  canRate,
   saving,
   onRate,
 }: {
   title: string;
   label: string;
-  accent: "sky" | "indigo";
+  color: string;
   items: string[];
   loading: boolean;
   err: string | null;
   score: number | null;
-  editable: boolean;
+  canRate: boolean;
   saving: boolean;
   onRate: (score: number) => void;
 }) {
-  const dot = accent === "sky" ? "bg-sky-500" : "bg-indigo-500";
-  const tag = accent === "sky" ? "bg-sky-50 text-sky-700 border-sky-100" : "bg-indigo-50 text-indigo-700 border-indigo-100";
-
   return (
-    <section className="overflow-hidden border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
-      <div className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <div className="flex items-center gap-3">
-            <span className={`h-3 w-3 ${dot}`} />
-            <h3 className="text-lg font-black text-slate-950">{title}</h3>
-            <span className={`border px-2.5 py-1 text-[10px] font-black uppercase tracking-widest ${tag}`}>
-              {label}
-            </span>
-          </div>
-          <p className="mt-2 text-xs font-bold text-slate-500">5점 만점 급식 별점</p>
+    <section className="min-w-0 border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+      <div className="mb-4 flex min-w-0 flex-col gap-3">
+        <div className="flex min-w-0 items-center gap-2">
+          <span className={`h-2.5 w-2.5 shrink-0 ${color}`} />
+          <h3 className="shrink-0 whitespace-nowrap text-base font-black text-slate-950">{title}</h3>
+          <span className="min-w-0 truncate text-[10px] font-black uppercase tracking-widest text-slate-500">{label}</span>
         </div>
-        <StarRating score={score} editable={editable} saving={saving} onChange={onRate} />
+        {canRate ? (
+          <RatingEditor score={score} saving={saving} onSave={onRate} />
+        ) : null}
       </div>
 
-      <div className="border border-slate-200 bg-slate-50 p-4 sm:p-5">
+      <div className="border border-slate-200 bg-slate-50 p-4">
         {loading ? (
           <div className="space-y-3">
             {Array.from({ length: 5 }).map((_, i) => (
@@ -125,15 +161,15 @@ function MealCard({
             ))}
           </div>
         ) : err ? (
-          <div className="py-12 text-center text-sm font-bold text-rose-500">{err}</div>
+          <div className="py-10 text-center text-sm font-bold text-rose-500">{err}</div>
         ) : items.length === 0 ? (
-          <div className="py-12 text-center text-sm font-bold text-slate-500">메뉴 정보가 없습니다.</div>
+          <div className="py-10 text-center text-sm font-bold text-slate-500">메뉴 정보가 없습니다.</div>
         ) : (
-          <ul className="space-y-3">
+          <ul className="space-y-2.5">
             {items.map((x, i) => (
-              <li key={`${label}-${i}-${x}`} className="flex items-start gap-3 text-sm font-bold leading-6 text-slate-700">
-                <span className={`mt-2 h-1.5 w-1.5 shrink-0 ${dot}`} />
-                <span>{x}</span>
+              <li key={`${label}-${i}-${x}`} className="flex items-start gap-2.5 text-sm font-bold leading-6 text-slate-700">
+                <span className={`mt-2 h-1.5 w-1.5 shrink-0 ${color}`} />
+                <span className="min-w-0 break-words">{x}</span>
               </li>
             ))}
           </ul>
@@ -149,9 +185,8 @@ export default function MealPage() {
   const [saving, setSaving] = useState<MealType | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [ratingErr, setRatingErr] = useState<string | null>(null);
-  const [lunch, setLunch] = useState<string[]>([]);
-  const [dinner, setDinner] = useState<string[]>([]);
-  const [ratings, setRatings] = useState<Ratings>({ lunch: null, dinner: null });
+  const [menus, setMenus] = useState<Record<MealType, string[]>>({ breakfast: [], lunch: [], dinner: [] });
+  const [ratings, setRatings] = useState<Ratings>({ breakfast: null, lunch: null, dinner: null });
   const [canRate, setCanRate] = useState(false);
 
   const title = useMemo(() => "청주고등학교 급식 정보", []);
@@ -169,22 +204,25 @@ export default function MealPage() {
       const mealJson = await mealRes.json().catch(() => ({}));
       if (!mealRes.ok || mealJson?.error) {
         setErr(mealJson?.error ?? "급식 정보를 불러오지 못했습니다.");
-        setLunch([]);
-        setDinner([]);
+        setMenus({ breakfast: [], lunch: [], dinner: [] });
       } else {
-        setLunch((Array.isArray(mealJson?.lunch) ? mealJson.lunch : []).map(stripDish).filter(Boolean));
-        setDinner((Array.isArray(mealJson?.dinner) ? mealJson.dinner : []).map(stripDish).filter(Boolean));
+        setMenus({
+          breakfast: (Array.isArray(mealJson?.breakfast) ? mealJson.breakfast : []).map(stripDish).filter(Boolean),
+          lunch: (Array.isArray(mealJson?.lunch) ? mealJson.lunch : []).map(stripDish).filter(Boolean),
+          dinner: (Array.isArray(mealJson?.dinner) ? mealJson.dinner : []).map(stripDish).filter(Boolean),
+        });
       }
 
       const ratingJson = await ratingRes.json().catch(() => ({}));
       if (!ratingRes.ok || ratingJson?.error) {
         setRatingErr(ratingJson?.error ?? "별점을 불러오지 못했습니다.");
-        setRatings({ lunch: null, dinner: null });
+        setRatings({ breakfast: null, lunch: null, dinner: null });
         setCanRate(false);
       } else {
         setRatings({
-          lunch: Number.isInteger(ratingJson?.ratings?.lunch) ? ratingJson.ratings.lunch : null,
-          dinner: Number.isInteger(ratingJson?.ratings?.dinner) ? ratingJson.ratings.dinner : null,
+          breakfast: normalizeScore(ratingJson?.ratings?.breakfast),
+          lunch: normalizeScore(ratingJson?.ratings?.lunch),
+          dinner: normalizeScore(ratingJson?.ratings?.dinner),
         });
         setCanRate(Boolean(ratingJson?.canRate));
       }
@@ -247,31 +285,22 @@ export default function MealPage() {
         </div>
       ) : null}
 
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
-        <MealCard
-          title="점심"
-          label="Lunch"
-          accent="sky"
-          items={lunch}
-          loading={loading}
-          err={err}
-          score={ratings.lunch}
-          editable={canRate}
-          saving={saving === "lunch"}
-          onRate={(score) => saveRating("lunch", score)}
-        />
-        <MealCard
-          title="저녁"
-          label="Dinner"
-          accent="indigo"
-          items={dinner}
-          loading={loading}
-          err={err}
-          score={ratings.dinner}
-          editable={canRate}
-          saving={saving === "dinner"}
-          onRate={(score) => saveRating("dinner", score)}
-        />
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+        {MEALS.map((meal) => (
+          <MealCard
+            key={meal.type}
+            title={meal.title}
+            label={meal.label}
+            color={meal.color}
+            items={menus[meal.type]}
+            loading={loading}
+            err={err}
+            score={ratings[meal.type]}
+            canRate={canRate}
+            saving={saving === meal.type}
+            onRate={(score) => saveRating(meal.type, score)}
+          />
+        ))}
       </div>
 
       <div className="border border-slate-200 bg-white p-5 text-center shadow-sm">

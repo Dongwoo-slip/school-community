@@ -6,10 +6,10 @@ import { canManageMealRatings } from "@/lib/roles";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-type MealType = "lunch" | "dinner";
+type MealType = "breakfast" | "lunch" | "dinner";
 type RatingMap = Record<MealType, number | null>;
 
-const MEAL_TYPES: MealType[] = ["lunch", "dinner"];
+const MEAL_TYPES: MealType[] = ["breakfast", "lunch", "dinner"];
 
 function isMealType(value: unknown): value is MealType {
   return typeof value === "string" && MEAL_TYPES.includes(value as MealType);
@@ -25,9 +25,10 @@ function parseYmd(value: string | null) {
 }
 
 function normalizeScore(value: unknown) {
+  if (value === null || value === undefined || value === "") return null;
   const score = Number(value);
-  if (!Number.isInteger(score) || score < 1 || score > 5) return null;
-  return score;
+  if (!Number.isFinite(score) || score < 0 || score > 5) return null;
+  return Math.round(score * 10) / 10;
 }
 
 async function getViewer() {
@@ -67,9 +68,10 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  const ratings: RatingMap = { lunch: null, dinner: null };
+  const ratings: RatingMap = { breakfast: null, lunch: null, dinner: null };
   for (const row of data ?? []) {
-    const mealType = String((row as any).key).endsWith(":lunch") ? "lunch" : "dinner";
+    const mealType = MEAL_TYPES.find((type) => String((row as any).key).endsWith(`:${type}`));
+    if (!mealType) continue;
     const score = normalizeScore((row as any).value);
     ratings[mealType] = score;
   }
@@ -89,7 +91,7 @@ export async function POST(req: Request) {
   const score = normalizeScore(body?.score);
 
   if (!ymd || !mealType || score === null) {
-    return NextResponse.json({ error: "날짜, 급식 종류, 1~5점 점수가 필요합니다." }, { status: 400 });
+    return NextResponse.json({ error: "날짜, 급식 종류, 0~5점 점수가 필요합니다." }, { status: 400 });
   }
 
   const viewer = await getViewer();
