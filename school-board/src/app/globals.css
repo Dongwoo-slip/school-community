@@ -349,8 +349,8 @@ a {
 .post-row {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  padding: 0.75rem 1rem;
+  gap: 0.6rem;
+  padding: 0.52rem 0.85rem;
   border-bottom: 1px solid var(--border-subtle);
   transition: background 0.12s ease;
 }
@@ -364,9 +364,10 @@ a {
 }
 
 .post-row-title {
-  font-size: 0.875rem;
+  font-size: 0.82rem;
   font-weight: 500;
   color: var(--text-primary);
+  line-height: 1.25;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -375,9 +376,9 @@ a {
 .post-row-meta {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  margin-top: 3px;
-  font-size: 0.7rem;
+  gap: 0.5rem;
+  margin-top: 1px;
+  font-size: 0.66rem;
   color: var(--text-muted);
   min-width: 0;
 }
@@ -570,9 +571,9 @@ a {
   }
 
   .post-row {
-    align-items: flex-start;
-    gap: 0.55rem;
-    padding: 0.72rem 0.85rem;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.5rem 0.7rem;
   }
 
   .post-row-title {
@@ -580,13 +581,13 @@ a {
     white-space: normal;
     -webkit-box-orient: vertical;
     -webkit-line-clamp: 2;
-    line-height: 1.35;
+    line-height: 1.25;
   }
 
   .post-row-meta {
     flex-wrap: wrap;
-    gap: 0.25rem 0.6rem !important;
-    line-height: 1.25;
+    gap: 0.15rem 0.45rem !important;
+    line-height: 1.15;
   }
 
   .timetable-row {
@@ -642,14 +643,14 @@ a {
   }
 
   .board-post-card {
-    align-items: flex-start !important;
-    gap: 0.85rem !important;
-    padding: 1rem !important;
+    align-items: center !important;
+    gap: 0.7rem !important;
+    padding: 0.72rem !important;
   }
 
   .board-card-index {
-    width: 2.75rem !important;
-    height: 2.75rem !important;
+    width: 2.25rem !important;
+    height: 2.25rem !important;
   }
 
   .board-card-title-row {
@@ -657,15 +658,15 @@ a {
   }
 
   .board-card-title {
-    font-size: 0.95rem !important;
-    line-height: 1.35 !important;
+    font-size: 0.84rem !important;
+    line-height: 1.22 !important;
   }
 
   .board-card-meta {
     flex-wrap: wrap;
-    gap: 0.35rem 0.7rem !important;
-    letter-spacing: 0.05em !important;
-    line-height: 1.2 !important;
+    gap: 0.2rem 0.5rem !important;
+    letter-spacing: 0.03em !important;
+    line-height: 1.15 !important;
   }
 
   .board-card-author {
@@ -770,6 +771,6 @@ a {
   }
 
   .board-post-card {
-    padding: 0.9rem !important;
+    padding: 0.65rem !important;
   }
 }

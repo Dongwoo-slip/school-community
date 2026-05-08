@@ -71,7 +71,7 @@ export default function AllBoardClient() {
       </div>
 
       {loading ? (
-        <div className="grid gap-4">
+        <div className="grid gap-2">
           {Array.from({ length: 5 }).map((_, i) => (
             <div key={i} className="h-24 animate-pulse" style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)' }} />
           ))}
@@ -94,22 +94,22 @@ export default function AllBoardClient() {
               <Link
                 key={p.id}
                 href={`/community/free/${p.id}`}
-                className="board-post-card glass-hover group flex items-center gap-6 p-5 transition-all"
+                className="board-post-card glass-hover group flex items-center gap-3 px-3 py-2.5 transition-all"
                 style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}
               >
-                <div className="board-card-index flex h-12 w-12 shrink-0 flex-col items-center justify-center font-bold" style={{ background: 'var(--brand-dim)', color: 'var(--brand)', border: '1px solid rgba(31,126,219,0.18)' }}>
-                  <span className="text-[10px] leading-none mb-0.5" style={{ color: 'var(--text-muted)' }}>#{num}</span>
-                  <span className="text-xs" style={{ color: 'var(--brand)' }}>{date}</span>
+                <div className="board-card-index flex h-10 w-10 shrink-0 flex-col items-center justify-center font-bold" style={{ background: 'var(--brand-dim)', color: 'var(--brand)', border: '1px solid rgba(31,126,219,0.18)' }}>
+                  <span className="mb-0.5 text-[9px] leading-none" style={{ color: 'var(--text-muted)' }}>#{num}</span>
+                  <span className="text-[10px]" style={{ color: 'var(--brand)' }}>{date}</span>
                 </div>
 
                 <div className="min-w-0 flex-1">
                   <div className="board-card-title-row flex items-center gap-2">
-                    <h3 className="board-card-title truncate text-base font-bold transition-colors" style={{ color: 'var(--text-primary)' }}>
+                    <h3 className="board-card-title truncate text-[14px] font-semibold leading-snug transition-colors" style={{ color: 'var(--text-primary)' }}>
                       {p.title}
                     </h3>
                     {hasPoll && <span className="text-xs" title="투표 포함">🗳️</span>}
                   </div>
-                  <div className="board-card-meta mt-2 flex items-center gap-4 text-[10px] font-bold uppercase tracking-widest leading-none">
+                  <div className="board-card-meta mt-1 flex items-center gap-3 text-[10px] font-bold uppercase tracking-wide leading-none">
                     <div className="flex items-center gap-1.5">
                       {(() => {
                         const t = getTier(p.author?.points || 0, p.author?.role || undefined);

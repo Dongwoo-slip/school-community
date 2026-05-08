@@ -64,10 +64,10 @@ function PostList({
                 isNotice ? "bg-amber-50 hover:bg-amber-50/70" : "hover:bg-slate-50"
               }
             >
-              <div className="grid grid-cols-12 items-center gap-2 px-3 py-2.5 text-sm">
+              <div className="grid grid-cols-12 items-center gap-2 px-3 py-1.5 text-[13px]">
                 <div className="col-span-2">
                   {mode === "best" ? (
-                    <span className="inline-flex min-w-8 items-center justify-center border border-slate-300 bg-white px-2 py-1 text-[11px] text-slate-800">
+                    <span className="inline-flex min-w-7 items-center justify-center border border-slate-300 bg-white px-1.5 py-0.5 text-[10px] text-slate-800">
                       #{idx + 1}
                     </span>
                   ) : (
