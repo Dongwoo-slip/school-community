@@ -5,14 +5,15 @@ import React from "react";
 type AdCfg = { show: boolean; w: number; h: number; left: number };
 
 function getAdCfg(vw: number): AdCfg {
-  // 너무 좁으면 겹치니까 숨김 (아이패드 가로 포함)
-  if (vw < 1400) return { show: false, w: 0, h: 0, left: 0 };
+  const contentWidth = 1152;
+  const gutter = Math.max(0, (vw - contentWidth) / 2);
 
-  // 중간 데스크탑
-  if (vw < 1700) return { show: true, w: 160, h: 260, left: 12 };
+  if (vw < 1440 || gutter < 148) return { show: false, w: 0, h: 0, left: 0 };
 
-  // 큰 데스크탑
-  return { show: true, w: 190, h: 300, left: 12 };
+  const w = vw < 1700 ? 120 : 150;
+  const h = vw < 1700 ? 360 : 430;
+  const left = Math.max(12, Math.floor(gutter - w - 20));
+  return { show: true, w, h, left };
 }
 
 /**
@@ -57,32 +58,32 @@ export default function FloatingLeftAd({ topAnchorId }: { topAnchorId: string })
 
   return (
     <aside
-      className="fixed z-50 transition-transform duration-300 ease-out will-change-transform"
+      className="fixed z-40 transition-transform duration-300 ease-out will-change-transform"
       style={{ left: cfg.left, top: topPx, width: cfg.w }}
       aria-label="Floating advertisement"
     >
-      <div className="border border-slate-300 bg-white shadow-sm overflow-hidden">
-        <div className="border-b border-slate-200 bg-slate-50 px-2 py-2 text-[11px] font-semibold text-slate-900 text-center">
+      <div className="overflow-hidden border border-sky-300 bg-white shadow-sm">
+        <div className="border-b border-sky-200 bg-sky-50 px-2 py-2 text-center text-[11px] font-semibold text-sky-900">
           AD
         </div>
 
         <div className="p-2">
           <div
-            className="flex items-center justify-center border-2 border-dashed border-slate-300 bg-slate-100"
+            className="flex items-center justify-center border border-dashed border-sky-300 bg-sky-50"
             style={{ height: cfg.h }}
           >
             <div className="text-center">
-              <div className="text-[11px] font-bold text-slate-800">광고</div>
-              <div className="mt-1 text-[10px] text-slate-600">
+              <div className="text-[11px] font-bold text-sky-900">광고</div>
+              <div className="mt-1 text-[10px] text-sky-700">
                 {cfg.w}×{cfg.h}
               </div>
-              <div className="mt-2 text-[10px] text-slate-500 leading-tight">배너 자리</div>
+              <div className="mt-2 text-[10px] leading-tight text-slate-500">배너 자리</div>
             </div>
           </div>
 
           <a
             href="mailto:test"
-            className="mt-2 block border border-slate-200 bg-white px-2 py-2 text-[10px] font-semibold text-slate-900 hover:bg-slate-50 text-center"
+            className="mt-2 block border border-sky-200 bg-white px-2 py-2 text-center text-[10px] font-semibold text-sky-900 hover:bg-sky-50"
           >
             문의
           </a>

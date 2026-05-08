@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import React, { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import AnonymousChatBox from "@/components/AnonymousChatBox";
+import FloatingLeftAd from "@/components/FloatingLeftAd";
 import { getTier, TIERS } from "@/lib/tiers";
 
 // ... types remain same ...
@@ -237,7 +238,8 @@ export default function FreeLayout({ children }: { children: ReactNode }) {
   return (
     <FreeCtx.Provider value={ctxValue}>
       {/* ── Header ── */}
-      <header style={{ background: 'rgba(255,255,255,0.96)', borderBottom: '1px solid var(--border-mild)', boxShadow: '0 1px 0 rgba(15,23,42,0.04)' }} className="sticky top-0 z-50 backdrop-blur">
+      <FloatingLeftAd topAnchorId="community-header" />
+      <header id="community-header" style={{ background: 'rgba(255,255,255,0.96)', borderBottom: '1px solid var(--border-mild)', boxShadow: '0 1px 0 rgba(15,23,42,0.04)' }} className="sticky top-0 z-50 backdrop-blur">
         <div className="mx-auto max-w-6xl px-3 sm:px-6">
           <div className="mobile-header-row flex h-14 items-center justify-between gap-4">
 

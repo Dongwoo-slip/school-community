@@ -14,7 +14,7 @@ export async function GET() {
   const sb = admin();
   const { data, error } = await sb
     .from("posts")
-    .select("id,title,content,image_urls,created_at,updated_at")
+    .select("id,title,content,image_urls,tags,created_at,updated_at")
     .eq("board", "popup")
     .eq("is_deleted", false)
     .order("created_at", { ascending: false })

@@ -32,7 +32,7 @@ export async function GET() {
   const sb = admin();
   const { data, error } = await sb
     .from("posts")
-    .select("id,title,content,image_urls,author_id,created_at,updated_at,is_deleted")
+    .select("id,title,content,image_urls,tags,author_id,created_at,updated_at,is_deleted")
     .eq("board", "popup")
     .order("created_at", { ascending: false })
     .limit(30);
@@ -67,6 +67,7 @@ export async function POST(req: Request) {
   const body = await req.json().catch(() => ({}));
   const title = String(body?.title ?? "").trim().slice(0, 120);
   const content = String(body?.content ?? "").trim().slice(0, 2000);
+  const layout = body?.layout === "split" ? "split" : "portrait";
   const imageUrls = Array.isArray(body?.image_urls)
     ? body.image_urls.map((x: any) => String(x ?? "").trim()).filter(Boolean).slice(0, 3)
     : [];
@@ -88,6 +89,7 @@ export async function POST(req: Request) {
       title,
       content,
       image_urls: imageUrls,
+      tags: [`popup:layout:${layout}`],
       author_id: auth.userId,
       view_count: 0,
       is_deleted: false,

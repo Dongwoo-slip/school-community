@@ -7,6 +7,7 @@ type Row = {
   title: string | null;
   content: string | null;
   image_urls?: string[] | null;
+  tags?: string[] | null;
   author_username?: string | null;
   created_at: string;
   updated_at?: string | null;
@@ -24,6 +25,7 @@ function fmt(iso: string) {
 export default function AdminPopupPage() {
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
+  const [layout, setLayout] = useState<"portrait" | "split">("portrait");
   const [file, setFile] = useState<File | null>(null);
   const [imageUrl, setImageUrl] = useState("");
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -83,7 +85,7 @@ export default function AdminPopupPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ title: title.trim(), content: content.trim(), image_urls }),
+        body: JSON.stringify({ title: title.trim(), content: content.trim(), image_urls, layout }),
       });
       const json = await res.json().catch(() => ({}));
       if (!res.ok || !json?.ok) {
@@ -92,6 +94,7 @@ export default function AdminPopupPage() {
       }
       setTitle("");
       setContent("");
+      setLayout("portrait");
       setFile(null);
       setImageUrl("");
       setFileInputKey((n) => n + 1);
@@ -128,10 +131,28 @@ export default function AdminPopupPage() {
       <section className="border border-slate-300 bg-white p-5">
         <div className="mb-4">
           <h2 className="text-[16px] font-black text-slate-950">팝업 공지 관리</h2>
-          <p className="mt-1 text-[12px] font-medium text-slate-600">등록하면 방문자에게 고정 틀 팝업으로 표시됩니다. 이미지는 정사각형에 맞춰 잘립니다.</p>
+          <p className="mt-1 text-[12px] font-medium text-slate-600">팝업 모양을 선택해서 등록할 수 있습니다. 텍스트가 길면 본문 박스가 늘어납니다.</p>
         </div>
 
         <div className="space-y-3">
+          <div className="grid gap-2 sm:grid-cols-2">
+            <button
+              type="button"
+              onClick={() => setLayout("portrait")}
+              className={`border px-3 py-3 text-left text-[12px] font-black ${layout === "portrait" ? "border-sky-600 bg-sky-50 text-sky-800" : "border-slate-300 bg-white text-slate-700"}`}
+            >
+              세로형
+              <span className="mt-1 block text-[11px] font-medium text-slate-500">위 사진, 아래 제목/내용</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setLayout("split")}
+              className={`border px-3 py-3 text-left text-[12px] font-black ${layout === "split" ? "border-sky-600 bg-sky-50 text-sky-800" : "border-slate-300 bg-white text-slate-700"}`}
+            >
+              가로형
+              <span className="mt-1 block text-[11px] font-medium text-slate-500">왼쪽 사진, 오른쪽 제목/내용</span>
+            </button>
+          </div>
           <input
             className="w-full border border-slate-300 px-3 py-2 text-sm font-bold text-slate-900 outline-none focus:border-sky-500"
             placeholder="팝업 제목"
@@ -195,6 +216,7 @@ export default function AdminPopupPage() {
           <div className="divide-y divide-slate-100">
             {rows.map((row) => {
               const image = Array.isArray(row.image_urls) ? row.image_urls[0] : null;
+              const isSplit = Array.isArray(row.tags) && row.tags.includes("popup:layout:split");
               return (
                 <div key={row.id} className="flex gap-3 p-4">
                   {image ? <img src={image} alt="" className="h-20 w-20 border border-slate-200 object-cover" /> : null}
@@ -203,6 +225,9 @@ export default function AdminPopupPage() {
                       <div className="font-black text-slate-950">{row.title}</div>
                       <span className={`px-2 py-0.5 text-[10px] font-black ${row.is_deleted ? "bg-slate-100 text-slate-500" : "bg-emerald-100 text-emerald-700"}`}>
                         {row.is_deleted ? "꺼짐" : "활성"}
+                      </span>
+                      <span className="bg-sky-50 px-2 py-0.5 text-[10px] font-black text-sky-700">
+                        {isSplit ? "가로형" : "세로형"}
                       </span>
                     </div>
                     <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-[11px] font-bold text-slate-500">

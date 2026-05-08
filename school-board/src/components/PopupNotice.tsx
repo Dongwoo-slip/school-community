@@ -7,6 +7,7 @@ type PopupPost = {
   title: string | null;
   content: string | null;
   image_urls?: string[] | null;
+  tags?: string[] | null;
   updated_at?: string | null;
   created_at?: string | null;
 };
@@ -35,6 +36,11 @@ function renderLinkedText(text: string) {
       </a>
     );
   });
+}
+
+function popupLayout(popup: PopupPost) {
+  const tags = Array.isArray(popup.tags) ? popup.tags : [];
+  return tags.includes("popup:layout:split") ? "split" : "portrait";
 }
 
 export default function PopupNotice() {
@@ -68,12 +74,19 @@ export default function PopupNotice() {
   if (!open || !popup) return null;
 
   const image = Array.isArray(popup.image_urls) ? popup.image_urls[0] : null;
+  const layout = popupLayout(popup);
+  const isSplit = layout === "split";
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/45 px-4 py-6 backdrop-blur-sm">
-      <div className="flex aspect-[13/16] w-full max-w-[390px] flex-col overflow-hidden border-2 border-slate-950 bg-white shadow-2xl">
-        <div className="border-b-2 border-slate-950 bg-slate-100 p-4">
-          <div className="aspect-square w-full overflow-hidden border border-slate-300 bg-white">
+    <div className="fixed inset-0 z-[100] flex items-start justify-center overflow-y-auto bg-black/45 px-4 py-6 backdrop-blur-sm sm:items-center">
+      <div
+        className={[
+          "w-full border border-sky-500 bg-white shadow-2xl",
+          isSplit ? "max-w-[760px] sm:flex" : "max-w-[390px]",
+        ].join(" ")}
+      >
+        <div className={isSplit ? "border-b border-sky-500 bg-sky-50 p-4 sm:w-[42%] sm:border-b-0 sm:border-r" : "border-b border-sky-500 bg-sky-50 p-4"}>
+          <div className="aspect-square w-full overflow-hidden border border-sky-200 bg-white">
             {image ? (
               <img src={image} alt="공지 이미지" className="h-full w-full object-cover" />
             ) : (
@@ -84,25 +97,27 @@ export default function PopupNotice() {
           </div>
         </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto p-5">
-          <div className="text-xl font-black leading-tight text-slate-950">{popup.title ?? "공지사항"}</div>
-          {popup.content ? (
-            <div className="mt-3 whitespace-pre-wrap break-words text-sm font-medium leading-6 text-slate-700">
-              {renderLinkedText(popup.content)}
-            </div>
-          ) : null}
-        </div>
+        <div className={isSplit ? "flex min-w-0 flex-1 flex-col" : ""}>
+          <div className="p-5">
+            <div className="text-xl font-black leading-tight text-slate-950">{popup.title ?? "공지사항"}</div>
+            {popup.content ? (
+              <div className="mt-3 whitespace-pre-wrap break-words text-sm font-medium leading-6 text-slate-700">
+                {renderLinkedText(popup.content)}
+              </div>
+            ) : null}
+          </div>
 
-        <div className="grid grid-cols-3 border-t-2 border-slate-950 text-[12px] font-black">
-          <button type="button" className="border-r border-slate-300 px-2 py-3 text-slate-600 hover:bg-slate-50" onClick={() => hideUntil(Date.now() + 3 * 60 * 60 * 1000)}>
-            3시간 안 보기
-          </button>
-          <button type="button" className="border-r border-slate-300 px-2 py-3 text-slate-600 hover:bg-slate-50" onClick={() => hideUntil(todayEndTimestamp())}>
-            오늘 안 보기
-          </button>
-          <button type="button" className="px-2 py-3 text-slate-950 hover:bg-slate-50" onClick={() => setOpen(false)}>
-            닫기
-          </button>
+          <div className="mt-auto grid grid-cols-3 border-t border-sky-500 text-[12px] font-black">
+            <button type="button" className="border-r border-slate-300 px-2 py-3 text-slate-600 hover:bg-slate-50" onClick={() => hideUntil(Date.now() + 3 * 60 * 60 * 1000)}>
+              3시간 안 보기
+            </button>
+            <button type="button" className="border-r border-slate-300 px-2 py-3 text-slate-600 hover:bg-slate-50" onClick={() => hideUntil(todayEndTimestamp())}>
+              오늘 안 보기
+            </button>
+            <button type="button" className="px-2 py-3 text-slate-950 hover:bg-slate-50" onClick={() => setOpen(false)}>
+              닫기
+            </button>
+          </div>
         </div>
       </div>
     </div>
