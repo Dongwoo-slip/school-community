@@ -46,6 +46,7 @@ export async function GET(req: Request) {
       .from("posts")
       .select("id,title,created_at,view_count,author_id,poll,image_urls")
       .eq("board", board)
+      .eq("is_deleted", false)
       .order("created_at", { ascending: false });
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });

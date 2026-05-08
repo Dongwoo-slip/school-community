@@ -24,6 +24,7 @@ export async function GET(req: Request) {
     .from("posts")
     .select("id,title,created_at,view_count,author_id,tags,author:profiles(username,role)")
     .eq("board", "jobs")
+    .eq("is_deleted", false)
     .order("created_at", { ascending: false })
     .limit(limit + 1);
 

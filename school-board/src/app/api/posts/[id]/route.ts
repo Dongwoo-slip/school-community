@@ -43,9 +43,27 @@ export async function GET(_req: Request, ctx: any) {
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   if (!post) return NextResponse.json({ error: "게시물을 찾을 수 없습니다." }, { status: 404 });
 
+  if (post.is_deleted) {
+    const authed = await createAuthedClient();
+    const { data: authData } = await authed.auth.getUser();
+    const user = authData.user;
+    let role = "guest";
+
+    if (user?.id) {
+      const { data: profile } = await sb.from("profiles").select("role").eq("id", user.id).maybeSingle();
+      role = profile?.role ?? "user";
+    }
+
+    if (role !== "admin") {
+      return NextResponse.json({ error: "게시물을 찾을 수 없습니다." }, { status: 404 });
+    }
+  }
+
   // 조회수 +1 (비동기로 실행하여 응답 속도에 영향을 주지 않음)
-  const nextView = (post.view_count ?? 0) + 1;
-  sb.from("posts").update({ view_count: nextView }).eq("id", id).then(() => { });
+  const nextView = post.is_deleted ? (post.view_count ?? 0) : (post.view_count ?? 0) + 1;
+  if (!post.is_deleted) {
+    sb.from("posts").update({ view_count: nextView }).eq("id", id).then(() => { });
+  }
 
   return NextResponse.json({
     data: {

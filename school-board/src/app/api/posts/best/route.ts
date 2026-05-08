@@ -17,8 +17,10 @@ export async function GET() {
   const VIEW_TH = 50;
 
   const { data: rows, error } = await sb
-    .from("free_posts_with_likes")
+    .from("posts")
     .select("id,title,created_at,view_count,like_count,author_id,poll")
+    .eq("board", "free")
+    .eq("is_deleted", false)
     .or(`view_count.gte.${VIEW_TH},like_count.gte.${LIKE_TH}`)
     .order("like_count", { ascending: false })
     .order("view_count", { ascending: false })
