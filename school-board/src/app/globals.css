@@ -70,16 +70,23 @@ body::before {
   z-index: 0;
 }
 
+body > * {
+  position: relative;
+  z-index: 1;
+}
+
 /* ─── Surface classes ────────────────────────────── */
 /* Main cards/sections */
 .card {
   background: var(--bg-surface);
+  background-image: none;
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius);
 }
 
 .card-elevated {
   background: var(--bg-elevated);
+  background-image: none;
   border: 1px solid var(--border-mild);
   border-radius: var(--radius);
 }
@@ -87,6 +94,7 @@ body::before {
 /* Legacy support — gentle glass that blends with new system */
 .glass {
   background: var(--bg-surface);
+  background-image: none;
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius);
   box-shadow: 0 1px 0 rgba(15, 23, 42, 0.04);
