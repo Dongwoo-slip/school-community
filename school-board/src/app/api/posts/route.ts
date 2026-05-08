@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient as createAuthedClient } from "@/lib/supabase/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
+import { awardPoints } from "@/lib/points";
 
 function admin() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
@@ -106,8 +107,7 @@ export async function POST(req: Request) {
 
   // ✅ 포인트 증정 (+10) 및 첫 게시물 배지 부여
   try {
-    const { data: current } = await sb.from("profiles").select("points, badge").eq("id", user.id).maybeSingle();
-    const nextPoints = (Number(current?.points) || 0) + 10;
+    const current = await awardPoints(user, 10);
 
     // 첫 게시물인지 확인
     const { count } = await sb.from("posts").select("*", { count: "exact", head: true }).eq("author_id", user.id);
@@ -116,7 +116,7 @@ export async function POST(req: Request) {
       badges.push("First Step");
     }
 
-    await sb.from("profiles").update({ points: nextPoints, badge: badges }).eq("id", user.id);
+    await sb.from("profiles").update({ badge: badges }).eq("id", user.id);
   } catch (e) {
     console.error("Failed to update points/badges:", e);
   }

@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useFreeBoard } from "../layout";
 
 type PollDraft = { enabled: boolean; question: string; options: string[] };
 
@@ -11,6 +12,7 @@ function keyOfFile(f: File) {
 
 export default function NewFreePostPage() {
   const router = useRouter();
+  const { refreshAll } = useFreeBoard();
 
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
@@ -98,6 +100,7 @@ export default function NewFreePostPage() {
         return;
       }
 
+      await refreshAll();
       router.push(`/community/free/${encodeURIComponent(json.id)}`);
       router.refresh();
     } catch (e: any) {

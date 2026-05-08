@@ -1,6 +1,7 @@
 ﻿import { NextResponse } from "next/server";
 import { createClient as createAuthedClient } from "@/lib/supabase/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
+import { awardPoints } from "@/lib/points";
 
 function admin() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
@@ -91,9 +92,7 @@ export async function POST(req: Request) {
 
   // ✅ 포인트 증정 (+5)
   try {
-    const { data: current } = await sb.from("profiles").select("points").eq("id", user.id).maybeSingle();
-    const nextPoints = (Number(current?.points) || 0) + 5;
-    await sb.from("profiles").update({ points: nextPoints }).eq("id", user.id);
+    await awardPoints(user, 5);
   } catch (e) {
     console.error("Failed to update points:", e);
   }

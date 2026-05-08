@@ -46,7 +46,7 @@ export default function FreePostDetailPage() {
   const raw = (params as any)?.id as string | string[] | undefined;
   const id = Array.isArray(raw) ? raw[0] : raw;
 
-  const { me, onLogout } = useFreeBoard();
+  const { me, onLogout, refreshAll } = useFreeBoard();
 
   const [post, setPost] = useState<PostDetail | null>(null);
   const [comments, setComments] = useState<Comment[]>([]);
@@ -190,6 +190,7 @@ export default function FreePostDetailPage() {
         return;
       }
       setCommentText("");
+      await refreshAll();
       await loadPostAndComments(id);
     } finally {
       setBusy(false);
