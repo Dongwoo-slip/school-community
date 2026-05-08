@@ -10,8 +10,8 @@ function getAdCfg(vw: number): AdCfg {
 
   if (vw < 1280 || gutter < 72) return { show: false, w: 0, h: 0, left: 0 };
 
-  const w = vw < 1440 ? 68 : vw < 1700 ? 96 : 140;
-  const h = vw < 1440 ? 300 : vw < 1700 ? 360 : 430;
+  const w = vw < 1440 ? 68 : vw < 1700 ? 120 : 150;
+  const h = vw < 1440 ? 300 : vw < 1700 ? 390 : 450;
   const left = Math.max(8, Math.floor(gutter - w - 12));
   return { show: true, w, h, left };
 }
@@ -67,9 +67,9 @@ export default function FloatingLeftAd({ topAnchorId }: { topAnchorId: string })
           AD
         </div>
 
-        <div className="p-2">
+        <div>
           <div
-            className="flex items-center justify-center border border-dashed border-sky-300 bg-sky-50"
+            className="flex items-center justify-center bg-sky-50"
             style={{ height: cfg.h }}
           >
             <div className="text-center">
@@ -83,7 +83,7 @@ export default function FloatingLeftAd({ topAnchorId }: { topAnchorId: string })
 
           <a
             href="mailto:test"
-            className="mt-2 block border border-sky-200 bg-white px-2 py-2 text-center text-[10px] font-semibold text-sky-900 hover:bg-sky-50"
+            className="block border-t border-sky-200 bg-white px-2 py-2 text-center text-[10px] font-semibold text-sky-900 hover:bg-sky-50"
           >
             문의
           </a>
