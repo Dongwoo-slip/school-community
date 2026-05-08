@@ -367,6 +367,7 @@ export default function FreeLayout({ children }: { children: ReactNode }) {
             <TabLink href="/community/free/jobs">구인구직</TabLink>
             <TabLink href="/community/free/meal">급식표</TabLink>
             <TabLink href="/community/free/best">베스트</TabLink>
+            {me.role === "admin" && <TabLink href="/community/free/admin/popup">팝업관리</TabLink>}
           </nav>
         </div>
 

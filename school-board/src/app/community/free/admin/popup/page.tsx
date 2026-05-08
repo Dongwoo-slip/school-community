@@ -7,7 +7,9 @@ type Row = {
   title: string | null;
   content: string | null;
   image_urls?: string[] | null;
+  author_username?: string | null;
   created_at: string;
+  updated_at?: string | null;
   is_deleted: boolean;
 };
 
@@ -23,6 +25,9 @@ export default function AdminPopupPage() {
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [file, setFile] = useState<File | null>(null);
+  const [imageUrl, setImageUrl] = useState("");
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [fileInputKey, setFileInputKey] = useState(0);
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -43,6 +48,16 @@ export default function AdminPopupPage() {
     load();
   }, []);
 
+  useEffect(() => {
+    if (!file) {
+      setPreviewUrl(null);
+      return;
+    }
+    const url = URL.createObjectURL(file);
+    setPreviewUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [file]);
+
   async function uploadImage() {
     if (!file) return [];
     const fd = new FormData();
@@ -56,12 +71,14 @@ export default function AdminPopupPage() {
   async function save() {
     if (busy) return;
     if (title.trim().length < 1) return setMsg("제목을 입력하세요.");
-    if (content.trim().length < 1 && !file) return setMsg("텍스트 또는 이미지를 하나 이상 넣어주세요.");
+    if (content.trim().length < 1 && !file && !imageUrl.trim()) return setMsg("텍스트 또는 이미지를 하나 이상 넣어주세요.");
 
     setBusy(true);
     setMsg(null);
     try {
-      const image_urls = await uploadImage();
+      const uploadedUrls = await uploadImage();
+      const directImageUrl = imageUrl.trim();
+      const image_urls = [...uploadedUrls, directImageUrl].filter(Boolean).slice(0, 3);
       const res = await fetch("/api/admin/popup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -76,6 +93,8 @@ export default function AdminPopupPage() {
       setTitle("");
       setContent("");
       setFile(null);
+      setImageUrl("");
+      setFileInputKey((n) => n + 1);
       setMsg("팝업 공지를 등록했습니다. 기존 활성 팝업은 자동으로 꺼졌습니다.");
       await load();
     } catch (e: any) {
@@ -126,11 +145,31 @@ export default function AdminPopupPage() {
             onChange={(e) => setContent(e.target.value)}
           />
           <input
+            key={fileInputKey}
             type="file"
             accept="image/*"
             className="w-full border border-slate-300 bg-slate-50 px-3 py-2 text-sm text-slate-700"
             onChange={(e) => setFile(e.target.files?.[0] ?? null)}
           />
+          <input
+            className="w-full border border-slate-300 px-3 py-2 text-sm font-medium text-slate-900 outline-none focus:border-sky-500"
+            placeholder="이미지 URL 직접 입력도 가능"
+            value={imageUrl}
+            onChange={(e) => setImageUrl(e.target.value)}
+          />
+          {(previewUrl || imageUrl.trim()) ? (
+            <div className="border border-slate-200 bg-slate-50 p-3">
+              <div className="mb-2 text-[11px] font-black text-slate-600">이미지 미리보기</div>
+              <img
+                src={previewUrl || imageUrl.trim()}
+                alt="팝업 이미지 미리보기"
+                className="max-h-64 w-full object-contain"
+                onError={(e) => {
+                  e.currentTarget.style.display = "none";
+                }}
+              />
+            </div>
+          ) : null}
           {msg ? <div className="text-[12px] font-bold text-slate-700">{msg}</div> : null}
           <button type="button" className="btn-primary px-5 py-2.5 text-sm" onClick={save} disabled={busy}>
             {busy ? "처리 중..." : "팝업 등록"}
@@ -140,7 +179,10 @@ export default function AdminPopupPage() {
 
       <section className="border border-slate-300 bg-white">
         <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
-          <div className="text-[14px] font-black text-slate-950">등록된 팝업</div>
+          <div>
+            <div className="text-[14px] font-black text-slate-950">팝업 기록</div>
+            <div className="mt-0.5 text-[11px] font-medium text-slate-500">활성 팝업이 맨 위에 표시됩니다.</div>
+          </div>
           <button type="button" className="border border-slate-300 px-3 py-2 text-[12px] font-bold" onClick={load} disabled={loading}>
             새로고침
           </button>
@@ -163,7 +205,10 @@ export default function AdminPopupPage() {
                         {row.is_deleted ? "꺼짐" : "활성"}
                       </span>
                     </div>
-                    <div className="mt-1 text-[11px] font-bold text-slate-500">{fmt(row.created_at)}</div>
+                    <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-[11px] font-bold text-slate-500">
+                      <span>등록 {fmt(row.created_at)}</span>
+                      <span>작성자 {row.author_username ?? "알수없음"}</span>
+                    </div>
                     <div className="mt-2 line-clamp-3 whitespace-pre-wrap text-[12px] text-slate-700">{row.content}</div>
                   </div>
                   {!row.is_deleted ? (

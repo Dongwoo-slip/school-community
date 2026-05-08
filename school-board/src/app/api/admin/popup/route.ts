@@ -32,13 +32,32 @@ export async function GET() {
   const sb = admin();
   const { data, error } = await sb
     .from("posts")
-    .select("id,title,content,image_urls,created_at,is_deleted")
+    .select("id,title,content,image_urls,author_id,created_at,updated_at,is_deleted")
     .eq("board", "popup")
     .order("created_at", { ascending: false })
     .limit(30);
 
   if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 500 });
-  return NextResponse.json({ ok: true, data: data ?? [] });
+
+  const rows = data ?? [];
+  const ids = Array.from(new Set(rows.map((row: any) => row.author_id).filter(Boolean).map(String)));
+  const profileMap = new Map<string, string | null>();
+  if (ids.length) {
+    const { data: profiles } = await sb.from("profiles").select("id,username").in("id", ids);
+    (profiles ?? []).forEach((profile: any) => profileMap.set(String(profile.id), profile.username ?? null));
+  }
+
+  const out = rows
+    .map((row: any) => ({
+      ...row,
+      author_username: row.author_id ? profileMap.get(String(row.author_id)) ?? null : null,
+    }))
+    .sort((a: any, b: any) => {
+      if (a.is_deleted !== b.is_deleted) return a.is_deleted ? 1 : -1;
+      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    });
+
+  return NextResponse.json({ ok: true, data: out });
 }
 
 export async function POST(req: Request) {
