@@ -369,6 +369,7 @@ export default function FreeLayout({ children }: { children: ReactNode }) {
             <TabLink href="/community/free/jobs">구인구직</TabLink>
             <TabLink href="/community/free/meal">급식표</TabLink>
             <TabLink href="/community/free/best">베스트</TabLink>
+            {me.role === "admin" && <TabLink href="/community/free/admin/dashboard">관리자</TabLink>}
             {me.role === "admin" && <TabLink href="/community/free/admin/popup">팝업관리</TabLink>}
             {me.role === "admin" && <TabLink href="/community/free/admin/ad">광고관리</TabLink>}
           </nav>
@@ -456,6 +457,9 @@ export default function FreeLayout({ children }: { children: ReactNode }) {
                     관리자
                   </div>
                   <div style={{ padding: '0.5rem', display: 'grid', gap: '0.4rem' }}>
+                    <Link href="/community/free/admin/dashboard" className="btn-secondary" style={{ justifyContent: 'flex-start', fontSize: '0.75rem', padding: '0.45rem 0.65rem' }}>
+                      운영 통계
+                    </Link>
                     <Link href="/community/free/admin/archive" className="btn-secondary" style={{ justifyContent: 'flex-start', fontSize: '0.75rem', padding: '0.45rem 0.65rem' }}>
                       보관함
                     </Link>
