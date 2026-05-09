@@ -370,6 +370,7 @@ export default function FreeLayout({ children }: { children: ReactNode }) {
             <TabLink href="/community/free/meal">급식표</TabLink>
             <TabLink href="/community/free/best">베스트</TabLink>
             {me.role === "admin" && <TabLink href="/community/free/admin/popup">팝업관리</TabLink>}
+            {me.role === "admin" && <TabLink href="/community/free/admin/ad">광고관리</TabLink>}
           </nav>
         </div>
 
@@ -466,6 +467,9 @@ export default function FreeLayout({ children }: { children: ReactNode }) {
                     </Link>
                     <Link href="/community/free/admin/popup" className="btn-secondary" style={{ justifyContent: 'flex-start', fontSize: '0.75rem', padding: '0.45rem 0.65rem' }}>
                       팝업 공지
+                    </Link>
+                    <Link href="/community/free/admin/ad" className="btn-secondary" style={{ justifyContent: 'flex-start', fontSize: '0.75rem', padding: '0.45rem 0.65rem' }}>
+                      광고 관리
                     </Link>
                   </div>
                 </div>
