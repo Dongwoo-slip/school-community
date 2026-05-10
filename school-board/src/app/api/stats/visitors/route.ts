@@ -2,6 +2,9 @@ import { NextResponse } from "next/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { kstDateString } from "@/lib/time";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 function admin() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY!;
