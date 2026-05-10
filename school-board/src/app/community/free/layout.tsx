@@ -121,13 +121,15 @@ export default function FreeLayout({ children }: { children: ReactNode }) {
   async function loadMe() {
     const res = await fetch("/api/me", { cache: "no-store", credentials: "include" });
     const json = await res.json().catch(() => ({}));
-    setMe({
+    const next = {
       userId: json.userId ?? null,
       role: json.role ?? "guest",
       username: json.username ?? null,
       points: Number(json.points) || 0,
       badge: Array.isArray(json.badge) ? json.badge : [],
-    });
+    };
+    setMe(next);
+    return next;
   }
   async function loadPosts() {
     const res = await fetch("/api/posts?board=free", { cache: "no-store" });
@@ -135,12 +137,16 @@ export default function FreeLayout({ children }: { children: ReactNode }) {
     setPosts(json.data ?? []);
   }
   async function loadVisitors() {
-    const res = await fetch("/api/stats/visitors", { method: "POST" });
+    const res = await fetch("/api/stats/visitors", { method: "POST", credentials: "include" });
     const json = await res.json().catch(() => ({}));
-    setVisitors(typeof json.count === "number" ? json.count : 0);
+    if (typeof json.count === "number") setVisitors(json.count);
   }
-  async function loadMembers() {
-    const res = await fetch("/api/stats/users", { cache: "no-store" });
+  async function loadMembers(role?: string) {
+    if (role !== "admin") {
+      setMembers(null);
+      return;
+    }
+    const res = await fetch("/api/stats/users", { cache: "no-store", credentials: "include" });
     const json = await res.json().catch(() => ({}));
     setMembers(typeof json.count === "number" ? json.count : 0);
   }
@@ -168,7 +174,8 @@ export default function FreeLayout({ children }: { children: ReactNode }) {
   }
   async function refreshAll() {
     setLoading(true);
-    await Promise.all([loadMe(), loadPosts(), loadVisitors(), loadMembers()]);
+    const nextMe = await loadMe();
+    await Promise.all([loadPosts(), loadVisitors(), loadMembers(nextMe.role)]);
     setLoading(false);
   }
   async function onLogout() {

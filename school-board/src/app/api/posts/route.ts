@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient as createAuthedClient } from "@/lib/supabase/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { awardPoints } from "@/lib/points";
+import { requireUser } from "@/lib/serverAuth";
 
 function admin() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
@@ -12,6 +13,9 @@ function admin() {
 // GET /api/posts?board=free
 export async function GET(req: Request) {
   try {
+    const auth = await requireUser();
+    if (!auth.ok) return NextResponse.json({ error: auth.error, data: [] }, { status: auth.status });
+
     const { searchParams } = new URL(req.url);
     const board = (searchParams.get("board") ?? "free").trim() || "free";
 

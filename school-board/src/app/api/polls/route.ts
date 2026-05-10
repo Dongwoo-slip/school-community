@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient as createAuthedClient } from "@/lib/supabase/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
+import { requireUser } from "@/lib/serverAuth";
 
 function admin() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
@@ -11,6 +12,9 @@ function admin() {
 // GET /api/polls?post_id=...
 // -> { counts: { [optionId]: number }, total: number, myVote: optionId|null }
 export async function GET(req: Request) {
+  const auth = await requireUser();
+  if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
+
   const { searchParams } = new URL(req.url);
   const post_id = searchParams.get("post_id");
 

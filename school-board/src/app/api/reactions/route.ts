@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient as createAuthedClient } from "@/lib/supabase/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
+import { requireUser } from "@/lib/serverAuth";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -79,17 +80,16 @@ async function getMine(sb: ReturnType<typeof admin>, postId: string, userId: str
 // GET /api/reactions?post_id=...
 export async function GET(req: Request) {
   try {
+    const auth = await requireUser();
+    if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
+
     const { searchParams } = new URL(req.url);
     const postId = String(searchParams.get("post_id") ?? "").trim();
     if (!postId) return NextResponse.json({ error: "post_id가 필요합니다." }, { status: 400 });
 
-    const authed = await createAuthedClient();
-    const { data } = await authed.auth.getUser();
-    const user = data.user;
-
     const sb = admin();
     const counts = await getCounts(sb, postId);
-    const mine = user?.id ? await getMine(sb, postId, user.id) : { like: false, dislike: false, report: false };
+    const mine = await getMine(sb, postId, auth.user.id);
 
     return NextResponse.json({ counts, mine });
   } catch (e: any) {

@@ -28,12 +28,14 @@ export async function POST(req: Request) {
 
   const files = form.getAll("files").filter(Boolean) as File[];
   if (!files.length) return NextResponse.json({ error: "업로드할 파일이 없습니다." }, { status: 400 });
+  if (files.length > 5) return NextResponse.json({ error: "이미지는 한 번에 최대 5장까지 업로드 가능합니다." }, { status: 400 });
 
   // ✅ 설정: 버킷 이름 (원하는 이름으로)
   const bucket = process.env.SUPABASE_STORAGE_BUCKET || "post-images";
 
   const sb = admin();
   const urls: string[] = [];
+  let totalSize = 0;
 
   for (const f of files) {
     // 타입/크기 검증
@@ -43,6 +45,10 @@ export async function POST(req: Request) {
     // 10MB 제한(원하면 바꾸기)
     if (f.size > 10 * 1024 * 1024) {
       return NextResponse.json({ error: "이미지 1장당 10MB 이하만 가능합니다." }, { status: 400 });
+    }
+    totalSize += f.size;
+    if (totalSize > 20 * 1024 * 1024) {
+      return NextResponse.json({ error: "한 번에 업로드할 수 있는 총 용량은 20MB 이하입니다." }, { status: 400 });
     }
 
     const ext = safeName(f.name).split(".").pop() || "png";

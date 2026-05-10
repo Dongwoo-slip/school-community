@@ -25,6 +25,7 @@ export async function GET(req: Request) {
   const authed = await createAuthedClient();
   const { data: authData } = await authed.auth.getUser();
   const user = authData.user;
+  if (!user) return NextResponse.json({ error: "로그인이 필요합니다.", data: [] }, { status: 401 });
 
   let isAdmin = false;
   if (user?.id) {
@@ -49,7 +50,13 @@ export async function GET(req: Request) {
   const sliced = hasMore ? arr.slice(0, limit) : arr;
 
   if (!isAdmin) {
-    return NextResponse.json({ data: sliced, hasMore });
+    return NextResponse.json({
+      data: sliced.map((m: any) => ({
+        ...m,
+        user_id: m.user_id === user.id ? m.user_id : "",
+      })),
+      hasMore,
+    });
   }
 
   const ids = Array.from(new Set(sliced.map((m: any) => m.user_id).filter(Boolean).map(String)));
