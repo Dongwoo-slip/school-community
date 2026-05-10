@@ -47,10 +47,10 @@ export default function AllBoardClient() {
   }, [me.role]);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div className="board-list-header">
         <div>
-          <h2 className="text-2xl font-black" style={{ color: 'var(--text-primary)' }}>
+          <h2 className="text-xl font-black" style={{ color: 'var(--text-primary)' }}>
             {mine ? "내가 쓴 글" : "전체 게시글"}
           </h2>
           <p className="mt-1 text-xs font-bold uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>
@@ -84,7 +84,7 @@ export default function AllBoardClient() {
           </p>
         </div>
       ) : (
-        <div className="grid gap-4">
+        <div className="overflow-hidden border border-slate-200 bg-white">
           {visiblePosts.map((p: any) => {
             const num = numberMap.get(p.id);
             const date = KST_DATE.format(new Date(p.created_at));
@@ -94,22 +94,21 @@ export default function AllBoardClient() {
               <Link
                 key={p.id}
                 href={`/community/free/${p.id}`}
-                className="board-post-card glass-hover group flex items-center gap-3 px-3 py-2.5 transition-all"
-                style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}
+                className="board-post-card group flex items-center gap-2.5 border-b border-slate-100 px-3 py-2 transition-colors last:border-b-0 hover:bg-slate-50"
               >
-                <div className="board-card-index flex h-10 w-10 shrink-0 flex-col items-center justify-center font-bold" style={{ background: 'var(--brand-dim)', color: 'var(--brand)', border: '1px solid rgba(31,126,219,0.18)' }}>
-                  <span className="mb-0.5 text-[9px] leading-none" style={{ color: 'var(--text-muted)' }}>#{num}</span>
-                  <span className="text-[10px]" style={{ color: 'var(--brand)' }}>{date}</span>
+                <div className="board-card-index flex h-8 w-9 shrink-0 flex-col items-center justify-center font-bold" style={{ color: 'var(--brand)' }}>
+                  <span className="text-[9px] leading-none" style={{ color: 'var(--text-muted)' }}>#{num}</span>
+                  <span className="mt-0.5 text-[9px]" style={{ color: 'var(--brand)' }}>{date}</span>
                 </div>
 
                 <div className="min-w-0 flex-1">
                   <div className="board-card-title-row flex items-center gap-2">
-                    <h3 className="board-card-title truncate text-[14px] font-semibold leading-snug transition-colors" style={{ color: 'var(--text-primary)' }}>
+                    <h3 className="board-card-title truncate text-[13px] font-semibold leading-snug transition-colors" style={{ color: 'var(--text-primary)' }}>
                       {p.title}
                     </h3>
-                    {hasPoll && <span className="text-xs" title="투표 포함">🗳️</span>}
+                    {hasPoll && <span className="text-[11px]" title="투표 포함">🗳️</span>}
                   </div>
-                  <div className="board-card-meta mt-1 flex items-center gap-3 text-[10px] font-bold uppercase tracking-wide leading-none">
+                  <div className="board-card-meta mt-0.5 flex items-center gap-2.5 text-[9px] font-bold uppercase tracking-wide leading-none">
                     <div className="flex items-center gap-1.5">
                       {(() => {
                         const t = getTier(p.author?.points || 0, p.author?.role || undefined);
@@ -132,7 +131,7 @@ export default function AllBoardClient() {
                 </div>
 
                 <div className="hidden sm:block transition-colors" style={{ color: 'var(--text-muted)' }}>
-                  <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                   </svg>
                 </div>

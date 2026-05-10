@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient as createAuthedClient } from "@/lib/supabase/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
+import { kstDateString } from "@/lib/time";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -93,11 +94,13 @@ export async function GET() {
 
   const sb = admin();
   const today = startOfTodayKst();
+  const todayVisitorKey = `visitors:daily:${kstDateString()}`;
 
   const [
     totalUsers,
     usersToday,
     totalVisitsRows,
+    todayVisitsRows,
     totalPosts,
     visiblePosts,
     archivedPosts,
@@ -123,6 +126,7 @@ export async function GET() {
     countUsers(sb),
     safeCount(sb, "profiles", (q) => q.gte("created_at", today)),
     safeRows(sb, "site_stats", "value", (q) => q.eq("key", "visitors").maybeSingle()),
+    safeRows(sb, "site_stats", "value", (q) => q.eq("key", todayVisitorKey).maybeSingle()),
     safeCount(sb, "posts"),
     safeCount(sb, "posts", (q) => q.eq("is_deleted", false)),
     safeCount(sb, "posts", (q) => q.eq("is_deleted", true)),
@@ -168,6 +172,9 @@ export async function GET() {
   const totalVisits = Array.isArray(totalVisitsRows)
     ? Number((totalVisitsRows[0] as any)?.value ?? 0)
     : Number((totalVisitsRows as any)?.value ?? 0);
+  const todayVisits = Array.isArray(todayVisitsRows)
+    ? Number((todayVisitsRows[0] as any)?.value ?? 0)
+    : Number((todayVisitsRows as any)?.value ?? 0);
 
   return NextResponse.json({
     ok: true,
@@ -178,6 +185,7 @@ export async function GET() {
         totalUsers,
         usersToday,
         totalVisits,
+        todayVisits,
         totalPosts,
         visiblePosts,
         archivedPosts,

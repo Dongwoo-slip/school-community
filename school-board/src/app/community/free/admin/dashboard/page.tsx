@@ -41,6 +41,7 @@ type DashboardData = {
 const cardLabels: { key: string; label: string; tone?: "red" | "blue" | "green" }[] = [
   { key: "totalUsers", label: "전체 회원", tone: "blue" },
   { key: "totalVisits", label: "누적 방문", tone: "blue" },
+  { key: "todayVisits", label: "오늘 방문", tone: "green" },
   { key: "visiblePosts", label: "노출 글" },
   { key: "archivedPosts", label: "보관 글" },
   { key: "postsToday", label: "오늘 새글", tone: "green" },
