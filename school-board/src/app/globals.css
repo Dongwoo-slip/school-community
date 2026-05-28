@@ -47,10 +47,7 @@ html {
 
 body {
   background-color: var(--bg-base);
-  background-image:
-    linear-gradient(rgba(15, 23, 42, 0.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(15, 23, 42, 0.03) 1px, transparent 1px);
-  background-size: 40px 40px;
+  background-image: none;
   color: var(--text-primary);
   font-family: 'Noto Sans KR', 'Inter', system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
