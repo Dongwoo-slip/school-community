@@ -46,29 +46,32 @@ export default function MainBoardClient() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.1rem' }}>
-      <div style={{
+      <div className="main-hero-banner" style={{
         background: '#ffffff',
         border: '1px solid var(--border-mild)',
         borderRadius: 6,
         padding: '1.25rem',
         boxShadow: '0 10px 24px rgba(24,32,31,0.05)',
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.6rem' }}>
-          <span style={{ fontSize: '0.74rem', fontWeight: 600, color: 'var(--brand-light)', background: 'var(--brand-dim)', padding: '0.22rem 0.62rem', borderRadius: 999 }}>청주고등학교</span>
-        </div>
-        <h2 style={{ fontSize: '1.45rem', fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1.3 }}>
-          CJHS <span style={{ color: 'var(--brand-light)' }}>Square</span>
-        </h2>
-        <p style={{ fontSize: '0.88rem', color: 'var(--text-secondary)', marginTop: '0.4rem', lineHeight: 1.65 }}>
-          우리들의 이야기, 자유롭게 나눠요.
-        </p>
-        <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1rem' }}>
-          <Link href="/community/free/new" className="btn-primary" style={{ fontSize: '0.8rem', padding: '0.45rem 1rem' }}>
-            글쓰기
-          </Link>
-          <Link href="/community/free/all" className="btn-secondary" style={{ fontSize: '0.8rem', padding: '0.45rem 1rem' }}>
-            전체글 보기
-          </Link>
+        <img className="main-hero-emblem" src="/logo.png" alt="" aria-hidden="true" />
+        <div className="main-hero-content">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.6rem' }}>
+            <span style={{ fontSize: '0.74rem', fontWeight: 600, color: 'var(--brand-light)', background: 'var(--brand-dim)', padding: '0.22rem 0.62rem', borderRadius: 999 }}>청주고등학교</span>
+          </div>
+          <h2 style={{ fontSize: '1.45rem', fontWeight: 700, color: 'var(--text-primary)', lineHeight: 1.3 }}>
+            CJHS <span style={{ color: 'var(--brand-light)' }}>Square</span>
+          </h2>
+          <p style={{ fontSize: '0.88rem', color: 'var(--text-secondary)', marginTop: '0.4rem', lineHeight: 1.65 }}>
+            우리들의 이야기, 자유롭게 나눠요.
+          </p>
+          <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1rem' }}>
+            <Link href="/community/free/new" className="btn-primary" style={{ fontSize: '0.8rem', padding: '0.45rem 1rem' }}>
+              글쓰기
+            </Link>
+            <Link href="/community/free/all" className="btn-secondary" style={{ fontSize: '0.8rem', padding: '0.45rem 1rem' }}>
+              전체글 보기
+            </Link>
+          </div>
         </div>
       </div>
 
