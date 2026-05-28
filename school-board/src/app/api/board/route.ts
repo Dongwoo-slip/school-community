@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { requireUser } from "@/lib/serverAuth";
+import { AUTHOR_PROFILE_SELECT, type AuthorIdentity } from "@/lib/authorDisplay";
 
 function admin() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
@@ -37,12 +38,12 @@ export async function GET(req: Request) {
 
     // author profiles
     const ids = Array.from(new Set((posts ?? []).map((p: any) => p.author_id).filter(Boolean)));
-    const profileMap = new Map<string, { username: string | null; role: string | null }>();
+    const profileMap = new Map<string, AuthorIdentity>();
 
     if (ids.length > 0) {
-      const { data: profiles } = await sb.from("profiles").select("id,username,role").in("id", ids);
+      const { data: profiles } = await sb.from("profiles").select(`id,${AUTHOR_PROFILE_SELECT}`).in("id", ids);
       (profiles ?? []).forEach((pr: any) => {
-        profileMap.set(pr.id, { username: pr.username ?? null, role: pr.role ?? "user" });
+        profileMap.set(pr.id, pr);
       });
     }
 

@@ -30,7 +30,7 @@ function rangeLabel(days: string[]) {
   return `${sm}.${sd} - ${em}.${ed}`;
 }
 
-function clampInt(v: any, min: number, max: number) {
+function clampInt(v: unknown, min: number, max: number) {
   const n = Number(v);
   if (!Number.isFinite(n)) return null;
   const x = Math.floor(n);
@@ -56,8 +56,8 @@ export default function TimetableWidget() {
         const res = await fetch("/api/me", { cache: "no-store", credentials: "include" });
         if (!res.ok) return;
         const me = await res.json().catch(() => ({}));
-        const g = me?.grade ?? me?.school_grade ?? null;
-        const c = me?.classNo ?? me?.class_no ?? me?.classNm ?? null;
+        const g = me?.verifiedGrade ?? me?.grade ?? me?.school_grade ?? null;
+        const c = me?.verifiedClassNo ?? me?.classNo ?? me?.class_no ?? me?.classNm ?? null;
         const gg = clampInt(g, 1, 3);
         const cc = clampInt(c, 1, 11);
         if (!ignore && !touchedRef.current) {
@@ -85,7 +85,6 @@ export default function TimetableWidget() {
   const busy = loading || !initDone;
   const days = data?.ok ? data.days ?? [] : [];
   const grid = data?.ok ? data.grid ?? [] : [];
-  const hasData = data?.ok ? (data.hasData ?? false) : false;
   const noData = data?.ok && !data.hasData && !busy;
 
   return (
@@ -94,12 +93,12 @@ export default function TimetableWidget() {
       <div className="timetable-header px-4 py-4 sm:px-6" style={{ background: 'var(--bg-surface)', borderBottom: '1px solid var(--border-subtle)' }}>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2">
-            <h3 className="text-sm font-bold uppercase tracking-widest" style={{ color: 'var(--text-primary)' }}>CJHS TimeTable</h3>
+            <h3 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>CJHS TimeTable</h3>
           </div>
 
           <div className="timetable-controls flex items-center gap-1.5">
             <select
-              className="border px-2 py-1 text-[11px] font-bold outline-none"
+              className="border px-2 py-1 text-[11px] font-medium outline-none"
               style={{ background: 'var(--bg-elevated)', borderColor: 'var(--border-subtle)', color: 'var(--text-primary)' }}
               value={grade}
               onChange={(e) => { markTouched(); setGrade(e.target.value); setWeekOffset(0); }}
@@ -108,7 +107,7 @@ export default function TimetableWidget() {
               {[1, 2, 3].map(v => <option key={v} value={v}>{v}학년</option>)}
             </select>
             <select
-              className="border px-2 py-1 text-[11px] font-bold outline-none"
+              className="border px-2 py-1 text-[11px] font-medium outline-none"
               style={{ background: 'var(--bg-elevated)', borderColor: 'var(--border-subtle)', color: 'var(--text-primary)' }}
               value={classNm}
               onChange={(e) => { markTouched(); setClassNm(e.target.value); setWeekOffset(0); }}
@@ -134,11 +133,11 @@ export default function TimetableWidget() {
             disabled={busy || weekOffset === 0}
             className="flex flex-col items-center group"
           >
-            <div className="text-[11px] font-bold" style={{ color: 'var(--brand)' }}>
+            <div className="text-[11px] font-semibold" style={{ color: 'var(--brand)' }}>
               {days.length ? rangeLabel(days) : busy ? "..." : "정보 없음"}
             </div>
             {weekOffset !== 0 && (
-              <span className="text-[8px] font-black text-slate-500 uppercase tracking-tighter">오늘로 돌아가기</span>
+              <span className="text-[9px] font-medium text-slate-500">오늘로 돌아가기</span>
             )}
           </button>
           <button
@@ -154,7 +153,7 @@ export default function TimetableWidget() {
       {/* Grid */}
       {noData ? (
         <div className="p-8 text-center">
-          <p className="text-sm font-bold text-slate-400">이번 주 시간표가 없습니다</p>
+          <p className="text-sm font-medium text-slate-400">이번 주 시간표가 없습니다</p>
           <p className="mt-1 text-[10px] text-slate-600">학교에서 NEIS에 시간표를 아직 등록하지 않았거나,<br />방학 기간일 수 있습니다.</p>
         </div>
       ) : (
@@ -163,14 +162,14 @@ export default function TimetableWidget() {
             <div className="timetable-grid">
               {/* Table Header */}
               <div className="timetable-row gap-1 sm:gap-2 mb-1 sm:mb-2">
-                <div className="timetable-cell timetable-day flex items-center justify-center py-2 text-[10px] font-bold uppercase" style={{ background: 'var(--bg-elevated)', color: 'var(--text-muted)' }}>
+                <div className="timetable-cell timetable-day flex items-center justify-center py-2 text-[10px] font-medium" style={{ background: 'var(--bg-elevated)', color: 'var(--text-muted)' }}>
                   교시
                 </div>
                 {Array.from({ length: 5 }, (_, i) => {
                   const h = dayHeader(days[i] ?? "", i);
                   return (
                     <div key={i} className="timetable-cell timetable-day flex flex-col items-center justify-center py-2" style={{ background: 'var(--bg-elevated)' }}>
-                      <span className="timetable-day-name text-[10px] font-black" style={{ color: 'var(--text-primary)' }}>{h.name}</span>
+                      <span className="timetable-day-name text-[10px] font-semibold" style={{ color: 'var(--text-primary)' }}>{h.name}</span>
                       <span className="timetable-day-date text-[9px]" style={{ color: 'var(--text-muted)' }}>{h.date}</span>
                     </div>
                   );
@@ -181,7 +180,7 @@ export default function TimetableWidget() {
               <div className="space-y-1 sm:space-y-2">
                 {Array.from({ length: 7 }, (_, p) => (
                   <div key={p} className="timetable-row gap-1 sm:gap-2">
-                    <div className="timetable-cell timetable-period flex items-center justify-center text-[11px] font-black" style={{ background: 'var(--brand-dim)', color: 'var(--brand)' }}>
+                    <div className="timetable-cell timetable-period flex items-center justify-center text-[11px] font-semibold" style={{ background: 'var(--brand-dim)', color: 'var(--brand)' }}>
                       {p + 1}
                     </div>
                     {Array.from({ length: 5 }, (_, c) => {

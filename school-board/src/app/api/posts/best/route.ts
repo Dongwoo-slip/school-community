@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { requireUser } from "@/lib/serverAuth";
+import { AUTHOR_PROFILE_SELECT, type AuthorIdentity } from "@/lib/authorDisplay";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -34,12 +35,12 @@ export async function GET() {
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
   const ids = Array.from(new Set((rows ?? []).map((r: any) => r.author_id).filter(Boolean)));
-  const profileMap = new Map<string, { username: string | null; role: string | null }>();
+  const profileMap = new Map<string, AuthorIdentity>();
 
   if (ids.length > 0) {
-    const { data: profiles } = await sb.from("profiles").select("id,username,role").in("id", ids);
+    const { data: profiles } = await sb.from("profiles").select(`id,${AUTHOR_PROFILE_SELECT}`).in("id", ids);
     (profiles ?? []).forEach((p: any) => {
-      profileMap.set(p.id, { username: p.username ?? null, role: p.role ?? "user" });
+      profileMap.set(p.id, p);
     });
   }
 

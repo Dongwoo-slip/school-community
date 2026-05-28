@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useFreeBoard } from "../layout";
+import { formatAdminStudentLabel, type AuthorIdentity } from "@/lib/authorDisplay";
 
 type JobPost = {
   id: string;
@@ -11,7 +12,7 @@ type JobPost = {
   view_count: number;
   tags: string[];
   author_id: string | null;
-  author?: { username: string | null; role: string | null } | null;
+  author?: AuthorIdentity | null;
 };
 
 const GROUPS: { title: string; items: string[] }[] = [
@@ -252,7 +253,10 @@ export default function JobsClient() {
                   <div>
                     <div className="flex items-center justify-between mb-3">
                       <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{date}</span>
-                      <span className="text-[10px] font-bold text-slate-600">👤 {username}</span>
+                      <span className="text-[10px] font-bold text-slate-600">
+                        👤 {username}
+                        {me.role === "admin" ? ` · ${formatAdminStudentLabel(p.author)}` : ""}
+                      </span>
                     </div>
                     <h3 className="text-base font-bold text-slate-200 group-hover:text-sky-400 line-clamp-2 leading-snug">
                       {p.title}

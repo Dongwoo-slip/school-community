@@ -57,11 +57,11 @@ function StarPreview({ score }: { score: number | null }) {
       {[1, 2, 3, 4, 5].map((n) => {
         const fill = Math.max(0, Math.min(1, value - (n - 1)));
         return (
-          <span key={n} className="relative inline-block h-4 w-4 text-[15px] leading-4 text-slate-300">
+          <span key={n} className="relative inline-block h-4 w-4 text-[15px] leading-4" style={{ color: "#cfd6d3" }}>
             <span>★</span>
             <span
-              className="absolute left-0 top-0 overflow-hidden text-amber-400"
-              style={{ width: `${fill * 100}%` }}
+              className="absolute left-0 top-0 overflow-hidden"
+              style={{ color: "#b9852f", width: `${fill * 100}%` }}
               aria-hidden="true"
             >
               ★
@@ -69,7 +69,7 @@ function StarPreview({ score }: { score: number | null }) {
           </span>
         );
       })}
-      <span className="ml-1 text-[11px] font-black text-slate-500">{score === null ? "-/5" : `${score.toFixed(1)}/5`}</span>
+      <span className="ml-1 text-[11px] font-medium text-slate-500">{score === null ? "-/5" : `${score.toFixed(1)}/5`}</span>
     </div>
   );
 }
@@ -85,10 +85,6 @@ function RatingEditor({
 }) {
   const [value, setValue] = useState(score === null ? "" : String(score));
 
-  useEffect(() => {
-    setValue(score === null ? "" : String(score));
-  }, [score]);
-
   const parsed = normalizeScore(value);
 
   return (
@@ -101,14 +97,14 @@ function RatingEditor({
         inputMode="decimal"
         value={value}
         onChange={(e) => setValue(e.target.value)}
-        className="h-8 w-20 border border-slate-300 bg-white px-2 text-right text-sm font-black text-slate-900 outline-none focus:border-sky-500"
+        className="h-8 w-20 border border-slate-300 bg-white px-2 text-right text-sm font-medium text-slate-900 outline-none focus:border-sky-500"
         placeholder="3.5"
       />
       <button
         type="button"
         disabled={saving || parsed === null}
         onClick={() => parsed !== null && onSave(parsed)}
-        className="h-8 border border-emerald-600 bg-emerald-600 px-3 text-xs font-black text-white shadow-sm hover:bg-emerald-500 disabled:opacity-50"
+        className="h-8 border border-sky-700 bg-sky-700 px-3 text-xs font-semibold text-white shadow-sm hover:bg-sky-600 disabled:opacity-50"
       >
         {saving ? "저장중" : "저장"}
       </button>
@@ -140,21 +136,21 @@ function MealCard({
   onRate: (score: number) => void;
 }) {
   return (
-    <section className="min-w-0 border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
-      <div className="mb-4 flex min-w-0 flex-col gap-3">
+    <section className="min-w-0 border border-slate-200 bg-white p-3.5 shadow-sm sm:p-4">
+      <div className="mb-3 flex min-w-0 flex-col gap-2.5">
         <div className="flex min-w-0 items-center gap-2">
           <span className={`h-2.5 w-2.5 shrink-0 ${color}`} />
-          <h3 className="shrink-0 whitespace-nowrap text-base font-black text-slate-950">{title}</h3>
-          <span className="min-w-0 truncate text-[10px] font-black uppercase tracking-widest text-slate-500">{label}</span>
+          <h3 className="shrink-0 whitespace-nowrap text-base font-semibold text-slate-950">{title}</h3>
+          <span className="min-w-0 truncate text-[11px] font-medium text-slate-500">{label}</span>
         </div>
         <div className="flex flex-col gap-2">
           <StarPreview score={score} />
-          {score === null ? <p className="text-[11px] font-bold text-slate-400">아직 평가 안 됨</p> : null}
-          {canRate ? <RatingEditor score={score} saving={saving} onSave={onRate} /> : null}
+          {score === null ? <p className="text-[11px] font-medium text-slate-400">아직 평가 안 됨</p> : null}
+          {canRate ? <RatingEditor key={score ?? "empty"} score={score} saving={saving} onSave={onRate} /> : null}
         </div>
       </div>
 
-      <div className="border border-slate-200 bg-slate-50 p-4">
+      <div className="border border-slate-200 bg-slate-50/70 px-3.5 py-3">
         {loading ? (
           <div className="space-y-3">
             {Array.from({ length: 5 }).map((_, i) => (
@@ -162,14 +158,14 @@ function MealCard({
             ))}
           </div>
         ) : err ? (
-          <div className="py-10 text-center text-sm font-bold text-rose-500">{err}</div>
+          <div className="py-10 text-center text-sm font-medium text-rose-600">{err}</div>
         ) : items.length === 0 ? (
-          <div className="py-10 text-center text-sm font-bold text-slate-500">메뉴 정보가 없습니다.</div>
+          <div className="py-10 text-center text-sm font-medium text-slate-500">메뉴 정보가 없습니다.</div>
         ) : (
-          <ul className="space-y-2.5">
+          <ul className="space-y-1">
             {items.map((x, i) => (
-              <li key={`${label}-${i}-${x}`} className="flex items-start gap-2.5 text-sm font-bold leading-6 text-slate-700">
-                <span className={`mt-2 h-1.5 w-1.5 shrink-0 ${color}`} />
+              <li key={`${label}-${i}-${x}`} className="flex items-start gap-2 text-[13px] font-medium leading-5 text-slate-700">
+                <span className={`mt-[0.45rem] h-1.5 w-1.5 shrink-0 ${color}`} />
                 <span className="min-w-0 break-words">{x}</span>
               </li>
             ))}
@@ -254,15 +250,14 @@ export default function MealPage() {
 
   useEffect(() => {
     load(ymd);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ymd]);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <div className="flex flex-col gap-4 border border-slate-200 bg-white p-5 shadow-sm sm:flex-row sm:items-center sm:justify-between sm:p-6">
         <div>
-          <h2 className="text-2xl font-black text-slate-950 sm:text-3xl">{title}</h2>
-          <p className="mt-1 text-xs font-black uppercase tracking-widest text-sky-700">
+          <h2 className="text-xl font-semibold text-slate-950 sm:text-2xl">{title}</h2>
+          <p className="mt-1 text-xs font-medium text-sky-700">
             청주고 {fmtYMD(ymd)} Daily Menu
           </p>
         </div>
@@ -281,7 +276,7 @@ export default function MealPage() {
       </div>
 
       {ratingErr ? (
-        <div className="border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-bold text-rose-600">
+        <div className="border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-600">
           {ratingErr}
         </div>
       ) : null}
@@ -305,7 +300,7 @@ export default function MealPage() {
       </div>
 
       <div className="border border-slate-200 bg-white p-5 text-center shadow-sm">
-        <p className="text-xs font-bold tracking-wide text-slate-500">
+        <p className="text-xs font-medium text-slate-500">
           주말/방학/휴업일에는 급식 정보가 표시되지 않을 수 있습니다.
         </p>
       </div>

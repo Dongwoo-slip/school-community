@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient as createAuthedClient } from "@/lib/supabase/server";
+import { adminClient } from "@/lib/serverAuth";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -17,13 +18,15 @@ export async function GET() {
       grade: null,
       classNo: null,
       interests: [],
+      studentVerified: false,
+      studentName: null,
     });
   }
 
   // ✅ profiles에서 username/role/grade/class_no + interests/points/badge까지 가져오기
   const { data: prof, error: profErr } = await sb
     .from("profiles")
-    .select("username, role, grade, class_no, interests, points, badge")
+    .select("username, role, grade, class_no, interests, points, badge, student_no, student_name, student_verified, student_verified_at")
     .eq("id", user.id)
     .maybeSingle();
 
@@ -32,15 +35,33 @@ export async function GET() {
   }
 
   const p: any = prof;
+  let verification: any = null;
+  try {
+    const { data: verificationRow } = await adminClient()
+      .from("student_verification_codes")
+      .select("student_no, student_name, grade, class_no, used_at")
+      .eq("used_by", user.id)
+      .maybeSingle();
+    verification = verificationRow;
+  } catch {
+    verification = null;
+  }
+
   return NextResponse.json({
     userId: user.id,
     role: p?.role ?? "user",
     username: p?.username ?? null,
-    grade: p?.grade ?? 2,
-    classNo: p?.class_no ?? 7,
+    grade: verification?.grade ?? p?.grade ?? 2,
+    classNo: verification?.class_no ?? p?.class_no ?? 7,
     interests: Array.isArray(p?.interests) ? p.interests : [],
     points: Number(p?.points) || 0,
     badge: Array.isArray(p?.badge) ? p.badge : [],
+    studentVerified: Boolean(verification?.student_name || p?.student_verified),
+    studentNo: verification?.student_no ?? p?.student_no ?? null,
+    studentName: verification?.student_name ?? p?.student_name ?? null,
+    verifiedGrade: verification?.grade ?? (p?.student_verified ? p?.grade : null) ?? null,
+    verifiedClassNo: verification?.class_no ?? (p?.student_verified ? p?.class_no : null) ?? null,
+    studentVerifiedAt: verification?.used_at ?? p?.student_verified_at ?? null,
   });
 }
 

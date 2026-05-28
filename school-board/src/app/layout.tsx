@@ -1,6 +1,8 @@
 import "./globals.css";
 import VisitTracker from "@/components/VisitTracker";
 import PopupNotice from "@/components/PopupNotice";
+import { Analytics } from "@vercel/analytics/next";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 
 export const metadata = {
   title: "Square | 청주고등학교 커뮤니티",
@@ -35,6 +37,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <VisitTracker />
         <PopupNotice />
         {children}
+        <Analytics />
+        <SpeedInsights />
       </body>
     </html>
   );

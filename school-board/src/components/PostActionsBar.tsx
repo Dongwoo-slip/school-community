@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
 
 type Props = { postId: string };
 
@@ -11,8 +10,6 @@ type ApiState = {
 };
 
 export default function PostActionsBar({ postId }: Props) {
-  const router = useRouter();
-
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
 
@@ -54,8 +51,7 @@ export default function PostActionsBar({ postId }: Props) {
       const json = await res.json().catch(() => ({}));
 
       if (res.status === 401) {
-        alert("로그인이 필요합니다.");
-        router.push(`/login?next=/community/free/${encodeURIComponent(postId)}`);
+        alert("로그인이 필요합니다. 상단의 로그인 버튼을 눌러주세요.");
         return;
       }
 

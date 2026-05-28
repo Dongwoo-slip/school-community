@@ -25,6 +25,13 @@ const SELECT_STYLE = {
   cursor: 'pointer',
 };
 
+type VerificationPreview = {
+  studentNo?: string | null;
+  studentName: string;
+  grade: number;
+  classNo: number;
+};
+
 export default function SignupPage() {
   const supabase = createClient();
 
@@ -35,15 +42,57 @@ export default function SignupPage() {
   const [classNo, setClassNo] = useState<number>(7);
   const [msg, setMsg] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [verificationCode, setVerificationCode] = useState("");
+  const [verificationPreview, setVerificationPreview] = useState<VerificationPreview | null>(null);
+  const [verificationLoading, setVerificationLoading] = useState(false);
+
+  async function checkVerificationCode() {
+    setMsg(null);
+    setVerificationPreview(null);
+    const code = verificationCode.trim();
+    if (!code) return setMsg("인증코드를 입력해 주세요.");
+
+    setVerificationLoading(true);
+    try {
+      const res = await fetch("/api/student-verification/lookup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ code }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setMsg(json?.error ?? "인증코드를 확인하지 못했습니다.");
+        return;
+      }
+
+      const preview = {
+        studentNo: json.studentNo ? String(json.studentNo) : null,
+        studentName: String(json.studentName ?? ""),
+        grade: Number(json.grade),
+        classNo: Number(json.classNo),
+      };
+      setVerificationPreview(preview);
+      if ([1, 2, 3].includes(preview.grade)) setGrade(preview.grade);
+      if (Number.isInteger(preview.classNo) && preview.classNo >= 1 && preview.classNo <= 11) {
+        setClassNo(preview.classNo);
+      }
+    } finally {
+      setVerificationLoading(false);
+    }
+  }
 
   async function onSignup() {
     setMsg(null);
     const u = username.trim().toLowerCase();
+    const code = verificationCode.trim();
     if (!/^[a-z0-9_]{3,20}$/.test(u)) return setMsg("아이디는 영문/숫자/_ 만 가능 (3~20자)");
     if (password.length < 6) return setMsg("비밀번호는 6글자 이상");
     if (password !== password2) return setMsg("비밀번호가 일치하지 않습니다.");
     if (!(grade >= 1 && grade <= 3)) return setMsg("학년은 1~3만 가능합니다.");
     if (!(classNo >= 1 && classNo <= 11)) return setMsg("반은 1~11만 가능합니다.");
+    if (code && !verificationPreview) {
+      return setMsg("인증코드를 사용하려면 먼저 확인을 눌러 주세요. 인증 없이 가입하려면 코드를 비워두면 됩니다.");
+    }
 
     setLoading(true);
     try {
@@ -87,6 +136,20 @@ export default function SignupPage() {
       const ok1 = await tryServerPatch();
       if (!ok1) await tryClientUpdate();
 
+      if (code && verificationPreview) {
+        const res = await fetch("/api/student-verification/claim", {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ code }),
+        });
+        const json = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          setMsg(`가입은 완료됐지만 인증 연결에 실패했습니다: ${json?.error ?? "알 수 없는 오류"}`);
+          return;
+        }
+      }
+
       const params = new URLSearchParams(location.search);
       location.href = params.get("next") ?? "/community/free";
     } finally {
@@ -107,6 +170,44 @@ export default function SignupPage() {
 
         {/* Form */}
         <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 12, padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          <div style={{ border: '1px solid var(--border-subtle)', background: 'var(--bg-elevated)', borderRadius: 10, padding: '0.85rem', display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+            <div>
+              <label style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--text-muted)', display: 'block', marginBottom: '0.35rem' }}>개별 인증코드 선택 입력</label>
+              <div style={{ display: 'flex', gap: '0.45rem' }}>
+                <input
+                  style={{ ...FIELD_STYLE, background: '#fff', flex: 1, textTransform: 'uppercase' }}
+                  placeholder="인증코드"
+                  value={verificationCode}
+                  onChange={(e) => {
+                    setVerificationCode(e.target.value);
+                    setVerificationPreview(null);
+                  }}
+                />
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  style={{ padding: '0.65rem 0.75rem', fontSize: '0.78rem', whiteSpace: 'nowrap' }}
+                  onClick={checkVerificationCode}
+                  disabled={verificationLoading || loading}
+                >
+                  {verificationLoading ? "확인중" : "확인"}
+                </button>
+              </div>
+            </div>
+            {verificationPreview ? (
+              <div style={{ border: '1px solid rgba(31,126,219,0.18)', background: 'rgba(31,126,219,0.07)', borderRadius: 8, padding: '0.55rem 0.7rem', fontSize: '0.78rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+                이름: <b style={{ color: 'var(--text-primary)' }}>{verificationPreview.studentName}</b>
+                <span style={{ marginLeft: '0.5rem' }}>
+                  {verificationPreview.studentNo ?? `${verificationPreview.grade}학년 ${verificationPreview.classNo}반`}
+                </span>
+              </div>
+            ) : (
+              <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', lineHeight: 1.45 }}>
+                인증코드는 선택사항입니다. 확인하면 이름을 보고 맞는지 확인한 뒤 가입할 수 있어요.
+              </div>
+            )}
+          </div>
+
           <div>
             <label style={{ fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--text-muted)', display: 'block', marginBottom: '0.4rem' }}>아이디</label>
             <input

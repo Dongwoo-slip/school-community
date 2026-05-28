@@ -6,6 +6,7 @@ import { useParams, useRouter } from "next/navigation";
 import PostActionsBar from "@/components/PostActionsBar";
 import { useFreeBoard } from "../layout";
 import { getTier } from "@/lib/tiers";
+import { formatAdminStudentLabel, type AuthorIdentity } from "@/lib/authorDisplay";
 
 type Poll = { question?: string; options?: { id: string; text: string }[] };
 
@@ -16,7 +17,7 @@ type PostDetail = {
   created_at: string | null;
   view_count: number | null;
   author_id?: string | null;
-  author?: { username: string | null; role: string | null; points?: number } | null;
+  author?: AuthorIdentity | null;
   image_urls?: string[] | null;
   poll?: Poll | null;
 };
@@ -27,7 +28,7 @@ type Comment = {
   content: string;
   created_at: string;
   author_id?: string | null;
-  author?: { username: string | null; role: string | null; points?: number } | null;
+  author?: AuthorIdentity | null;
 };
 
 function fmt(iso?: string | null) {
@@ -55,6 +56,7 @@ export default function FreePostDetailPage() {
   const [commentText, setCommentText] = useState("");
   const [busy, setBusy] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [authRequired, setAuthRequired] = useState(false);
 
   const [pollCounts, setPollCounts] = useState<Record<string, number>>({});
   const [pollTotal, setPollTotal] = useState(0);
@@ -78,6 +80,7 @@ export default function FreePostDetailPage() {
   async function loadPostAndComments(postId: string) {
     setLoading(true);
     setErrorMsg(null);
+    setAuthRequired(false);
 
     try {
       const [resPost, resComm] = await Promise.all([
@@ -94,7 +97,8 @@ export default function FreePostDetailPage() {
         setPost(null);
         setComments([]);
         if (resPost.status === 401) {
-          router.push(`/login?next=/community/free/${encodeURIComponent(postId)}`);
+          setAuthRequired(true);
+          setErrorMsg("로그인이 필요한 게시글입니다. 로그인하면 내용을 볼 수 있어요.");
           return;
         }
         setErrorMsg(jsonPost?.error ?? "게시글을 불러오지 못했습니다.");
@@ -179,8 +183,7 @@ export default function FreePostDetailPage() {
     if (!id) return;
 
     if (!me.userId) {
-      alert("로그인이 필요합니다.");
-      router.push(`/login?next=/community/free/${encodeURIComponent(id)}`);
+      alert("로그인이 필요합니다. 상단의 로그인 버튼을 눌러주세요.");
       return;
     }
 
@@ -230,8 +233,7 @@ export default function FreePostDetailPage() {
     if (!id) return;
 
     if (!me.userId) {
-      alert("로그인이 필요합니다.");
-      router.push(`/login?next=/community/free/${encodeURIComponent(id)}`);
+      alert("로그인이 필요합니다. 상단의 로그인 버튼을 눌러주세요.");
       return;
     }
 
@@ -298,7 +300,22 @@ export default function FreePostDetailPage() {
         ) : loading ? (
           <div className="p-12 text-center text-slate-500">정보를 불러오는 중입니다...</div>
         ) : errorMsg ? (
-          <div className="p-12 text-center text-rose-400 font-medium">{errorMsg}</div>
+          authRequired ? (
+            <div className="p-12 text-center">
+              <div className="mx-auto max-w-sm rounded-2xl border border-sky-500/20 bg-sky-500/10 p-6">
+                <div className="text-base font-bold text-slate-100">로그인이 필요합니다</div>
+                <p className="mt-2 text-sm leading-relaxed text-slate-400">{errorMsg}</p>
+                <Link
+                  className="btn-primary mt-5 inline-flex py-2 px-4 text-sm"
+                  href={`/login?next=/community/free/${encodeURIComponent(id ?? "")}`}
+                >
+                  로그인하기
+                </Link>
+              </div>
+            </div>
+          ) : (
+            <div className="p-12 text-center text-rose-400 font-medium">{errorMsg}</div>
+          )
         ) : !post ? (
           <div className="p-12 text-center text-slate-500">게시글이 존재하지 않습니다.</div>
         ) : (
@@ -319,6 +336,11 @@ export default function FreePostDetailPage() {
                           <div className="flex items-center gap-2 rounded-full bg-white/5 pl-1.5 pr-3 py-1 border border-white/5">
                             <span className="text-sm" title={t.name}>{t.icon}</span>
                             <span className={`font-bold ${t.color}`}>{post.author?.username || "unknown"}</span>
+                            {me.role === "admin" && (
+                              <span className="text-xs font-medium text-slate-400">
+                                {formatAdminStudentLabel(post.author)}
+                              </span>
+                            )}
                           </div>
                         );
                       })()}
@@ -462,6 +484,7 @@ export default function FreePostDetailPage() {
       </article>
 
       {/* Comments Section */}
+      {!authRequired && (
       <section className="mt-8 space-y-6">
         <div className="flex items-center gap-2 px-2 text-xl font-black text-white">
           <span>💬</span>
@@ -508,6 +531,11 @@ export default function FreePostDetailPage() {
                         <div className="flex items-center gap-2">
                           <span title={t.name}>{t.icon}</span>
                           <span className={`text-sm font-bold ${t.color}`}>{c.author?.username || "unknown"}</span>
+                          {me.role === "admin" && (
+                            <span className="text-[11px] font-medium text-slate-400">
+                              {formatAdminStudentLabel(c.author)}
+                            </span>
+                          )}
                         </div>
                       );
                     })()}
@@ -540,6 +568,7 @@ export default function FreePostDetailPage() {
           )}
         </div>
       </section>
+      )}
     </main>
   );
 }

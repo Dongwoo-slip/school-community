@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { getTier } from "@/lib/tiers";
+import { formatAdminStudentLabel, type AuthorIdentity } from "@/lib/authorDisplay";
+import { useFreeBoard } from "../layout";
 
 type Poll = { question?: string; options?: { id: string; text: string }[] };
 
@@ -13,10 +15,11 @@ type Row = {
   view_count: number | null;
   like_count: number | null;
   poll?: Poll | null;
-  author?: { username: string | null; role: string | null; points?: number };
+  author?: AuthorIdentity | null;
 };
 
 export default function BestPostsClient() {
+  const { me } = useFreeBoard();
   const [loading, setLoading] = useState(true);
   const [rows, setRows] = useState<Row[]>([]);
   const [likeTh, setLikeTh] = useState(10);
@@ -98,6 +101,11 @@ export default function BestPostsClient() {
                           <>
                             <span title={t.name}>{t.icon}</span>
                             <span className={t.color}>{p.author?.username || "익명"}</span>
+                            {me.role === "admin" && (
+                              <span className="text-[9px] font-medium normal-case tracking-normal text-slate-500">
+                                {formatAdminStudentLabel(p.author)}
+                              </span>
+                            )}
                             {p.author?.role === "admin" && (
                               <span className="inline-flex items-center rounded-full bg-emerald-400/10 px-1.5 py-0.5 text-[8px] font-black uppercase tracking-widest text-emerald-400 ring-1 ring-inset ring-emerald-400/20">
                                 Admin

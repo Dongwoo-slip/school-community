@@ -16,7 +16,7 @@ export async function requireUser() {
   const sb = adminClient();
   const { data: profile, error } = await sb
     .from("profiles")
-    .select("username,role,points,badge,grade,class_no")
+    .select("username,role,points,badge,grade,class_no,student_no,student_name,student_verified")
     .eq("id", user.id)
     .maybeSingle();
 

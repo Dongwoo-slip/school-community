@@ -6,6 +6,7 @@ import React, { createContext, useContext, useEffect, useMemo, useState, type Re
 import AnonymousChatBox from "@/components/AnonymousChatBox";
 import FloatingLeftAd from "@/components/FloatingLeftAd";
 import { getTier, TIERS } from "@/lib/tiers";
+import { formatAdminStudentLabel, type AuthorIdentity } from "@/lib/authorDisplay";
 
 // ... types remain same ...
 type Poll = { question?: string; options?: { id: string; text: string }[] };
@@ -18,7 +19,7 @@ type Post = {
   poll?: Poll | null;
   image_urls?: string[] | null;
   author_id?: string | null;
-  author?: { username: string | null; role: string | null; points?: number };
+  author?: AuthorIdentity | null;
 };
 type Me = { userId: string | null; role: string; username: string | null; points: number; badge: string[] };
 type Noti = {
@@ -62,9 +63,9 @@ function TabLink({ href, children }: { href: string; children: ReactNode }) {
       style={{
         padding: '0.55rem 0.85rem',
         fontSize: '0.825rem',
-        fontWeight: active ? 700 : 500,
+        fontWeight: active ? 650 : 500,
         color: active ? 'var(--brand-light)' : 'var(--text-secondary)',
-        borderBottom: active ? '3px solid var(--brand)' : '3px solid transparent',
+        borderBottom: active ? '2px solid var(--brand)' : '2px solid transparent',
         background: active ? 'var(--brand-dim)' : 'transparent',
         transition: 'all 0.15s ease',
         whiteSpace: 'nowrap',
@@ -79,8 +80,8 @@ function TabLink({ href, children }: { href: string; children: ReactNode }) {
 function StatCard({ label, value }: { label: string; value: number | null }) {
   return (
     <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 4, padding: '0.6rem 0.75rem', flex: 1, textAlign: 'center' }}>
-      <div style={{ fontSize: '0.6rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-muted)' }}>{label}</div>
-      <div style={{ fontSize: '1.1rem', fontWeight: 900, color: 'var(--text-primary)', marginTop: '0.15rem' }}>{value === null ? '-' : value.toLocaleString()}</div>
+      <div style={{ fontSize: '0.68rem', fontWeight: 500, color: 'var(--text-muted)' }}>{label}</div>
+      <div style={{ fontSize: '1.05rem', fontWeight: 650, color: 'var(--text-primary)', marginTop: '0.15rem' }}>{value === null ? '-' : value.toLocaleString()}</div>
     </div>
   );
 }
@@ -168,8 +169,8 @@ export default function FreeLayout({ children }: { children: ReactNode }) {
     const res = await fetch("/api/messages/inbox?limit=50", { cache: "no-store", credentials: "include" });
     const json = await res.json().catch(() => ({}));
     if (typeof json?.unread === "number") { setDmUnread(json.unread); return; }
-    const arr = Array.isArray(json?.data) ? json.data : [];
-    const cnt = arr.filter((x: any) => x?.read === false).length;
+    const arr: Array<{ read?: boolean }> = Array.isArray(json?.data) ? json.data : [];
+    const cnt = arr.filter((x) => x?.read === false).length;
     setDmUnread(cnt);
   }
   async function refreshAll() {
@@ -185,10 +186,15 @@ export default function FreeLayout({ children }: { children: ReactNode }) {
     router.refresh();
   }
 
-  useEffect(() => { refreshAll(); }, []);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void refreshAll();
+  }, []);
   useEffect(() => {
     if (!me.userId) return;
-    loadNotifications(); loadDmUnread();
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void loadNotifications();
+    void loadDmUnread();
     const t1 = setInterval(loadNotifications, 25000);
     const t2 = setInterval(loadDmUnread, 20000);
     return () => { clearInterval(t1); clearInterval(t2); };
@@ -252,12 +258,12 @@ export default function FreeLayout({ children }: { children: ReactNode }) {
 
             {/* Logo */}
             <Link href="/community/free" className="flex items-center gap-2.5 shrink-0 group">
-              <div style={{ background: 'var(--brand)', borderRadius: 4 }} className="flex h-8 w-8 items-center justify-center text-[11px] font-black text-white tracking-tight group-hover:opacity-90 transition-opacity">
+              <div style={{ background: 'var(--brand)', borderRadius: 6 }} className="flex h-8 w-8 items-center justify-center text-[11px] font-semibold text-white tracking-tight group-hover:opacity-90 transition-opacity">
                 SQ
               </div>
               <div className="hidden sm:flex flex-col leading-none">
-                <span className="text-[15px] font-black tracking-tight" style={{ color: 'var(--text-primary)' }}>Square</span>
-                <span style={{ color: 'var(--text-muted)', fontSize: '0.6rem', letterSpacing: '0.08em' }} className="uppercase font-bold">청주고등학교</span>
+                <span className="text-[15px] font-semibold tracking-tight" style={{ color: 'var(--text-primary)' }}>Square</span>
+                <span style={{ color: 'var(--text-muted)', fontSize: '0.68rem' }} className="font-medium">청주고등학교</span>
               </div>
             </Link>
 
@@ -310,7 +316,7 @@ export default function FreeLayout({ children }: { children: ReactNode }) {
                             <>
                               <span className="text-sm">{t.icon}</span>
                               <div className="flex flex-col items-start leading-none gap-0.5">
-                                <span className={`text-[8px] font-black uppercase tracking-wider ${t.color}`}>{t.name}</span>
+                                <span className={`text-[9px] font-semibold ${t.color}`}>{t.name}</span>
                                 <span className="text-[11px] font-bold" style={{ color: 'var(--text-primary)' }}>{me.points.toLocaleString()}<span className="ml-0.5 text-[8px]" style={{ color: 'var(--text-muted)' }}>EXP</span></span>
                               </div>
                             </>
@@ -331,7 +337,7 @@ export default function FreeLayout({ children }: { children: ReactNode }) {
                           </div>
                         </div>
                         <div style={{ borderTop: '1px solid var(--border-subtle)', paddingTop: '0.6rem' }}>
-                          <div className="text-[9px] font-bold mb-2 uppercase tracking-widest" style={{ color: 'var(--text-muted)' }}>등급 기준</div>
+                          <div className="mb-2 text-[10px] font-semibold" style={{ color: 'var(--text-muted)' }}>등급 기준</div>
                           <div className="grid grid-cols-2 gap-1">
                             {TIERS.map(t => (
                               <div key={t.name} className="flex items-center gap-1">
@@ -385,7 +391,7 @@ export default function FreeLayout({ children }: { children: ReactNode }) {
         {/* Notification popover */}
         {notiOpen && (
           <div className="notification-popover absolute z-50 overflow-hidden" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-mild)', borderRadius: 4, boxShadow: '0 12px 28px rgba(15,23,42,0.12)' }}>
-            <div className="px-4 py-2.5" style={{ borderBottom: '1px solid var(--border-subtle)', fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-muted)' }}>알림</div>
+            <div className="px-4 py-2.5" style={{ borderBottom: '1px solid var(--border-subtle)', fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)' }}>알림</div>
             <div className="max-h-64 overflow-y-auto">
               {notis.length === 0 ? (
                 <div className="p-6 text-center text-xs" style={{ color: 'var(--text-muted)' }}>새 알림이 없습니다.</div>
@@ -426,7 +432,7 @@ export default function FreeLayout({ children }: { children: ReactNode }) {
               <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 4, overflow: 'hidden' }}>
                 <div style={{ padding: '0.65rem 1rem', borderBottom: '1px solid var(--border-subtle)', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                   <span style={{ fontSize: '0.75rem' }}>🔥</span>
-                  <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--text-primary)' }}>핫이슈</span>
+                  <span style={{ fontSize: '0.82rem', fontWeight: 650, color: 'var(--text-primary)' }}>핫이슈</span>
                 </div>
                 <div style={{ padding: '0.5rem' }}>
                   {top3.map((p, i) => {
@@ -438,11 +444,16 @@ export default function FreeLayout({ children }: { children: ReactNode }) {
                         className="glass-hover"
                         style={{ display: 'flex', alignItems: 'flex-start', gap: '0.6rem', padding: '0.6rem 0.5rem', borderRadius: 4 }}
                       >
-                        <span style={{ fontSize: '0.7rem', fontWeight: 900, color: 'var(--brand)', minWidth: 16, marginTop: 2 }}>0{i + 1}</span>
+                        <span style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--brand)', minWidth: 16, marginTop: 2 }}>0{i + 1}</span>
                         <div style={{ minWidth: 0, flex: 1 }}>
                           <div style={{ fontSize: '0.8rem', fontWeight: 500, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.title}</div>
                           <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginTop: 2 }}>
                             <span className={t.color}>{p.author?.username || '익명'}</span>
+                            {me.role === "admin" && (
+                              <span style={{ marginLeft: '0.35rem', color: 'var(--text-muted)' }}>
+                                {formatAdminStudentLabel(p.author)}
+                              </span>
+                            )}
                             <span style={{ marginLeft: '0.4rem' }}>👀 {p.view_count}</span>
                           </div>
                         </div>
@@ -492,9 +503,9 @@ export default function FreeLayout({ children }: { children: ReactNode }) {
           </aside>
         </div>
       </main>
-      <footer className="mt-10 border-t border-slate-700 bg-slate-950 text-slate-300">
+      <footer className="mt-10 border-t border-slate-700 bg-slate-950" style={{ color: "#d8e2ef" }}>
         <div className="mx-auto flex max-w-6xl flex-col gap-1 px-4 py-5 text-[12px] sm:flex-row sm:items-center sm:justify-between sm:px-6">
-          <div className="font-bold text-slate-100">Square · 청주고등학교 커뮤니티</div>
+          <div className="font-semibold" style={{ color: "#f8fafc" }}>Square · 청주고등학교 커뮤니티</div>
           <div>학생들의 이야기를 안전하고 깔끔하게 나누는 공간입니다.</div>
         </div>
       </footer>

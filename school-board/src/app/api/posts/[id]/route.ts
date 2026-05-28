@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient as createAuthedClient } from "@/lib/supabase/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
+import { AUTHOR_PROFILE_SELECT } from "@/lib/authorDisplay";
 
 function admin() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
@@ -45,7 +46,7 @@ export async function GET(_req: Request, ctx: any) {
 
   const { data: post, error } = await sb
     .from("posts")
-    .select("*, author:profiles(username, role, points)")
+    .select(`*, author:profiles(${AUTHOR_PROFILE_SELECT})`)
     .eq("id", id)
     .maybeSingle();
 

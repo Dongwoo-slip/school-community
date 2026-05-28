@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient as createAuthedClient } from "@/lib/supabase/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
+import { formatAdminStudentLabel, type AuthorIdentity } from "@/lib/authorDisplay";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -60,17 +61,24 @@ export async function GET(req: Request) {
   }
 
   const ids = Array.from(new Set(sliced.map((m: any) => m.user_id).filter(Boolean).map(String)));
-  const profileMap = new Map<string, string | null>();
+  const profileMap = new Map<string, (AuthorIdentity & { id: string }) | null>();
   if (ids.length) {
-    const { data: profiles } = await sb.from("profiles").select("id, username").in("id", ids);
-    (profiles ?? []).forEach((p: any) => profileMap.set(String(p.id), p.username ?? null));
+    const { data: profiles } = await sb
+      .from("profiles")
+      .select("id, username, role, points, student_no, student_name, student_verified, grade, class_no")
+      .in("id", ids);
+    (profiles ?? []).forEach((p: any) => profileMap.set(String(p.id), p ?? null));
   }
 
   return NextResponse.json({
-    data: sliced.map((m: any) => ({
-      ...m,
-      author_username: m.user_id ? profileMap.get(String(m.user_id)) ?? null : null,
-    })),
+    data: sliced.map((m: any) => {
+      const profile = m.user_id ? profileMap.get(String(m.user_id)) ?? null : null;
+      return {
+        ...m,
+        author_username: profile?.username ?? null,
+        author_student_label: formatAdminStudentLabel(profile),
+      };
+    }),
     hasMore,
   });
 }

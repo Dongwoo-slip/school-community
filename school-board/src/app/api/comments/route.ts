@@ -2,6 +2,7 @@
 import { createClient as createAuthedClient } from "@/lib/supabase/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { awardPoints } from "@/lib/points";
+import { AUTHOR_PROFILE_SELECT } from "@/lib/authorDisplay";
 
 function admin() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
@@ -27,7 +28,7 @@ export async function GET(req: Request) {
 
   const { data: comments, error } = await sb
     .from("comments")
-    .select("*, author:profiles(username, role, points)")
+    .select(`*, author:profiles(${AUTHOR_PROFILE_SELECT})`)
     .eq("post_id", post_id)
     .order("created_at", { ascending: true });
 

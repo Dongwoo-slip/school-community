@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient as createAuthedClient } from "@/lib/supabase/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
+import { AUTHOR_PROFILE_SELECT } from "@/lib/authorDisplay";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -22,7 +23,7 @@ export async function GET(req: Request) {
 
   let query = sb
     .from("posts")
-    .select("id,title,created_at,view_count,author_id,tags,author:profiles(username,role)")
+    .select(`id,title,created_at,view_count,author_id,tags,author:profiles(${AUTHOR_PROFILE_SELECT})`)
     .eq("board", "jobs")
     .eq("is_deleted", false)
     .order("created_at", { ascending: false })
@@ -70,7 +71,7 @@ export async function POST(req: Request) {
   const { data: inserted, error } = await sb
     .from("posts")
     .insert(row)
-    .select("id,title,created_at,view_count,author_id,tags,author:profiles(username,role)")
+    .select(`id,title,created_at,view_count,author_id,tags,author:profiles(${AUTHOR_PROFILE_SELECT})`)
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });

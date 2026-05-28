@@ -11,6 +11,7 @@ type ChatMessage = {
   anon_id: string;
   created_at: string;
   author_username?: string | null;
+  author_student_label?: string | null;
 };
 
 const EMOJIS = ["😀", "👍", "❤️", "🔥", "🚀"];
@@ -140,13 +141,13 @@ export default function AnonymousChatBox() {
           messages.map((m) => {
             const isMe = m.user_id === me.userId;
             const label = me.role === "admin"
-              ? `${m.author_username || "아이디 없음"} · ${m.user_id}`
+              ? `${m.author_username || "아이디 없음"} · ${m.author_student_label || "미인증"}`
               : m.anon_id;
             return (
               <div key={m.id} className={`flex flex-col ${isMe ? "items-end" : "items-start"}`}>
                 <span className="mb-0.5 max-w-full break-all text-[10px] font-bold leading-tight" style={{ color: 'var(--text-muted)' }}>{label}</span>
                 <div
-                  className="max-w-[85%] px-3 py-1.5 text-[13px] font-medium leading-snug"
+                  className={`max-w-[85%] rounded-2xl px-3 py-1.5 text-[13px] font-medium leading-snug ${isMe ? "rounded-br-md" : "rounded-bl-md"}`}
                   style={{
                     background: isMe ? 'var(--brand)' : 'var(--bg-elevated)',
                     color: isMe ? '#fff' : 'var(--text-primary)',
@@ -178,7 +179,7 @@ export default function AnonymousChatBox() {
               key={e}
               onClick={() => onSend(e)}
               className="flex h-7 w-7 items-center justify-center text-base transition-colors"
-              style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)' }}
+              style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 999 }}
             >
               {e}
             </button>
@@ -197,13 +198,13 @@ export default function AnonymousChatBox() {
             onChange={(e) => setInput(e.target.value)}
             placeholder={me.userId ? "메시지를 입력하세요..." : "로그인 후 대화가 가능합니다."}
             disabled={!me.userId || sending}
-            className="w-full border px-3 py-2 pr-14 text-sm focus:outline-none transition-all"
+            className="w-full rounded-full border px-3 py-2 pr-14 text-sm focus:outline-none transition-all"
             style={{ background: 'var(--bg-surface)', borderColor: 'var(--border-subtle)', color: 'var(--text-primary)' }}
           />
           <button
             type="submit"
             disabled={!me.userId || sending || !input.trim()}
-            className="absolute right-1.5 top-1/2 -translate-y-1/2 px-3 py-1.5 text-xs font-bold text-white disabled:opacity-50 transition-all"
+            className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded-full px-3 py-1.5 text-xs font-bold text-white disabled:opacity-50 transition-all"
             style={{ background: 'var(--brand)' }}
           >
             {sending ? "..." : "전송"}
