@@ -3,6 +3,7 @@ import { createClient as createAuthedClient } from "@/lib/supabase/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { awardPoints } from "@/lib/points";
 import { AUTHOR_PROFILE_SELECT } from "@/lib/authorDisplay";
+import { requireStudentVerifiedWriter } from "@/lib/studentVerification";
 
 function admin() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
@@ -56,6 +57,13 @@ export async function POST(req: Request) {
     : [];
 
   const sb = admin();
+  const verification = await requireStudentVerifiedWriter(sb, user.id);
+  if (!verification.ok) {
+    return NextResponse.json(
+      { error: verification.error, code: "STUDENT_VERIFICATION_REQUIRED" },
+      { status: verification.status }
+    );
+  }
 
   // ✅ 도배 방지: 30초 이내 작성 여부 확인
   const { data: lastPost } = await sb

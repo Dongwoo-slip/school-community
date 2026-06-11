@@ -3,6 +3,7 @@ import { createClient as createAuthedClient } from "@/lib/supabase/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { awardPoints } from "@/lib/points";
 import { AUTHOR_PROFILE_SELECT } from "@/lib/authorDisplay";
+import { requireStudentVerifiedWriter } from "@/lib/studentVerification";
 
 function admin() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
@@ -66,6 +67,14 @@ export async function POST(req: Request) {
   if (content.length < 1) return NextResponse.json({ error: "댓글을 입력해주세요." }, { status: 400 });
 
   const sb = admin();
+  const verification = await requireStudentVerifiedWriter(sb, user.id);
+  if (!verification.ok) {
+    return NextResponse.json(
+      { error: verification.error, code: "STUDENT_VERIFICATION_REQUIRED" },
+      { status: verification.status }
+    );
+  }
+
   const oneMinuteAgo = new Date(Date.now() - 60 * 1000).toISOString();
 
   const [{ count: recentCommentsCount, error: recentCommentsErr }, { count: recentDeletedCommentsCount, error: recentDeletedCommentsErr }] =

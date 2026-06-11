@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient as createAuthedClient } from "@/lib/supabase/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { AUTHOR_PROFILE_SELECT } from "@/lib/authorDisplay";
+import { requireStudentVerifiedWriter } from "@/lib/studentVerification";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -59,6 +60,13 @@ export async function POST(req: Request) {
   if (content.length < 2) return NextResponse.json({ error: "내용을 2글자 이상 입력해줘" }, { status: 400 });
 
   const sb = admin();
+  const verification = await requireStudentVerifiedWriter(sb, user.id);
+  if (!verification.ok) {
+    return NextResponse.json(
+      { error: verification.error, code: "STUDENT_VERIFICATION_REQUIRED" },
+      { status: verification.status }
+    );
+  }
 
   const row = {
     board: "jobs",

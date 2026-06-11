@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient as createAuthedClient } from "@/lib/supabase/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { formatAdminStudentLabel, type AuthorIdentity } from "@/lib/authorDisplay";
+import { requireStudentVerifiedWriter } from "@/lib/studentVerification";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -95,6 +96,13 @@ export async function POST(req: Request) {
   if (!content) return NextResponse.json({ error: "내용이 비었습니다." }, { status: 400 });
 
   const sb = admin();
+  const verification = await requireStudentVerifiedWriter(sb, user.id);
+  if (!verification.ok) {
+    return NextResponse.json(
+      { error: verification.error, code: "STUDENT_VERIFICATION_REQUIRED" },
+      { status: verification.status }
+    );
+  }
 
   // ✅ 도배 방지: 3초 이내 작성 여부 확인
   const { data: lastMsg } = await sb
