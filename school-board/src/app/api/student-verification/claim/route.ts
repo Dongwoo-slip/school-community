@@ -10,7 +10,7 @@ function normalizeCode(value: unknown) {
 }
 
 function setupError(message?: string) {
-  return /student_verification_codes|student_verified|verification_code_id|student_no|student_name|does not exist|schema cache/i.test(message ?? "");
+  return /student_verification_codes|student_verified|verification_code_id|student_no|student_name|does not exist|schema cache|permission denied/i.test(message ?? "");
 }
 
 export async function POST(req: Request) {
@@ -108,11 +108,7 @@ export async function POST(req: Request) {
   );
 
   if (profileError) {
-    const status = setupError(profileError.message) ? 503 : 500;
-    return NextResponse.json(
-      { error: setupError(profileError.message) ? "프로필 인증 컬럼이 아직 준비되지 않았습니다." : profileError.message },
-      { status }
-    );
+    console.error("Student verification profile sync failed:", profileError);
   }
 
   return NextResponse.json({
@@ -121,5 +117,6 @@ export async function POST(req: Request) {
     studentName: row.student_name,
     grade: row.grade,
     classNo: row.class_no,
+    profileSynced: !profileError,
   });
 }
