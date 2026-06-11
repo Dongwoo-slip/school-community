@@ -10,7 +10,7 @@ function admin() {
   return createAdminClient(url, key, { auth: { persistSession: false } });
 }
 
-const COMMENT_RATE_LIMIT_MESSAGE = "10분당 댓글 10개 제한";
+const COMMENT_RATE_LIMIT_MESSAGE = "1분당 댓글은 최대 2개까지 가능합니다.";
 
 type CommentInsertRow = {
   post_id: string;
@@ -66,7 +66,7 @@ export async function POST(req: Request) {
   if (content.length < 1) return NextResponse.json({ error: "댓글을 입력해주세요." }, { status: 400 });
 
   const sb = admin();
-  const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+  const oneMinuteAgo = new Date(Date.now() - 60 * 1000).toISOString();
 
   const [{ count: recentCommentsCount, error: recentCommentsErr }, { count: recentDeletedCommentsCount, error: recentDeletedCommentsErr }] =
     await Promise.all([
@@ -74,19 +74,19 @@ export async function POST(req: Request) {
         .from("comments")
         .select("id", { count: "exact", head: true })
         .eq("author_id", user.id)
-        .gte("created_at", tenMinutesAgo),
+        .gte("created_at", oneMinuteAgo),
       sb
         .from("deleted_posts")
         .select("id", { count: "exact", head: true })
         .eq("author_id", user.id)
         .like("title", "[댓글 삭제]%")
-        .gte("deleted_at", tenMinutesAgo),
+        .gte("deleted_at", oneMinuteAgo),
     ]);
 
   if (recentCommentsErr) return NextResponse.json({ error: recentCommentsErr.message }, { status: 500 });
   if (recentDeletedCommentsErr) return NextResponse.json({ error: recentDeletedCommentsErr.message }, { status: 500 });
 
-  if ((recentCommentsCount ?? 0) + (recentDeletedCommentsCount ?? 0) >= 10) {
+  if ((recentCommentsCount ?? 0) + (recentDeletedCommentsCount ?? 0) >= 2) {
     return NextResponse.json({ error: COMMENT_RATE_LIMIT_MESSAGE }, { status: 429 });
   }
 
