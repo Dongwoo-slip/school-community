@@ -10,6 +10,15 @@ function admin() {
   return createAdminClient(url, key, { auth: { persistSession: false } });
 }
 
+const COMMENT_RATE_LIMIT_MESSAGE = "10분당 댓글 10개 제한";
+
+type CommentInsertRow = {
+  post_id: string;
+  content: string;
+  author_id: string;
+  parent_id?: string;
+};
+
 // GET /api/comments?post_id=...
 export async function GET(req: Request) {
   const authed = await createAuthedClient();
@@ -57,6 +66,29 @@ export async function POST(req: Request) {
   if (content.length < 1) return NextResponse.json({ error: "댓글을 입력해주세요." }, { status: 400 });
 
   const sb = admin();
+  const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+
+  const [{ count: recentCommentsCount, error: recentCommentsErr }, { count: recentDeletedCommentsCount, error: recentDeletedCommentsErr }] =
+    await Promise.all([
+      sb
+        .from("comments")
+        .select("id", { count: "exact", head: true })
+        .eq("author_id", user.id)
+        .gte("created_at", tenMinutesAgo),
+      sb
+        .from("deleted_posts")
+        .select("id", { count: "exact", head: true })
+        .eq("author_id", user.id)
+        .like("title", "[댓글 삭제]%")
+        .gte("deleted_at", tenMinutesAgo),
+    ]);
+
+  if (recentCommentsErr) return NextResponse.json({ error: recentCommentsErr.message }, { status: 500 });
+  if (recentDeletedCommentsErr) return NextResponse.json({ error: recentDeletedCommentsErr.message }, { status: 500 });
+
+  if ((recentCommentsCount ?? 0) + (recentDeletedCommentsCount ?? 0) >= 10) {
+    return NextResponse.json({ error: COMMENT_RATE_LIMIT_MESSAGE }, { status: 429 });
+  }
 
   // ✅ 도배 방지: 10초 이내 작성 여부 확인
   const { data: lastComment } = await sb
@@ -89,7 +121,7 @@ export async function POST(req: Request) {
     }
   }
 
-  const insertRow: any = { post_id, content, author_id: user.id };
+  const insertRow: CommentInsertRow = { post_id, content, author_id: user.id };
   if (parent_id) insertRow.parent_id = parent_id;
 
   const { data, error } = await sb.from("comments").insert(insertRow).select("id").single();

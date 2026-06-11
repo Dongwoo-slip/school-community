@@ -22,7 +22,7 @@ export async function DELETE(_req: Request, ctx: { params: Promise<{ id: string 
 
   const { data: cmt, error: cmtErr } = await sb
     .from("comments")
-    .select("id,author_id")
+    .select("id,post_id,parent_id,content,author_id")
     .eq("id", id)
     .maybeSingle();
 
@@ -34,6 +34,30 @@ export async function DELETE(_req: Request, ctx: { params: Promise<{ id: string 
 
   const canDelete = role === "admin" || cmt.author_id === user.id;
   if (!canDelete) return NextResponse.json({ error: "삭제 권한이 없습니다." }, { status: 403 });
+
+  const now = new Date().toISOString();
+  const logContent = [
+    `댓글 ID: ${cmt.id}`,
+    `게시글 ID: ${cmt.post_id}`,
+    cmt.parent_id ? `부모 댓글 ID: ${cmt.parent_id}` : null,
+    "",
+    "댓글 내용",
+    "-----",
+    String(cmt.content ?? ""),
+  ]
+    .filter((line) => line !== null)
+    .join("\n");
+
+  const { error: logErr } = await sb.from("deleted_posts").insert({
+    post_id: cmt.post_id,
+    title: `[댓글 삭제] ${String(cmt.content ?? "(내용 없음)").replace(/\s+/g, " ").slice(0, 80)}`,
+    content: logContent,
+    author_id: cmt.author_id,
+    deleted_by: user.id,
+    deleted_at: now,
+  });
+
+  if (logErr) return NextResponse.json({ error: `삭제 로그 저장 실패: ${logErr.message}` }, { status: 500 });
 
   const { error: delErr } = await sb.from("comments").delete().eq("id", id);
   if (delErr) return NextResponse.json({ error: delErr.message }, { status: 500 });

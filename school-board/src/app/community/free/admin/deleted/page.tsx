@@ -5,6 +5,7 @@ import React, { useEffect, useState } from "react";
 type Row = {
   id: string;
   post_id: string;
+  log_type?: "post" | "comment";
   title: string | null;
   content: string | null;
   author_id: string | null;
@@ -67,7 +68,7 @@ export default function DeletedLogPage() {
       <div className="border-b border-slate-200 px-4 py-3 flex items-center justify-between">
         <div>
           <div className="text-[14px] font-extrabold text-slate-900">🗑 삭제 로그</div>
-          <div className="mt-0.5 text-[12px] text-slate-600">삭제된 게시물(제목/ID/내용) 확인용 — 관리자 전용</div>
+          <div className="mt-0.5 text-[12px] text-slate-600">삭제된 게시글/댓글 확인용 — 관리자 전용</div>
         </div>
         <button
           type="button"
@@ -91,6 +92,7 @@ export default function DeletedLogPage() {
             <thead className="bg-slate-50 text-slate-700">
               <tr className="border-b border-slate-200">
                 <th className="px-3 py-2 text-left whitespace-nowrap">삭제시간</th>
+                <th className="px-3 py-2 text-left whitespace-nowrap">종류</th>
                 <th className="px-3 py-2 text-left whitespace-nowrap">삭제자</th>
                 <th className="px-3 py-2 text-left whitespace-nowrap">작성자</th>
                 <th className="px-3 py-2 text-left">제목</th>
@@ -102,6 +104,12 @@ export default function DeletedLogPage() {
               {rows.map((r) => (
                 <tr key={r.id} className="align-top hover:bg-slate-50">
                   <td className="px-3 py-2 whitespace-nowrap text-slate-700">{fmt(r.deleted_at)}</td>
+
+                  <td className="px-3 py-2 whitespace-nowrap">
+                    <span className="inline-flex border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-semibold text-slate-700">
+                      {r.log_type === "comment" ? "댓글" : "게시글"}
+                    </span>
+                  </td>
 
                   <td className="px-3 py-2 whitespace-nowrap">
                     <div className="font-semibold text-slate-900">{r.deleted_by_username ?? "알수없음"}</div>
