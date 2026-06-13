@@ -1,0 +1,26 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="mark-bg" x1="104" y1="72" x2="408" y2="456" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#1F7EDB"/>
+      <stop offset="1" stop-color="#0F5FB7"/>
+    </linearGradient>
+    <linearGradient id="mark-gloss" x1="128" y1="96" x2="376" y2="392" gradientUnits="userSpaceOnUse">
+      <stop stop-color="white" stop-opacity="0.30"/>
+      <stop offset="0.52" stop-color="white" stop-opacity="0.05"/>
+      <stop offset="1" stop-color="white" stop-opacity="0"/>
+    </linearGradient>
+    <filter id="mark-shadow" x="56" y="56" width="400" height="400" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="20" stdDeviation="24" flood-color="#0F5FB7" flood-opacity="0.22"/>
+    </filter>
+  </defs>
+  <rect width="512" height="512" rx="116" fill="#F7F9FC"/>
+  <g filter="url(#mark-shadow)">
+    <rect x="86" y="78" width="340" height="340" rx="88" fill="url(#mark-bg)"/>
+    <rect x="102" y="94" width="308" height="308" rx="76" fill="url(#mark-gloss)"/>
+    <path d="M162 312C177 326 202 336 229 336C266 336 291 319 291 292C291 268 276 257 235 249C208 244 199 239 199 227C199 216 210 209 228 209C248 209 263 215 279 228L300 197C281 180 257 171 230 171C193 171 166 189 166 228C166 255 184 269 223 276C249 281 258 286 258 298C258 309 247 315 229 315C206 315 187 307 169 291L162 312Z" fill="white"/>
+    <path d="M310 251C310 199 343 171 387 171C431 171 464 199 464 251C464 284 450 308 427 321L456 347H413L397 333C394 333 391 334 387 334C343 334 310 305 310 251ZM344 251C344 281 361 306 387 306C413 306 430 281 430 251C430 221 413 199 387 199C361 199 344 221 344 251Z" fill="white"/>
+    <path d="M416 303L455 338" stroke="#D8ECFF" stroke-width="14" stroke-linecap="round"/>
+    <path d="M147 116C177 105 204 101 256 101C312 101 345 107 381 122" stroke="white" stroke-opacity="0.30" stroke-width="10" stroke-linecap="round"/>
+    <path d="M158 371C196 385 223 390 256 390C289 390 318 385 354 371" stroke="white" stroke-opacity="0.22" stroke-width="10" stroke-linecap="round"/>
+  </g>
+</svg>

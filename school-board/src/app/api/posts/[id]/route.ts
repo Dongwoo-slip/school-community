@@ -10,6 +10,7 @@ function admin() {
 }
 
 const EDIT_LOG_PREFIX = "[수정 로그]";
+const PUBLIC_AUTHOR_PROFILE_SELECT = "username, role, points";
 
 // ✅ Next 버전/환경에 따라 params가 Promise로 오는 경우가 있어서 안전 처리
 async function getParamId(ctx: any): Promise<string | null> {
@@ -30,7 +31,7 @@ async function getParamId(ctx: any): Promise<string | null> {
   }
 }
 
-// GET /api/posts/:id  (로그인한 사용자만 상세 조회)
+// GET /api/posts/:id  (비로그인도 공개 게시글 상세 조회 가능)
 export async function GET(_req: Request, ctx: any) {
   const id = await getParamId(ctx);
   if (!id) return NextResponse.json({ error: "missing id" }, { status: 400 });
@@ -38,15 +39,19 @@ export async function GET(_req: Request, ctx: any) {
   const authed = await createAuthedClient();
   const { data: authData } = await authed.auth.getUser();
   const user = authData.user;
-  if (!user) return NextResponse.json({ error: "로그인이 필요합니다." }, { status: 401 });
 
   const sb = admin();
-  const { data: profile } = await sb.from("profiles").select("role").eq("id", user.id).maybeSingle();
-  const role = profile?.role ?? "user";
+  let role = "guest";
+  if (user) {
+    const { data: profile } = await sb.from("profiles").select("role").eq("id", user.id).maybeSingle();
+    role = profile?.role ?? "user";
+  }
+
+  const profileSelect = role === "admin" ? AUTHOR_PROFILE_SELECT : PUBLIC_AUTHOR_PROFILE_SELECT;
 
   const { data: post, error } = await sb
     .from("posts")
-    .select(`*, author:profiles(${AUTHOR_PROFILE_SELECT})`)
+    .select(`*, author:profiles(${profileSelect})`)
     .eq("id", id)
     .maybeSingle();
 

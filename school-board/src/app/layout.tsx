@@ -3,14 +3,35 @@ import VisitTracker from "@/components/VisitTracker";
 import PopupNotice from "@/components/PopupNotice";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
+import { Inter, Noto_Sans_KR } from "next/font/google";
+
+const inter = Inter({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700", "900"],
+  display: "swap",
+  variable: "--font-inter",
+});
+
+const notoSansKr = Noto_Sans_KR({
+  subsets: ["latin"],
+  weight: ["400", "500", "700", "900"],
+  display: "swap",
+  variable: "--font-noto-sans-kr",
+});
 
 export const metadata = {
   title: "Square | 청주고등학교 커뮤니티",
   description: "청주고등학교 학생들을 위한 커뮤니티 Square",
+  manifest: "/manifest.webmanifest",
   icons: {
-    icon: "/favicon.svg",
-    shortcut: "/favicon.svg",
-    apple: "/favicon.svg",
+    icon: [
+      { url: "/favicon.svg?v=4", type: "image/svg+xml" },
+      { url: "/icon-192.png?v=4", type: "image/png", sizes: "192x192" },
+      { url: "/icon-512.png?v=4", type: "image/png", sizes: "512x512" },
+    ],
+    apple: [
+      { url: "/apple-touch-icon.png?v=4", sizes: "180x180", type: "image/png" },
+    ],
   },
 };
 
@@ -23,17 +44,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="ko">
       <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
-        <link rel="shortcut icon" href="/favicon.svg" />
-        <link rel="apple-touch-icon" href="/favicon.svg" />
-        <link
-          href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&family=Inter:wght@400;500;600;700;900&display=swap"
-          rel="stylesheet"
-        />
+        <meta name="apple-mobile-web-app-title" content="Square" />
+        <meta name="theme-color" content="#0F5FB7" />
       </head>
-      <body className="antialiased min-h-dvh">
+      <body className={`${notoSansKr.variable} ${inter.variable} antialiased min-h-dvh`}>
         <VisitTracker />
         <PopupNotice />
         {children}

@@ -93,19 +93,36 @@ export async function POST(req: Request) {
     row = claimed;
   }
 
-  const { error: profileError } = await sb.from("profiles").upsert(
-    {
-      id: user.id,
-      grade: row.grade,
-      class_no: row.class_no,
-      student_verified: true,
-      student_no: row.student_no ?? null,
-      student_name: row.student_name,
-      student_verified_at: now,
-      verification_code_id: row.id,
-    },
-    { onConflict: "id" }
-  );
+  const profilePatch = {
+    grade: row.grade,
+    class_no: row.class_no,
+    student_verified: true,
+    student_no: row.student_no ?? null,
+    student_name: row.student_name,
+    student_verified_at: now,
+    verification_code_id: row.id,
+  };
+
+  const { data: updatedProfile, error: updateProfileError } = await sb
+    .from("profiles")
+    .update(profilePatch)
+    .eq("id", user.id)
+    .select("id")
+    .maybeSingle();
+
+  let profileError = updateProfileError;
+
+  if (!profileError && !updatedProfile) {
+    const metadataUsername = String(user.user_metadata?.username ?? "").trim().toLowerCase();
+    const emailUsername = String(user.email ?? "").split("@")[0]?.trim().toLowerCase();
+    const username = metadataUsername || emailUsername || `user_${user.id.slice(0, 8)}`;
+
+    const { error: insertProfileError } = await sb
+      .from("profiles")
+      .insert({ id: user.id, username, ...profilePatch });
+
+    profileError = insertProfileError;
+  }
 
   if (profileError) {
     console.error("Student verification profile sync failed:", profileError);
@@ -114,7 +131,6 @@ export async function POST(req: Request) {
   return NextResponse.json({
     ok: true,
     studentNo: row.student_no ?? null,
-    studentName: row.student_name,
     grade: row.grade,
     classNo: row.class_no,
     profileSynced: !profileError,

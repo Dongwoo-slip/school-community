@@ -36,47 +36,44 @@ export default function AdminDmClient({ presetTo, presetPostId }: { presetTo: st
   }
 
   return (
-    <div className="border border-slate-300 bg-white p-4">
-      <div className="flex items-center justify-between">
-        <div className="text-[14px] font-extrabold text-slate-900">🛠 관리자 DM 센터</div>
-        <Link href="/community/free/messages" className="text-[12px] text-sky-700 hover:underline">
-          쪽지함 →
+    <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+      <div className="flex items-center justify-between border-b border-slate-100 px-4 py-4">
+        <div>
+          <div className="text-base font-semibold text-slate-950">관리자 쪽지 보내기</div>
+          <div className="mt-1 text-xs font-medium text-slate-500">상대 user id로 쪽지를 보냅니다.</div>
+        </div>
+        <Link href="/community/free/messages" className="rounded-md border border-slate-200 bg-white px-3 py-2 text-[12px] font-semibold text-slate-700 hover:bg-slate-50">
+          쪽지함
         </Link>
       </div>
 
-      <div className="mt-2 text-[12px] text-slate-600">
-        보내려면 <b>recipient_id</b>(상대 user id)가 필요해.
-        <div className="mt-1 text-[11px] text-slate-500">
-          가장 쉬운 방법: <b>게시글 상세 페이지에서 작성자(author_id)</b>를 이용해서 이 페이지로 이동시키는 방식.
-          (아래에 버튼 붙이는 방법은 내가 다음 단계에서 “상세 페이지 전체코드” 받으면 거기에 바로 넣어줄게)
-        </div>
-      </div>
-
-      <div className="mt-4 grid gap-2">
-        <label className="text-[12px] font-semibold text-slate-700">recipient_id</label>
+      <div className="grid gap-3 bg-slate-50 px-4 py-4">
+        <label className="text-[12px] font-semibold text-slate-700">받는 사람 userId</label>
         <input
           value={to}
           onChange={(e) => setTo(e.target.value)}
-          className="border border-slate-300 px-3 py-2 text-[12px]"
+          className="rounded-md border border-slate-200 bg-white px-3 py-2 text-[12px]"
           placeholder="예: 123e4567-e89b-12d3-a456-426614174000"
         />
 
-        <label className="mt-2 text-[12px] font-semibold text-slate-700">내용</label>
+        <label className="text-[12px] font-semibold text-slate-700">내용</label>
         <textarea
           value={content}
           onChange={(e) => setContent(e.target.value)}
-          className="border border-slate-300 px-3 py-2 text-[12px] min-h-[120px]"
+          className="min-h-[130px] resize-none rounded-md border border-slate-200 bg-white px-3 py-2 text-[12px] leading-5"
           placeholder="쪽지 내용"
         />
 
-        <button
-          type="button"
-          onClick={send}
-          disabled={busy || me.role !== "admin"}
-          className="mt-2 border border-emerald-600 bg-emerald-600 px-3 py-2 text-[12px] font-semibold text-white hover:bg-emerald-500 disabled:opacity-60"
-        >
-          보내기
-        </button>
+        <div className="flex justify-end">
+          <button
+            type="button"
+            onClick={send}
+            disabled={busy || me.role !== "admin"}
+            className="btn-primary px-4 py-2 text-[12px] disabled:opacity-60"
+          >
+            {busy ? "전송 중..." : "전송"}
+          </button>
+        </div>
       </div>
     </div>
   );

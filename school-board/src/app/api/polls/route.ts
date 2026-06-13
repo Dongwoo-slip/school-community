@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient as createAuthedClient } from "@/lib/supabase/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
-import { requireUser } from "@/lib/serverAuth";
 
 function admin() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
@@ -12,15 +11,23 @@ function admin() {
 // GET /api/polls?post_id=...
 // -> { counts: { [optionId]: number }, total: number, myVote: optionId|null }
 export async function GET(req: Request) {
-  const auth = await requireUser();
-  if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
-
   const { searchParams } = new URL(req.url);
   const post_id = searchParams.get("post_id");
 
   if (!post_id) return NextResponse.json({ error: "missing post_id" }, { status: 400 });
 
   const sb = admin();
+
+  const { data: post, error: postError } = await sb
+    .from("posts")
+    .select("id,is_deleted")
+    .eq("id", post_id)
+    .maybeSingle();
+
+  if (postError) return NextResponse.json({ error: postError.message }, { status: 500 });
+  if (!post || post.is_deleted) {
+    return NextResponse.json({ counts: {}, total: 0, myVote: null });
+  }
 
   const { data: votes, error } = await sb
     .from("poll_votes")

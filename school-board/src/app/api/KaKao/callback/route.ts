@@ -36,6 +36,7 @@ export async function GET(req: NextRequest) {
     // ✅ 연결 확인 카드 메시지(예쁘게)
     const siteUrl = kakaoConfig().siteUrl;
     const logoUrl = `${siteUrl}/logo.png`;
+    const profileLogoUrl = `${siteUrl}/logo-mark.png`;
 
     const templateObject = {
       object_type: "feed",
@@ -47,7 +48,7 @@ export async function GET(req: NextRequest) {
       },
       item_content: {
         profile_text: "Square",
-        profile_image_url: logoUrl,
+        profile_image_url: profileLogoUrl,
         items: [
           { item: "상태", item_op: "정상 연결" },
           { item: "알림 주기", item_op: "매일 00:00" },

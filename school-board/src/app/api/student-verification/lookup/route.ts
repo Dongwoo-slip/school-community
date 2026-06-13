@@ -22,7 +22,7 @@ export async function POST(req: Request) {
 
   const { data, error } = await adminClient()
     .from("student_verification_codes")
-    .select("student_no, student_name, grade, class_no, active, used_by")
+    .select("student_no, active, used_by")
     .eq("code", code)
     .maybeSingle();
 
@@ -45,8 +45,5 @@ export async function POST(req: Request) {
   return NextResponse.json({
     ok: true,
     studentNo: data.student_no ?? null,
-    studentName: data.student_name,
-    grade: data.grade,
-    classNo: data.class_no,
   });
 }

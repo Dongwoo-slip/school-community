@@ -56,7 +56,7 @@ export async function GET(req: NextRequest) {
 
     const { siteUrl } = kakaoConfig();
     const today = kstToday();
-    const logoUrl = `${siteUrl}/logo.png`;
+    const profileLogoUrl = `${siteUrl}/logo-mark.png`;
 
     // ✅ 짧은 OG URL (숫자만 + .png 경로)
     const ogUrl =
@@ -78,7 +78,7 @@ export async function GET(req: NextRequest) {
       },
       item_content: {
         profile_text: "Square",
-        profile_image_url: logoUrl,
+        profile_image_url: profileLogoUrl,
         // 백업용으로 짧게만
         items: [
           { item: "전체글", item_op: `${fmtKo(tp)}개` },

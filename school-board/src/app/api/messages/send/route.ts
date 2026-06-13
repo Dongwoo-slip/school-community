@@ -154,9 +154,10 @@ export async function POST(req: NextRequest) {
     const content = String(body?.content ?? "").trim();
     if (!content) return NextResponse.json({ error: "content가 비었습니다." }, { status: 400 });
 
-    // ✅ 여기서 파서 에러났던 부분: 괄호/세미콜론까지 확실히 닫음
-    const receiverIdRaw = String(body?.receiver_id ?? body?.recipient_id ?? "").trim();
-    const usernameRaw = String(body?.to ?? body?.username ?? "").trim();
+    const directReceiverIdRaw = String(body?.receiver_id ?? body?.recipient_id ?? "").trim();
+    const identifierRaw = String(body?.to ?? body?.username ?? body?.recipient_username ?? body?.toUserId ?? "").trim();
+    const receiverIdRaw = directReceiverIdRaw || (isUuid(identifierRaw) ? identifierRaw : "");
+    const usernameRaw = receiverIdRaw ? "" : identifierRaw;
     const postRaw = String(body?.post ?? body?.post_id ?? "").trim();
 
     let receiverId: string | null = null;

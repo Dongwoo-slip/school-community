@@ -6,6 +6,12 @@ import { getTier } from "@/lib/tiers";
 import { formatAdminStudentLabel, type AuthorIdentity } from "@/lib/authorDisplay";
 import { useFreeBoard } from "../layout";
 
+const KST_DATE = new Intl.DateTimeFormat("ko-KR", {
+  timeZone: "Asia/Seoul",
+  month: "2-digit",
+  day: "2-digit",
+});
+
 type Poll = { question?: string; options?: { id: string; text: string }[] };
 
 type Row = {
@@ -18,21 +24,41 @@ type Row = {
   author?: AuthorIdentity | null;
 };
 
+function mutedTierColor(role?: string | null, points = 0) {
+  if (role === "admin") return "#1d4f91";
+  const tier = getTier(points, role ?? undefined);
+
+  switch (tier.name) {
+    case "뉴비":
+      return "#64748b";
+    case "브론즈":
+      return "#7a5835";
+    case "실버":
+      return "#687482";
+    case "골드":
+      return "#7a6518";
+    case "플래티넘":
+      return "#3f6f60";
+    case "다이아몬드":
+      return "#41657e";
+    case "마스터":
+      return "#7b4650";
+    default:
+      return "#526174";
+  }
+}
+
 export default function BestPostsClient() {
   const { me } = useFreeBoard();
   const [loading, setLoading] = useState(true);
   const [rows, setRows] = useState<Row[]>([]);
-  const [likeTh, setLikeTh] = useState(10);
-  const [viewTh, setViewTh] = useState(50);
 
   async function load() {
     setLoading(true);
     try {
-      const res = await fetch(`/api/posts/best`, { cache: "no-store" });
+      const res = await fetch(`/api/posts/best`, { cache: "no-store", credentials: "include" });
       const json = await res.json().catch(() => ({}));
       setRows(Array.isArray(json.data) ? json.data : []);
-      setLikeTh(typeof json.likeThreshold === "number" ? json.likeThreshold : 10);
-      setViewTh(typeof json.viewThreshold === "number" ? json.viewThreshold : 50);
     } finally {
       setLoading(false);
     }
@@ -43,90 +69,76 @@ export default function BestPostsClient() {
   }, []);
 
   return (
-    <div className="space-y-6">
-      {/* Criteria Highlight */}
-      <div className="glass flex items-center gap-4 rounded-2xl bg-white/[0.03] p-4 text-xs font-bold text-slate-400">
-        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-sky-500/10 text-lg">💡</span>
-        <div>
-          <p className="text-white">베스트 게시글 선정 기준</p>
-          <p className="mt-0.5 opacity-60">
-            좋아요 <span className="text-rose-400">{likeTh}개</span> 이상 또는 조회{" "}
-            <span className="text-sky-400">{viewTh}회</span> 이상
-          </p>
-        </div>
-      </div>
-
+    <div className="space-y-3">
       {loading ? (
-        <div className="grid gap-4">
+        <div className="all-board-list overflow-hidden border border-slate-200 bg-white shadow-sm">
           {Array.from({ length: 5 }).map((_, i) => (
-            <div key={i} className="h-24 animate-pulse rounded-2xl bg-white/5" />
+            <div key={i} className="h-[52px] animate-pulse border-b border-slate-100 bg-slate-50 last:border-b-0" />
           ))}
         </div>
       ) : rows.length === 0 ? (
-        <div className="glass rounded-[2rem] p-12 text-center">
-          <div className="text-4xl mb-4">🌪️</div>
+        <div className="rounded-lg border border-slate-200 bg-white p-12 text-center">
           <p className="text-sm font-medium text-slate-500">조건을 만족하는 베스트 게시글이 아직 없습니다.</p>
         </div>
       ) : (
-        <div className="grid gap-4">
+        <div className="all-board-list overflow-hidden border border-slate-200 bg-white shadow-sm">
           {rows.map((p, idx) => {
-            const date = new Date(p.created_at).toLocaleDateString();
+            const date = KST_DATE.format(new Date(p.created_at));
             const hasPoll = !!p.poll && Array.isArray(p.poll.options) && p.poll.options.length >= 2;
+            const viewCount = Number(p.view_count ?? 0);
+            const likeCount = Number(p.like_count ?? 0);
+            const tier = getTier(p.author?.points || 0, p.author?.role || undefined);
+            const authorColor = mutedTierColor(p.author?.role, p.author?.points || 0);
+            const isAdmin = p.author?.role === "admin";
+            const nextIsAdmin = rows[idx + 1]?.author?.role === "admin";
+            const isNoticeBoundary = isAdmin && !nextIsAdmin && !!rows[idx + 1];
+            const rowNo = String(idx + 1).padStart(2, "0");
 
             return (
               <Link
                 key={p.id}
                 href={`/community/free/${p.id}`}
-                className="glass-hover group flex items-center gap-6 rounded-2xl bg-white/[0.03] p-5 transition-all hover:bg-white/10"
+                prefetch={false}
+                className={`all-board-post-row post-row group ${isAdmin ? "notice-post-row" : ""} ${isNoticeBoundary ? "notice-post-row-last" : ""}`}
+                style={{
+                  background: isAdmin ? "#eef6ff" : undefined,
+                  borderBottomColor: isAdmin ? "rgba(31, 126, 219, 0.12)" : undefined,
+                  ...(isNoticeBoundary
+                    ? {
+                        borderBottom: "1px solid rgba(15, 95, 183, 0.28)",
+                        boxShadow: "inset 0 -1px 0 rgba(31, 126, 219, 0.10)",
+                      }
+                    : {}),
+                }}
               >
-                {/* Ranking Index */}
-                <div className="flex h-12 w-12 shrink-0 flex-col items-center justify-center rounded-xl bg-amber-500/10 font-bold text-amber-500 ring-1 ring-amber-500/20">
-                  <span className="text-[10px] opacity-60 leading-none mb-0.5">BEST</span>
-                  <span className="text-xs">{String(idx + 1).padStart(2, '0')}</span>
-                </div>
+                <span className="all-board-row-no" style={{ color: isAdmin ? "var(--brand-light)" : "var(--text-muted)" }}>
+                  {rowNo}
+                </span>
 
                 <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <h3 className="truncate text-base font-bold text-slate-200 group-hover:text-sky-400 transition-colors">
-                      {p.title}
-                    </h3>
-                    {hasPoll && <span className="text-xs" title="투표 포함">🗳️</span>}
+                  <div className="post-row-title">
+                    {isAdmin && (
+                      <span style={{ fontSize: "0.68rem", fontWeight: 600, background: "var(--brand-dim)", color: "var(--brand-light)", borderRadius: 999, padding: "0.08rem 0.45rem", marginRight: "0.45rem" }}>
+                        공지
+                      </span>
+                    )}
+                    <span>{p.title || "제목 없음"}</span>
+                    {hasPoll && (
+                      <span style={{ fontSize: "0.66rem", fontWeight: 600, color: "var(--text-muted)", marginLeft: "0.4rem" }} title="투표 포함">
+                        투표
+                      </span>
+                    )}
                   </div>
 
-                  <div className="mt-2 flex items-center gap-4 text-[10px] font-bold uppercase tracking-widest leading-none">
-                    <div className="flex items-center gap-1.5 text-slate-500">
-                      {(() => {
-                        const t = getTier(p.author?.points || 0, p.author?.role || undefined);
-                        return (
-                          <>
-                            <span title={t.name}>{t.icon}</span>
-                            <span className={t.color}>{p.author?.username || "익명"}</span>
-                            {me.role === "admin" && (
-                              <span className="text-[9px] font-medium normal-case tracking-normal text-slate-500">
-                                {formatAdminStudentLabel(p.author)}
-                              </span>
-                            )}
-                            {p.author?.role === "admin" && (
-                              <span className="inline-flex items-center rounded-full bg-emerald-400/10 px-1.5 py-0.5 text-[8px] font-black uppercase tracking-widest text-emerald-400 ring-1 ring-inset ring-emerald-400/20">
-                                Admin
-                              </span>
-                            )}
-                          </>
-                        );
-                      })()}
-                    </div>
-                    <div className="flex items-center gap-3 text-slate-500">
-                      <span className="flex items-center gap-1">👀 {p.view_count} VIEW</span>
-                      <span className="flex items-center gap-1 text-rose-400">❤️ {p.like_count} LIKE</span>
-                      <span className="opacity-40">{date}</span>
-                    </div>
+                  <div className="post-row-meta all-board-row-meta">
+                    <span title={tier.name} style={{ color: authorColor }}>
+                      {tier.icon} {p.author?.username || "익명"}
+                    </span>
+                    {me.role === "admin" && <span style={{ color: "#475569" }}>{formatAdminStudentLabel(p.author)}</span>}
+                    <span>조회수 {viewCount}</span>
+                    {likeCount > 0 && <span style={{ color: "var(--accent-red)" }}>좋아요 {likeCount}</span>}
+                    <span>{date}</span>
                   </div>
-                </div>
-
-                <div className="hidden sm:block text-slate-700 group-hover:text-sky-400 transition-colors">
-                  <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                  </svg>
                 </div>
               </Link>
             );

@@ -4,7 +4,7 @@ import { createClient as createAuthedClient } from "@/lib/supabase/server";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-function clampInt(v: any, min: number, max: number, fallback: number) {
+function clampInt(v: unknown, min: number, max: number, fallback: number) {
   const n = Number(v);
   if (!Number.isFinite(n)) return fallback;
   return Math.min(max, Math.max(min, Math.trunc(n)));
@@ -45,7 +45,7 @@ export async function POST(req: Request) {
 
   const body = await req.json().catch(() => ({}));
   const grade = clampInt(body?.grade, 1, 3, 2);
-  const class_no = clampInt(body?.class_no, 1, 11, 7);
+  const class_no = clampInt(body?.class_no ?? body?.classNo, 1, 11, 7);
 
   const row = {
     user_id: user.id,
@@ -60,3 +60,5 @@ export async function POST(req: Request) {
 
   return NextResponse.json({ ok: true, grade, class_no });
 }
+
+export const PATCH = POST;

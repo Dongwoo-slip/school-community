@@ -12,7 +12,7 @@ function keyOfFile(f: File) {
 
 export default function NewFreePostPage() {
   const router = useRouter();
-  const { refreshAll } = useFreeBoard();
+  const { me, loading: boardLoading, refreshAll } = useFreeBoard();
 
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
@@ -26,7 +26,11 @@ export default function NewFreePostPage() {
     options: ["", ""],
   });
 
+  const isVerifiedWriter = me.role === "admin" || me.studentVerified;
+  const canWrite = Boolean(me.userId && isVerifiedWriter);
+
   const canSubmit = useMemo(() => {
+    if (!canWrite) return false;
     if (title.trim().length < 2) return false;
     if (content.trim().length < 2) return false;
 
@@ -35,7 +39,7 @@ export default function NewFreePostPage() {
       if (opts.length < 2) return false;
     }
     return true;
-  }, [title, content, poll]);
+  }, [title, content, poll, canWrite]);
 
   function addFiles(picked: File[]) {
     setFiles((prev) => {
@@ -119,58 +123,102 @@ export default function NewFreePostPage() {
   }
 
   return (
-    <main className="mx-auto max-w-4xl px-4 py-8">
+    <main className="mx-auto max-w-4xl px-4 py-6 sm:py-8">
       {/* Header Section */}
-      <div className="mb-8 flex items-center justify-between">
+      <div className="mb-5 flex items-center justify-between gap-3">
         <div>
-          <h2 className="text-3xl font-black tracking-tighter text-white">새로운 이야기 작성</h2>
-          <p className="mt-1 text-sm font-medium text-slate-500">당신의 생각을 자유롭게 공유해보세요.</p>
+          <h2 className="text-xl font-semibold tracking-normal" style={{ color: "var(--text-primary)" }}>새 글 작성</h2>
+          <p className="mt-1 text-xs font-medium" style={{ color: "var(--text-muted)" }}>자유게시판에 올릴 내용을 작성하세요.</p>
         </div>
         <button
-          className="btn-secondary px-6 py-2 text-xs"
+          className="btn-secondary px-3.5 py-2 text-xs"
           onClick={() => router.push("/community/free")}
           type="button"
         >
-          목록으로 돌아가기
+          목록
         </button>
       </div>
 
-      <div className="glass overflow-hidden rounded-[2.5rem] p-8 sm:p-12">
-        <div className="space-y-8">
+      {boardLoading ? (
+        <div className="glass overflow-hidden p-8 text-center">
+          <div className="text-sm font-semibold" style={{ color: "var(--text-secondary)" }}>계정 상태를 확인하는 중입니다...</div>
+        </div>
+      ) : !canWrite ? (
+        <div className="glass overflow-hidden p-8 text-center">
+          <div className="mx-auto max-w-md rounded-lg border border-sky-100 bg-sky-50 p-5">
+            <div className="text-base font-semibold text-slate-950">
+              {me.userId ? "개별인증이 필요합니다" : "로그인이 필요합니다"}
+            </div>
+            <p className="mt-2 text-sm leading-relaxed text-slate-600">
+              {me.userId
+                ? "게시글 작성은 개별인증을 완료한 계정만 가능해요. 마이페이지에서 인증코드를 등록해 주세요."
+                : "게시글을 작성하려면 먼저 로그인해 주세요. 로그인 후 개별인증을 완료하면 글을 작성할 수 있어요."}
+            </p>
+            <div className="mt-5 flex justify-center gap-2">
+              {me.userId ? (
+                <button
+                  type="button"
+                  className="btn-primary py-2 px-4 text-sm"
+                  onClick={() => router.push("/community/free/me")}
+                >
+                  인증하러 가기
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className="btn-primary py-2 px-4 text-sm"
+                  onClick={() => router.push("/login?next=/community/free/new")}
+                >
+                  로그인하기
+                </button>
+              )}
+              <button
+                type="button"
+                className="btn-secondary py-2 px-4 text-sm"
+                onClick={() => router.push("/community/free")}
+              >
+                돌아가기
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : (
+      <div className="glass overflow-hidden p-4 sm:p-5">
+        <div className="space-y-5">
           {/* Title Input */}
-          <div className="space-y-2">
-            <label className="text-[10px] font-black uppercase tracking-widest text-sky-400 ml-1">제목</label>
+          <div className="space-y-1.5">
+            <label className="ml-0.5 text-xs font-semibold" style={{ color: "var(--text-secondary)" }}>제목</label>
             <input
-              className="w-full rounded-2xl border border-white/5 bg-white/5 px-6 py-4 text-lg font-bold text-white placeholder:text-slate-600 outline-none focus:bg-white/10 focus:ring-2 focus:ring-sky-500/30 transition-all"
-              placeholder="게시글의 제목을 입력해주세요"
+              className="w-full rounded-md border px-3.5 py-2.5 text-sm font-medium outline-none transition-all"
+              placeholder="제목을 입력하세요"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
             />
           </div>
 
           {/* Content Textarea */}
-          <div className="space-y-2">
-            <label className="text-[10px] font-black uppercase tracking-widest text-sky-400 ml-1">본문 내용</label>
+          <div className="space-y-1.5">
+            <label className="ml-0.5 text-xs font-semibold" style={{ color: "var(--text-secondary)" }}>본문</label>
             <textarea
-              className="w-full min-h-[400px] rounded-3xl border border-white/5 bg-white/5 px-6 py-6 text-[15px] font-medium text-slate-200 placeholder:text-slate-600 outline-none focus:bg-white/10 focus:ring-2 focus:ring-sky-500/30 transition-all resize-none"
-              placeholder="나누고 싶은 이야기를 자유롭게 작성해보세요..."
+              className="w-full min-h-[260px] resize-none rounded-md border px-3.5 py-3 text-sm font-normal leading-6 outline-none transition-all"
+              placeholder="내용을 입력하세요"
               value={content}
               onChange={(e) => setContent(e.target.value)}
             />
           </div>
 
-          <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
             {/* File Upload Section */}
-            <div className="rounded-3xl bg-white/[0.03] p-6 border border-white/5">
-              <div className="flex items-center justify-between gap-2 mb-4">
-                <div className="flex items-center gap-2">
-                  <span className="text-lg">🖼️</span>
-                  <span className="text-xs font-black text-white uppercase tracking-wider">사진 첨부</span>
+            <div className="rounded-md border border-slate-200 bg-slate-50 p-4">
+              <div className="mb-3 flex items-center justify-between gap-2">
+                <div>
+                  <div className="text-sm font-semibold text-slate-900">사진 첨부</div>
+                  <div className="mt-0.5 text-[11px] font-medium text-slate-500">이미지는 여러 장 선택할 수 있어요.</div>
                 </div>
                 {files.length > 0 && (
                   <button
                     type="button"
-                    className="text-[10px] font-bold text-rose-400 hover:text-rose-300 transition-colors"
+                    className="text-[11px] font-semibold text-rose-600 hover:text-rose-700"
                     onClick={clearFiles}
                   >
                     전체 삭제
@@ -190,27 +238,27 @@ export default function NewFreePostPage() {
                     e.currentTarget.value = "";
                   }}
                 />
-                <div className="flex flex-col items-center justify-center py-8 rounded-2xl border-2 border-dashed border-white/10 bg-white/[0.02] group-hover/upload:bg-white/[0.05] group-hover/upload:border-sky-500/30 transition-all">
-                  <span className="text-2xl mb-2">📤</span>
-                  <span className="text-[11px] font-bold text-slate-400">사진 클릭 또는 드래그</span>
+                <div className="flex min-h-[92px] flex-col items-center justify-center rounded-md border border-dashed border-slate-300 bg-white px-3 py-5 transition-all group-hover/upload:border-sky-300 group-hover/upload:bg-sky-50/40">
+                  <span className="text-xs font-semibold text-slate-700">파일 선택</span>
+                  <span className="mt-1 text-[11px] text-slate-500">JPG, PNG 등 이미지 파일</span>
                 </div>
               </div>
 
               {files.length > 0 && (
-                <div className="mt-6 space-y-2">
-                  <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2">
+                <div className="mt-4 space-y-2">
+                  <div className="mb-2 text-[11px] font-semibold text-slate-500">
                     선택된 파일 ({files.length})
                   </div>
                   <ul className="grid grid-cols-1 gap-2">
                     {files.map((f) => (
                       <li
                         key={keyOfFile(f)}
-                        className="flex items-center justify-between gap-3 p-3 rounded-xl bg-white/5 border border-white/5"
+                        className="flex items-center justify-between gap-3 rounded-md border border-slate-200 bg-white px-3 py-2"
                       >
-                        <span className="min-w-0 truncate text-[11px] font-medium text-slate-300">{f.name}</span>
+                        <span className="min-w-0 truncate text-[11px] font-medium text-slate-600">{f.name}</span>
                         <button
                           type="button"
-                          className="text-[10px] font-black text-rose-500/60 hover:text-rose-500 transition-colors"
+                          className="text-[11px] font-semibold text-rose-600 hover:text-rose-700"
                           onClick={() => removeFile(f)}
                         >
                           삭제
@@ -223,28 +271,28 @@ export default function NewFreePostPage() {
             </div>
 
             {/* Poll Section */}
-            <div className="rounded-3xl bg-white/[0.03] p-6 border border-white/5">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2">
-                  <span className="text-lg">📊</span>
-                  <span className="text-xs font-black text-white uppercase tracking-wider">투표 기능</span>
+            <div className="rounded-md border border-slate-200 bg-slate-50 p-4">
+              <div className="mb-3 flex items-center justify-between gap-2">
+                <div>
+                  <div className="text-sm font-semibold text-slate-900">투표</div>
+                  <div className="mt-0.5 text-[11px] font-medium text-slate-500">선택형 질문을 함께 올릴 수 있어요.</div>
                 </div>
-                <label className="relative inline-flex items-center cursor-pointer">
+                <label className="relative inline-flex cursor-pointer items-center">
                   <input
                     type="checkbox"
                     checked={poll.enabled}
                     onChange={(e) => setPoll((p) => ({ ...p, enabled: e.target.checked }))}
                     className="sr-only peer"
                   />
-                  <div className="w-11 h-6 bg-white/10 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-slate-400 after:border-slate-400 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-sky-500 peer-checked:after:bg-white peer-checked:after:border-white"></div>
+                  <div className="h-5 w-9 rounded-full bg-slate-300 transition-all after:absolute after:left-[2px] after:top-[2px] after:h-4 after:w-4 after:rounded-full after:bg-white after:shadow-sm after:transition-all peer-checked:bg-sky-500 peer-checked:after:translate-x-4"></div>
                 </label>
               </div>
 
               {poll.enabled ? (
-                <div className="mt-6 space-y-4">
+                <div className="mt-3 space-y-3">
                   <input
-                    className="w-full rounded-xl border border-white/5 bg-white/5 px-4 py-3 text-sm font-bold text-white placeholder:text-slate-600 outline-none focus:bg-white/10 transition-all font-bold"
-                    placeholder="무엇에 대해 투표할까요?"
+                    className="w-full rounded-md border bg-white px-3 py-2.5 text-sm font-medium outline-none transition-all"
+                    placeholder="투표 질문"
                     value={poll.question}
                     onChange={(e) => setPoll((p) => ({ ...p, question: e.target.value }))}
                   />
@@ -253,7 +301,7 @@ export default function NewFreePostPage() {
                     {poll.options.map((v, i) => (
                       <div key={i} className="flex items-center gap-2 group/poll">
                         <input
-                          className="flex-1 rounded-xl border border-white/5 bg-white/5 px-4 py-3 text-xs font-medium text-slate-300 placeholder:text-slate-600 outline-none focus:bg-white/10 transition-all font-bold"
+                          className="flex-1 rounded-md border bg-white px-3 py-2 text-xs font-medium outline-none transition-all"
                           placeholder={`항목 ${i + 1}`}
                           value={v}
                           onChange={(e) =>
@@ -265,11 +313,11 @@ export default function NewFreePostPage() {
                         />
                         {poll.options.length > 2 && (
                           <button
-                            className="p-3 text-rose-500/40 hover:text-rose-500 transition-colors"
+                            className="rounded-md border border-slate-200 bg-white px-2.5 py-2 text-xs font-semibold text-rose-600 hover:bg-rose-50"
                             onClick={() => removeOption(i)}
                             type="button"
                           >
-                            ×
+                            삭제
                           </button>
                         )}
                       </div>
@@ -277,28 +325,27 @@ export default function NewFreePostPage() {
                   </div>
 
                   <button
-                    className="w-full py-3 rounded-xl border border-white/5 bg-white/[0.02] text-[11px] font-black text-slate-400 hover:bg-white/5 hover:text-slate-200 transition-all uppercase tracking-widest"
+                    className="w-full rounded-md border border-slate-200 bg-white py-2 text-xs font-semibold text-slate-600 transition-all hover:bg-slate-100"
                     onClick={addOption}
                     type="button"
                   >
-                    + 항목 추가
+                    항목 추가
                   </button>
                 </div>
               ) : (
-                <div className="flex flex-col items-center justify-center py-10 opacity-40">
-                  <span className="text-2xl mb-2">💤</span>
-                  <span className="text-[10px] font-bold text-slate-500">투표가 비활성화됨</span>
+                <div className="flex min-h-[144px] items-center justify-center rounded-md border border-dashed border-slate-200 bg-white text-[11px] font-medium text-slate-500">
+                  투표를 사용하지 않습니다
                 </div>
               )}
             </div>
           </div>
 
           {/* Action Buttons */}
-          <div className="pt-8 flex flex-col sm:flex-row gap-4">
+          <div className="flex flex-col gap-2 border-t border-slate-100 pt-4 sm:flex-row sm:justify-end">
             <button
               disabled={!canSubmit || uploading}
               onClick={onSubmit}
-              className="flex-1 btn-primary py-4 text-sm font-black shadow-xl shadow-sky-500/20"
+              className="btn-primary order-1 px-6 py-2.5 text-sm sm:order-2"
               type="button"
             >
               {uploading ? (
@@ -306,10 +353,10 @@ export default function NewFreePostPage() {
                   <div className="h-4 w-4 animate-spin rounded-full border-2 border-white/20 border-t-white" />
                   <span>게시글을 올리는 중...</span>
                 </div>
-              ) : "이야기 등록하기"}
+              ) : "등록하기"}
             </button>
             <button
-              className="btn-secondary px-8 py-4 text-sm font-black"
+              className="btn-secondary order-2 px-5 py-2.5 text-sm sm:order-1"
               onClick={() => router.push("/community/free")}
               type="button"
             >
@@ -318,6 +365,7 @@ export default function NewFreePostPage() {
           </div>
         </div>
       </div>
+      )}
     </main>
   );
 }

@@ -1,0 +1,43 @@
+<svg width="1080" height="360" viewBox="0 0 1080 360" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="wordmark-bg" x1="58" y1="52" x2="260" y2="294" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#1F7EDB"/>
+      <stop offset="1" stop-color="#0F5FB7"/>
+    </linearGradient>
+    <linearGradient id="wordmark-gloss" x1="88" y1="78" x2="264" y2="236" gradientUnits="userSpaceOnUse">
+      <stop stop-color="white" stop-opacity="0.34"/>
+      <stop offset="0.45" stop-color="white" stop-opacity="0.07"/>
+      <stop offset="1" stop-color="white" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="wordmark-depth" x1="177" y1="138" x2="177" y2="284" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0F5FB7" stop-opacity="0"/>
+      <stop offset="1" stop-color="#0B4A93" stop-opacity="0.42"/>
+    </linearGradient>
+    <linearGradient id="wordmark-text-fill" x1="144" y1="132" x2="215" y2="224" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#D8ECFF"/>
+    </linearGradient>
+    <clipPath id="wordmark-icon-clip">
+      <rect x="68" y="66" width="218" height="218" rx="58"/>
+    </clipPath>
+    <filter id="wordmark-shadow" x="40" y="42" width="274" height="294" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="14" stdDeviation="18" flood-color="#0F5FB7" flood-opacity="0.18"/>
+    </filter>
+  </defs>
+  <rect width="1080" height="360" rx="56" fill="#F7F9FC"/>
+  <g filter="url(#wordmark-shadow)">
+    <rect x="68" y="66" width="218" height="218" rx="58" fill="url(#wordmark-bg)"/>
+    <rect x="68" y="66" width="218" height="218" rx="58" fill="url(#wordmark-depth)" opacity="0.64"/>
+    <rect x="76" y="74" width="202" height="202" rx="50" stroke="white" stroke-opacity="0.22" stroke-width="2"/>
+    <path d="M68 66H286V156C251 140 215 132 177 132C139 132 104 140 68 156V66Z" fill="url(#wordmark-gloss)"/>
+    <g clip-path="url(#wordmark-icon-clip)">
+      <text x="177" y="221" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="116" font-weight="850" letter-spacing="-12" fill="#0B4A93" opacity="0.28">SQ</text>
+      <text x="177" y="215" text-anchor="middle" font-family="Inter, Arial, sans-serif" font-size="116" font-weight="850" letter-spacing="-12" fill="url(#wordmark-text-fill)">SQ</text>
+      <path d="M106 250C137 262 161 266 177 266C197 266 221 262 253 250" stroke="white" stroke-opacity="0.18" stroke-width="7" stroke-linecap="round"/>
+    </g>
+  </g>
+  <text x="340" y="184" font-family="Inter, Arial, sans-serif" font-size="98" font-weight="800" letter-spacing="-3" fill="#C9D8EA" opacity="0.34">Square</text>
+  <text x="340" y="181" font-family="Inter, Arial, sans-serif" font-size="98" font-weight="800" letter-spacing="-3" fill="#182232">Square</text>
+  <text x="346" y="235" font-family="'Noto Sans KR', Arial, sans-serif" font-size="31" font-weight="600" letter-spacing="0" fill="#4F6177">청주고등학교 커뮤니티</text>
+  <path d="M346 260H750" stroke="#1F7EDB" stroke-opacity="0.22" stroke-width="8" stroke-linecap="round"/>
+</svg>

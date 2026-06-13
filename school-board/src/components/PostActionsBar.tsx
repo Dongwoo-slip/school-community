@@ -9,6 +9,47 @@ type ApiState = {
   mine: { like: boolean; dislike: boolean; report: boolean };
 };
 
+function ThumbIcon({ down = false, filled = false }: { down?: boolean; filled?: boolean }) {
+  return (
+    <svg
+      className="h-4 w-4"
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+      style={{ transform: down ? "rotate(180deg)" : undefined }}
+    >
+      <path
+        d="M7.5 10.2 11.2 3.5c.5-.9 1.8-.7 2 .3l.2 1.1c.2 1.2 0 2.4-.5 3.5l-.4.9h5.2c1.2 0 2.1 1.1 1.8 2.3l-1.4 6.5c-.2.9-1 1.5-1.9 1.5H8.3c-.6 0-1.1-.5-1.1-1.1v-7.6c0-.3.1-.5.3-.7Z"
+        fill={filled ? "currentColor" : "none"}
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M3.6 10.1h3v9.5h-3a1 1 0 0 1-1-1v-7.5a1 1 0 0 1 1-1Z"
+        fill={filled ? "currentColor" : "none"}
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function FlagIcon({ filled = false }: { filled?: boolean }) {
+  return (
+    <svg className="h-4 w-4" viewBox="0 0 24 24" aria-hidden="true">
+      <path
+        d="M5 20V5.8c0-.7.5-1.2 1.2-1.2h10.1c.9 0 1.5.9 1.1 1.7l-1.2 2.5 1.3 2.5c.4.8-.2 1.7-1.1 1.7H6"
+        fill={filled ? "currentColor" : "none"}
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 export default function PostActionsBar({ postId }: Props) {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -77,59 +118,45 @@ export default function PostActionsBar({ postId }: Props) {
   }, [postId]);
 
   return (
-    <div className="mt-8 overflow-hidden rounded-2xl glass border-0">
-      <div className="flex flex-wrap items-center gap-3 p-4">
+    <div className="post-actions-bar">
+      <div className="flex flex-wrap items-center gap-2">
         <button
           type="button"
           disabled={loading || busy}
           onClick={() => act("like")}
-          className={
-            "flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-black transition-all disabled:opacity-50 " +
-            (mine.like
-              ? "bg-sky-500 text-white shadow-lg shadow-sky-500/30"
-              : "bg-white/5 text-slate-300 hover:bg-white/10 hover:text-white")
-          }
+          className={`post-action-button ${mine.like ? "is-active" : ""}`}
+          aria-pressed={mine.like}
         >
-          <span className="text-sm">👍</span>
+          <ThumbIcon filled={mine.like} />
           <span>좋아요</span>
-          <span className={mine.like ? "text-white/80" : "text-sky-400"}>{counts.like}</span>
+          <span>{counts.like}</span>
         </button>
 
         <button
           type="button"
           disabled={loading || busy}
           onClick={() => act("dislike")}
-          className={
-            "flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-black transition-all disabled:opacity-50 " +
-            (mine.dislike
-              ? "bg-rose-500 text-white shadow-lg shadow-rose-500/30"
-              : "bg-white/5 text-slate-300 hover:bg-white/10 hover:text-white")
-          }
+          className={`post-action-button ${mine.dislike ? "is-active" : ""}`}
+          aria-pressed={mine.dislike}
         >
-          <span className="text-sm">👎</span>
+          <ThumbIcon down filled={mine.dislike} />
           <span>싫어요</span>
-          <span className={mine.dislike ? "text-white/80" : "text-rose-400"}>{counts.dislike}</span>
+          <span>{counts.dislike}</span>
         </button>
-
-        <div className="h-6 w-px bg-white/10 mx-2 hidden sm:block" />
 
         <button
           type="button"
           disabled={loading || busy || mine.report}
           onClick={() => act("report")}
-          className={
-            "flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-black transition-all disabled:opacity-50 " +
-            (mine.report
-              ? "bg-amber-500/20 text-amber-500 border border-amber-500/30"
-              : "bg-white/5 text-slate-400 hover:bg-rose-500/10 hover:text-rose-400")
-          }
+          className={`post-action-button ${mine.report ? "is-active" : ""}`}
+          aria-pressed={mine.report}
         >
-          <span className="text-sm">🚩</span>
+          <FlagIcon filled={mine.report} />
           <span>{reportLabel}</span>
         </button>
 
-        <div className="ml-auto text-[10px] font-bold uppercase tracking-widest text-slate-600">
-          {loading ? "Syncing..." : busy ? "Sending..." : ""}
+        <div className="ml-auto text-[10px] font-medium text-slate-400">
+          {loading ? "동기화 중..." : busy ? "처리 중..." : ""}
         </div>
       </div>
     </div>

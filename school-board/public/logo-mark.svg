@@ -1,0 +1,20 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="mark-blue" x1="130" y1="102" x2="386" y2="398" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#2B96EE"/>
+      <stop offset="1" stop-color="#0F5FB7"/>
+    </linearGradient>
+    <filter id="mark-shadow" x="88" y="82" width="336" height="336" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="10" stdDeviation="10" flood-color="#0F5FB7" flood-opacity="0.16"/>
+    </filter>
+  </defs>
+  <g>
+    <rect x="112" y="96" width="118" height="118" rx="36" fill="url(#mark-blue)"/>
+    <rect x="282" y="96" width="118" height="118" rx="36" fill="url(#mark-blue)"/>
+    <rect x="112" y="266" width="118" height="118" rx="36" fill="url(#mark-blue)"/>
+    <rect x="282" y="266" width="118" height="118" rx="36" fill="url(#mark-blue)"/>
+    <rect x="236" y="236" width="40" height="40" rx="11" fill="url(#mark-blue)" transform="rotate(45 256 256)"/>
+    <path d="M137 117C151 107 167 102 187 102H192" stroke="white" stroke-opacity="0.22" stroke-width="8" stroke-linecap="round"/>
+    <path d="M307 117C321 107 337 102 357 102H362" stroke="white" stroke-opacity="0.22" stroke-width="8" stroke-linecap="round"/>
+  </g>
+</svg>

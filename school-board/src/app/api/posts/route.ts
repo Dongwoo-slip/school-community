@@ -3,12 +3,32 @@ import { createClient as createAuthedClient } from "@/lib/supabase/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { awardPoints } from "@/lib/points";
 import { AUTHOR_PROFILE_SELECT } from "@/lib/authorDisplay";
-import { requireStudentVerifiedWriter } from "@/lib/studentVerification";
 
 function admin() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY!;
   return createAdminClient(url, key, { auth: { persistSession: false } });
+}
+
+async function isVerifiedWriter(sb: ReturnType<typeof admin>, userId: string) {
+  const { data: profile, error } = await sb
+    .from("profiles")
+    .select("role, student_verified, student_no, student_name")
+    .eq("id", userId)
+    .maybeSingle();
+
+  if (error) throw error;
+  if (profile?.role === "admin") return true;
+  if (profile?.student_verified || profile?.student_no || profile?.student_name) return true;
+
+  const { data: verification, error: verificationError } = await sb
+    .from("student_verification_codes")
+    .select("id")
+    .eq("used_by", userId)
+    .maybeSingle();
+
+  if (verificationError) throw verificationError;
+  return Boolean(verification?.id);
 }
 
 // GET /api/posts?board=free
@@ -57,12 +77,17 @@ export async function POST(req: Request) {
     : [];
 
   const sb = admin();
-  const verification = await requireStudentVerifiedWriter(sb, user.id);
-  if (!verification.ok) {
-    return NextResponse.json(
-      { error: verification.error, code: "STUDENT_VERIFICATION_REQUIRED" },
-      { status: verification.status }
-    );
+
+  try {
+    const verified = await isVerifiedWriter(sb, user.id);
+    if (!verified) {
+      return NextResponse.json(
+        { error: "개별인증이 필요합니다. 마이페이지에서 인증코드를 등록한 뒤 글을 작성해 주세요.", code: "STUDENT_VERIFICATION_REQUIRED" },
+        { status: 403 }
+      );
+    }
+  } catch (e: any) {
+    return NextResponse.json({ error: e?.message ?? "인증 상태를 확인하지 못했습니다." }, { status: 500 });
   }
 
   // ✅ 도배 방지: 30초 이내 작성 여부 확인

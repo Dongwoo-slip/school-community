@@ -10,15 +10,18 @@ type AdData = {
   image_urls?: string[] | null;
 };
 
+const AD_CACHE_KEY = "school-floating-ad-cache:v2";
+const AD_CACHE_TTL_MS = 5 * 60 * 1000;
+
 function getAdCfg(vw: number): AdCfg {
   const contentWidth = 1152;
   const gutter = Math.max(0, (vw - contentWidth) / 2);
 
-  if (vw < 1280 || gutter < 72) return { show: false, w: 0, h: 0, left: 0 };
+  if (vw < 1280 || gutter < 56) return { show: false, w: 0, h: 0, left: 0 };
 
-  const w = vw < 1440 ? 68 : vw < 1700 ? 120 : 150;
-  const h = vw < 1440 ? 300 : vw < 1700 ? 390 : 450;
-  const left = Math.max(8, Math.floor(gutter - w - 12));
+  const w = vw < 1440 ? 52 : vw < 1700 ? 120 : 150;
+  const h = vw < 1440 ? 240 : vw < 1700 ? 390 : 450;
+  const left = Math.max(6, Math.floor(gutter - w - 8));
   return { show: true, w, h, left };
 }
 
@@ -63,32 +66,52 @@ export default function FloatingLeftAd({ topAnchorId }: { topAnchorId: string })
   React.useEffect(() => {
     let alive = true;
     async function loadAd() {
-      const res = await fetch("/api/ad", { cache: "no-store" }).catch(() => null);
+      if (!cfg.show) {
+        setAd(null);
+        return;
+      }
+
+      try {
+        const cached = JSON.parse(window.sessionStorage.getItem(AD_CACHE_KEY) || "null");
+        if (cached?.expiresAt > Date.now() && cached?.data?.id) {
+          if (alive) setAd(cached.data ?? null);
+          return;
+        }
+      } catch {
+        window.sessionStorage.removeItem(AD_CACHE_KEY);
+      }
+
+      const res = await fetch("/api/ad", { cache: "force-cache" }).catch(() => null);
       const json = await res?.json().catch(() => ({}));
       if (!alive) return;
-      setAd(json?.data ?? null);
+      const next = json?.data ?? null;
+      if (next?.id) {
+        try {
+          window.sessionStorage.setItem(
+            AD_CACHE_KEY,
+            JSON.stringify({ data: next, expiresAt: Date.now() + AD_CACHE_TTL_MS })
+          );
+        } catch {
+          // Storage is best-effort; the ad can still render without it.
+        }
+      }
+      setAd(next);
     }
     loadAd();
     return () => {
       alive = false;
     };
-  }, []);
+  }, [cfg.show]);
 
   if (!mounted) return null;
   if (!cfg.show) return null;
 
   const image = Array.isArray(ad?.image_urls) ? ad?.image_urls[0] : null;
+  if (!image) return null;
+
   const link = String(ad?.content ?? "").trim();
-  const imageNode = image ? (
-    <img src={image} alt={ad?.title ?? "광고"} className="h-full w-full object-cover" />
-  ) : (
-    <div className="text-center">
-      <div className="text-[11px] font-bold text-sky-900">광고</div>
-      <div className="mt-1 text-[10px] text-sky-700">
-        {cfg.w}×{cfg.h}
-      </div>
-      <div className="mt-2 text-[10px] leading-tight text-slate-500">배너 자리</div>
-    </div>
+  const imageNode = (
+    <img src={image} alt={ad?.title ?? "광고"} className="h-full w-full object-cover" loading="lazy" decoding="async" />
   );
 
   return (

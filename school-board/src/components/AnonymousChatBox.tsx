@@ -23,7 +23,15 @@ export default function AnonymousChatBox() {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const meRef = useRef(me);
+  const channelNameRef = useRef(`chat_public_${Math.random().toString(36).slice(2)}`);
+  const canChat = Boolean(me.userId && (me.role === "admin" || me.studentVerified));
+
+  useEffect(() => {
+    meRef.current = me;
+  }, [me]);
 
   const scrollToBottom = () => {
     if (scrollRef.current) {
@@ -33,7 +41,7 @@ export default function AnonymousChatBox() {
 
   useEffect(() => {
     async function loadInitial() {
-      const res = await fetch("/api/chat?limit=50");
+      const res = await fetch("/api/chat?limit=50", { cache: "no-store", credentials: "include" });
       const json = await res.json();
       if (json.data) {
         setMessages(json.data.reverse());
@@ -45,16 +53,23 @@ export default function AnonymousChatBox() {
 
     // Supabase Realtime Subscription
     const channel = supabase
-      .channel("chat_public")
+      .channel(channelNameRef.current)
       .on(
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "chat_messages" },
         async (payload) => {
           const newMessage = payload.new as ChatMessage;
-          setMessages((prev) => [...prev, newMessage]);
+          const currentMe = meRef.current;
+          const visibleMessage = currentMe.role === "admin"
+            ? newMessage
+            : {
+                ...newMessage,
+                user_id: currentMe.userId && newMessage.user_id === currentMe.userId ? newMessage.user_id : "",
+              };
+          setMessages((prev) => [...prev, visibleMessage]);
           setTimeout(scrollToBottom, 50);
 
-          if (me.role === "admin") {
+          if (currentMe.role === "admin") {
             const res = await fetch("/api/chat?limit=1", { cache: "no-store", credentials: "include" }).catch(() => null);
             const json = await res?.json().catch(() => ({}));
             const enriched = Array.isArray(json?.data) ? json.data[0] : null;
@@ -80,7 +95,15 @@ export default function AnonymousChatBox() {
   }, []);
 
   async function onSend(text: string) {
-    if (!me.userId) return alert("로그인이 필요합니다.");
+    if (!me.userId) {
+      setNotice("로그인이 필요합니다. 로그인 후 개별인증을 완료하면 익명채팅을 이용할 수 있어요.");
+      return;
+    }
+    if (!canChat) {
+      setNotice("개별인증이 필요합니다. 마이페이지에서 인증코드를 등록한 뒤 익명채팅을 이용해 주세요.");
+      return;
+    }
+
     const content = text.trim();
     if (!content || sending) return;
 
@@ -88,13 +111,19 @@ export default function AnonymousChatBox() {
     try {
       const res = await fetch("/api/chat", {
         method: "POST",
+        credentials: "include",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ content }),
       });
-      if (!res.ok) throw new Error("전송 실패");
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setNotice(json?.error ?? "메시지 전송에 실패했습니다.");
+        return;
+      }
       setInput("");
+      setNotice(null);
     } catch (err) {
-      alert("메시지 전송에 실패했습니다.");
+      setNotice("메시지 전송에 실패했습니다.");
     } finally {
       setSending(false);
     }
@@ -113,13 +142,19 @@ export default function AnonymousChatBox() {
   }
 
   return (
-    <div className="glass flex flex-col overflow-hidden h-[500px]">
+    <div
+      className="anonymous-chat-panel glass flex flex-col overflow-hidden h-[500px]"
+      style={{ background: '#edf3f8', borderColor: 'rgba(15, 95, 183, 0.12)' }}
+    >
       {/* Header */}
-      <div className="flex items-center justify-between px-6 py-4" style={{ borderBottom: '1px solid var(--border-subtle)', background: 'var(--bg-surface)' }}>
-        <h3 className="text-sm font-bold flex items-center gap-2" style={{ color: 'var(--text-primary)' }}>
-          <span className="text-lg">💬</span> 실시간 익명 대화
+      <div
+        className="anonymous-chat-header flex items-center justify-between px-4 py-2"
+        style={{ borderBottom: '1px solid rgba(15, 95, 183, 0.12)', background: 'rgba(248, 251, 254, 0.92)' }}
+      >
+        <h3 className="flex items-center gap-1.5 text-[13px] font-semibold" style={{ color: 'var(--text-primary)' }}>
+          <span className="text-sm">💬</span> 실시간 익명채팅
         </h3>
-        <span className="px-2.5 py-1 text-[10px] font-black uppercase tracking-widest animate-pulse" style={{ background: 'rgba(8,123,99,0.10)', color: 'var(--accent-mint)', border: '1px solid rgba(8,123,99,0.18)' }}>
+        <span className="px-2 py-0.5 text-[9px] font-bold uppercase tracking-widest animate-pulse" style={{ background: 'rgba(8,123,99,0.10)', color: 'var(--accent-mint)', border: '1px solid rgba(8,123,99,0.18)' }}>
           Live
         </span>
       </div>
@@ -127,7 +162,10 @@ export default function AnonymousChatBox() {
       {/* Messages Area */}
       <div
         ref={scrollRef}
-        className="flex-1 overflow-y-auto p-4 space-y-2.5 no-scrollbar"
+        className="anonymous-chat-messages flex-1 overflow-y-auto p-4 space-y-2.5 no-scrollbar"
+        style={{
+          background: 'linear-gradient(180deg, rgba(31, 126, 219, 0.045), rgba(31, 126, 219, 0.015)), #eef4f9',
+        }}
       >
         {loading ? (
           <div className="flex h-full items-center justify-center">
@@ -140,8 +178,11 @@ export default function AnonymousChatBox() {
         ) : (
           messages.map((m) => {
             const isMe = m.user_id === me.userId;
+            const studentLabel = m.author_student_label && m.author_student_label !== "미인증"
+              ? m.author_student_label
+              : "미인증";
             const label = me.role === "admin"
-              ? `${m.author_username || "아이디 없음"} · ${m.author_student_label || "미인증"}`
+              ? `${studentLabel} · ${m.author_username || "아이디 없음"}`
               : m.anon_id;
             return (
               <div key={m.id} className={`flex flex-col ${isMe ? "items-end" : "items-start"}`}>
@@ -149,7 +190,7 @@ export default function AnonymousChatBox() {
                 <div
                   className={`max-w-[85%] rounded-2xl px-3 py-1.5 text-[13px] font-medium leading-snug ${isMe ? "rounded-br-md" : "rounded-bl-md"}`}
                   style={{
-                    background: isMe ? 'var(--brand)' : 'var(--bg-elevated)',
+                    background: isMe ? 'var(--brand)' : 'rgba(255,255,255,0.82)',
                     color: isMe ? '#fff' : 'var(--text-primary)',
                     border: isMe ? '1px solid var(--brand)' : '1px solid var(--border-subtle)'
                   }}
@@ -172,19 +213,29 @@ export default function AnonymousChatBox() {
       </div>
 
       {/* Footer / Input */}
-      <div className="p-3" style={{ borderTop: '1px solid var(--border-subtle)', background: 'var(--bg-elevated)' }}>
+      <div
+        className="anonymous-chat-footer p-3"
+        style={{ borderTop: '1px solid rgba(15, 95, 183, 0.12)', background: '#e7eef6' }}
+      >
         <div className="mb-2 flex gap-1.5">
           {EMOJIS.map((e) => (
             <button
               key={e}
               onClick={() => onSend(e)}
-              className="flex h-7 w-7 items-center justify-center text-base transition-colors"
+              disabled={!canChat || sending}
+              className="flex h-7 w-7 items-center justify-center text-base transition-colors disabled:opacity-45"
               style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 999 }}
             >
               {e}
             </button>
           ))}
         </div>
+
+        {notice ? (
+          <div className="mb-2 rounded-xl border border-sky-200 bg-sky-50 px-3 py-2 text-[11px] font-medium leading-4 text-sky-800">
+            {notice}
+          </div>
+        ) : null}
 
         <form
           onSubmit={(e) => {
@@ -195,15 +246,18 @@ export default function AnonymousChatBox() {
         >
           <input
             value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder={me.userId ? "메시지를 입력하세요..." : "로그인 후 대화가 가능합니다."}
-            disabled={!me.userId || sending}
+            onChange={(e) => {
+              setInput(e.target.value);
+              setNotice(null);
+            }}
+            placeholder={!me.userId ? "로그인 후 대화가 가능합니다." : canChat ? "메시지를 입력하세요..." : "개별인증 후 대화가 가능합니다."}
+            disabled={!canChat || sending}
             className="w-full rounded-full border px-3 py-2 pr-14 text-sm focus:outline-none transition-all"
             style={{ background: 'var(--bg-surface)', borderColor: 'var(--border-subtle)', color: 'var(--text-primary)' }}
           />
           <button
             type="submit"
-            disabled={!me.userId || sending || !input.trim()}
+            disabled={!canChat || sending || !input.trim()}
             className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded-full px-3 py-1.5 text-xs font-bold text-white disabled:opacity-50 transition-all"
             style={{ background: 'var(--brand)' }}
           >

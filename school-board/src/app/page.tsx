@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { SquareLogoLockup } from "@/components/SquareLogo";
 
 export default function Home() {
   return (
@@ -20,17 +21,8 @@ export default function Home() {
       <div style={{ maxWidth: 480, width: '100%', position: 'relative', zIndex: 1 }}>
 
         {/* Logo mark */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '2rem' }}>
-          <div style={{
-            width: 44, height: 44, borderRadius: 4,
-            background: 'var(--brand)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: '1rem', fontWeight: 900, color: 'white', letterSpacing: '-0.05em',
-          }}>SQ</div>
-          <div>
-            <div style={{ fontSize: '1.25rem', fontWeight: 900, color: 'var(--text-primary)', letterSpacing: '-0.03em', lineHeight: 1 }}>Square</div>
-            <div style={{ fontSize: '0.65rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-muted)', marginTop: 2 }}>청주고등학교 커뮤니티</div>
-          </div>
+        <div style={{ marginBottom: '2rem' }}>
+          <SquareLogoLockup markSize={54} />
         </div>
 
         {/* Main heading */}

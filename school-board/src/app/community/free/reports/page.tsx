@@ -69,7 +69,7 @@ export default function ReportsPage() {
               const href = r.post_id ? `/community/free/${encodeURIComponent(r.post_id)}` : "/community/free";
               return (
                 <li key={r.id} className="py-3">
-                  <Link href={href} className="block hover:underline">
+                  <Link href={href} prefetch={false} className="block hover:underline">
                     <div className="text-[13px] text-slate-900">
                       {actor}님이 신고했습니다.
                     </div>

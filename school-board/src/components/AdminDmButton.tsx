@@ -49,17 +49,17 @@ export default function AdminDmButton({
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="border border-emerald-400 bg-white px-2 py-1 text-[11px] font-semibold text-emerald-700 hover:bg-emerald-50"
+        className="rounded-md border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-700 hover:bg-slate-50"
         title="관리자 쪽지 보내기"
       >
-        ✉ 쪽지
+        쪽지
       </button>
 
       {open ? (
         <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-[520px] border border-slate-300 bg-white">
-            <div className="border-b border-slate-200 px-4 py-3 flex items-center justify-between">
-              <div className="text-[13px] font-extrabold text-slate-900">
+          <div className="w-full max-w-[520px] overflow-hidden rounded-lg border border-slate-200 bg-white shadow-xl">
+            <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50 px-4 py-3">
+              <div className="text-[13px] font-semibold text-slate-950">
                 관리자 쪽지 보내기
                 <div className="mt-0.5 text-[11px] font-normal text-slate-500">
                   대상: <span className="font-semibold text-slate-900">{recipientName ?? recipientUsername}</span>{" "}
@@ -70,7 +70,7 @@ export default function AdminDmButton({
               <button
                 type="button"
                 onClick={() => setOpen(false)}
-                className="border border-slate-300 bg-white px-2 py-1 text-[11px] text-slate-800 hover:bg-slate-50"
+                className="rounded-md border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-medium text-slate-700 hover:bg-slate-100"
               >
                 닫기
               </button>
@@ -80,24 +80,24 @@ export default function AdminDmButton({
               <textarea
                 value={text}
                 onChange={(e) => setText(e.target.value)}
-                className="w-full border border-slate-300 bg-white px-3 py-2 text-[12px] text-slate-900 outline-none"
+                className="min-h-[132px] w-full resize-none rounded-md border border-slate-200 bg-white px-3 py-2 text-[12px] leading-5 text-slate-900 outline-none"
                 rows={6}
                 placeholder="쪽지 내용을 입력하세요…"
               />
 
               <div className="mt-3 flex justify-end gap-2">
                 <button
-                  type="button"
-                  onClick={() => setOpen(false)}
-                  className="border border-slate-300 bg-white px-3 py-2 text-[12px] font-semibold text-slate-800 hover:bg-slate-50"
+                type="button"
+                onClick={() => setOpen(false)}
+                  className="btn-secondary px-3 py-2 text-[12px]"
                 >
                   취소
                 </button>
                 <button
-                  type="button"
-                  onClick={send}
-                  disabled={busy || text.trim().length === 0}
-                  className="border border-emerald-700 bg-emerald-700 px-3 py-2 text-[12px] font-semibold text-white hover:bg-emerald-600 disabled:opacity-60"
+                type="button"
+                onClick={send}
+                disabled={busy || text.trim().length === 0}
+                  className="btn-primary px-3 py-2 text-[12px] disabled:opacity-60"
                 >
                   전송
                 </button>

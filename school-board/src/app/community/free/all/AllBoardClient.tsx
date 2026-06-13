@@ -94,15 +94,17 @@ export default function AllBoardClient() {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          {me.role === "admin" && archivedCount !== null ? (
-            <div className="border border-slate-200 bg-slate-50 px-3 py-2 text-right">
-              <div className="text-[10px] font-medium text-slate-500">보관 글</div>
-              <div className="text-sm font-semibold text-slate-900">{archivedCount.toLocaleString()}개</div>
-            </div>
-          ) : null}
           <Link href="/community/free/new" className="btn-primary py-2.5 px-6 text-sm">
             새 글 작성하기
           </Link>
+          {me.role === "admin" ? (
+            <span className="inline-flex min-h-[2.55rem] items-center rounded-md border border-slate-200 bg-slate-50 px-3 text-xs font-medium text-slate-600">
+              숨김 처리된 글{" "}
+              <strong className="ml-1 font-semibold text-slate-950">
+                {archivedCount === null ? "-" : archivedCount.toLocaleString()}개
+              </strong>
+            </span>
+          ) : null}
         </div>
       </div>
 
@@ -120,8 +122,8 @@ export default function AllBoardClient() {
           </p>
         </div>
       ) : (
-        <div className="overflow-hidden border border-slate-200 bg-white shadow-sm">
-          {visiblePosts.map((p: BoardPost) => {
+        <div className="all-board-list overflow-hidden border border-slate-200 bg-white shadow-sm">
+          {visiblePosts.map((p: BoardPost, idx: number) => {
             const num = numberMap.get(p.id);
             const date = KST_DATE.format(new Date(p.created_at));
             const hasPoll = !!p.poll && Array.isArray(p.poll.options) && p.poll.options.length >= 2;
@@ -129,49 +131,53 @@ export default function AllBoardClient() {
             const likeCount = Number(p.like_count ?? 0);
             const tier = getTier(p.author?.points || 0, p.author?.role || undefined);
             const authorColor = mutedTierColor(p.author?.role, p.author?.points || 0);
+            const isAdmin = p.author?.role === "admin";
+            const nextIsAdmin = visiblePosts[idx + 1]?.author?.role === "admin";
+            const isNoticeBoundary = isAdmin && !nextIsAdmin && !!visiblePosts[idx + 1];
+            const rowNo = typeof num === "number" ? String(num).padStart(2, "0") : String(idx + 1).padStart(2, "0");
 
             return (
               <Link
                 key={p.id}
                 href={`/community/free/${p.id}`}
-                className="board-post-card group flex items-center gap-2.5 border-b border-slate-100 px-3 py-1 transition-colors last:border-b-0 hover:bg-slate-50"
+                prefetch={false}
+                className={`all-board-post-row post-row group ${isAdmin ? "notice-post-row" : ""} ${isNoticeBoundary ? "notice-post-row-last" : ""}`}
+                style={{
+                  background: isAdmin ? '#eef6ff' : undefined,
+                  borderBottomColor: isAdmin ? 'rgba(31, 126, 219, 0.12)' : undefined,
+                  ...(isNoticeBoundary ? {
+                    borderBottom: '1px solid rgba(15, 95, 183, 0.28)',
+                    boxShadow: 'inset 0 -1px 0 rgba(31, 126, 219, 0.10)',
+                  } : {}),
+                }}
               >
-                <div className="board-card-index flex h-7 w-10 shrink-0 flex-col items-center justify-center border border-slate-200 bg-slate-50 font-normal" style={{ color: '#526174' }}>
-                  <span className="text-[9px] leading-none" style={{ color: 'var(--text-muted)' }}>#{num}</span>
-                  <span className="mt-0.5 text-[10px]" style={{ color: '#526174' }}>{date}</span>
-                </div>
+                <span className="all-board-row-no" style={{ color: isAdmin ? 'var(--brand-light)' : 'var(--text-muted)' }}>
+                  {rowNo}
+                </span>
 
                 <div className="min-w-0 flex-1">
-                  <div className="board-card-title-row flex items-center gap-1.5">
-                    <h3 className="board-card-title truncate text-[13px] font-normal leading-[1.12] transition-colors" style={{ color: '#1f2937' }}>
+                  <div className="post-row-title">
+                    {isAdmin && (
+                      <span style={{ fontSize: '0.68rem', fontWeight: 600, background: 'var(--brand-dim)', color: 'var(--brand-light)', borderRadius: 999, padding: '0.08rem 0.45rem', marginRight: '0.45rem' }}>
+                        공지
+                      </span>
+                    )}
+                    <span>
                       {p.title}
-                    </h3>
+                    </span>
                     {hasPoll && <span className="text-[11px]" title="투표 포함">🗳️</span>}
                   </div>
-                  <div className="board-card-meta mt-0.5 flex items-center gap-2 text-[10px] font-normal leading-none" style={{ color: '#667386' }}>
-                    <div className="flex items-center gap-1.5">
-                      <span title={tier.name} style={{ color: authorColor }}>{tier.icon}</span>
-                      <span className="board-card-author" style={{ color: authorColor }}>{p.author?.username || "익명"}</span>
-                      {me.role === "admin" && (
-                        <span className="text-[9px] font-normal" style={{ color: '#475569' }}>
-                          {formatAdminStudentLabel(p.author)}
-                        </span>
-                      )}
-                      {p.author?.role === "admin" && (
-                        <span className="inline-flex items-center border border-sky-200 bg-sky-50 px-1.5 py-0.5 text-[9px] font-normal" style={{ color: '#1d4f91' }}>
-                          Admin
-                        </span>
-                      )}
-                    </div>
-                    <span className="flex items-center gap-1">조회 {viewCount}</span>
+                  <div className="post-row-meta all-board-row-meta">
+                    <span title={tier.name} style={{ color: authorColor }}>{tier.icon} {p.author?.username || "익명"}</span>
+                    {me.role === "admin" && (
+                      <span style={{ color: '#475569' }}>
+                        {formatAdminStudentLabel(p.author)}
+                      </span>
+                    )}
+                    <span>조회수 {viewCount}</span>
                     {likeCount > 0 && <span style={{ color: 'var(--accent-red)' }}>좋아요 {likeCount}</span>}
+                    <span>{date}</span>
                   </div>
-                </div>
-
-                <div className="hidden sm:block transition-colors" style={{ color: 'var(--text-muted)' }}>
-                  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                  </svg>
                 </div>
               </Link>
             );

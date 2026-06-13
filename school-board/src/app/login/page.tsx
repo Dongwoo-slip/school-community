@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
+import { SquareLogoMark } from "@/components/SquareLogo";
 
 function toEmail(username: string) {
   return `${username.trim().toLowerCase()}@school-board.test`;
@@ -46,7 +47,7 @@ export default function LoginPage() {
 
         {/* Logo */}
         <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-          <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 44, height: 44, background: 'var(--brand)', borderRadius: 12, fontSize: '1rem', fontWeight: 900, color: 'white', marginBottom: '0.75rem' }}>SQ</div>
+          <SquareLogoMark size={54} className="mb-3" />
           <h1 style={{ fontSize: '1.4rem', fontWeight: 900, color: 'var(--text-primary)', letterSpacing: '-0.03em' }}>Square 로그인</h1>
           <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>청주고등학교 커뮤니티</p>
         </div>

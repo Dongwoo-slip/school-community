@@ -78,6 +78,7 @@ function PostList({
                 <div className="col-span-7 sm:col-span-8 min-w-0">
                   <Link
                     href={href}
+                    prefetch={false}
                     className={
                       "block truncate font-semibold " +
                       (isNotice ? "text-amber-800" : "text-slate-900")
@@ -159,7 +160,7 @@ export default function FreeBoardClient() {
             <div className="min-w-0 flex-1">
               <div className="w-full overflow-hidden border border-slate-300 bg-slate-100">
                 <img
-                  src="/imagebanner.jpg"
+                  src="/imagebanner-1200.webp"
                   alt="imagebanner"
                   className="h-[150px] w-full object-cover sm:h-[180px]"
                   loading="lazy"

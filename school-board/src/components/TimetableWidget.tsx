@@ -39,8 +39,8 @@ function clampInt(v: unknown, min: number, max: number) {
 }
 
 export default function TimetableWidget() {
-  const [grade, setGrade] = useState("2");
-  const [classNm, setClassNm] = useState("7");
+  const [grade, setGrade] = useState("1");
+  const [classNm, setClassNm] = useState("1");
   const [weekOffset, setWeekOffset] = useState(0);
   const [data, setData] = useState<TT | null>(null);
   const [loading, setLoading] = useState(false);
@@ -74,12 +74,21 @@ export default function TimetableWidget() {
 
   useEffect(() => {
     if (!initDone) return;
+    let ignore = false;
     setLoading(true);
-    fetch(url)
-      .then(r => r.json())
-      .then(j => setData(j))
-      .catch(e => setData({ ok: false, error: String(e) }))
-      .finally(() => setLoading(false));
+    async function load() {
+      try {
+        const res = await fetch(url);
+        const j = await res.json();
+        if (!ignore) setData(j);
+      } catch (e) {
+        if (!ignore) setData({ ok: false, error: String(e) });
+      } finally {
+        if (!ignore) setLoading(false);
+      }
+    }
+    load();
+    return () => { ignore = true; };
   }, [url, initDone]);
 
   const busy = loading || !initDone;
@@ -162,15 +171,22 @@ export default function TimetableWidget() {
             <div className="timetable-grid">
               {/* Table Header */}
               <div className="timetable-row gap-1 sm:gap-2 mb-1 sm:mb-2">
-                <div className="timetable-cell timetable-day flex items-center justify-center py-2 text-[10px] font-medium" style={{ background: 'var(--bg-elevated)', color: 'var(--text-muted)' }}>
+                <div
+                  className="timetable-cell timetable-day flex items-center justify-center py-2 text-[11px] font-semibold"
+                  style={{ background: '#eef6ff', color: 'var(--brand-light)', border: '1px solid rgba(31, 126, 219, 0.14)' }}
+                >
                   교시
                 </div>
                 {Array.from({ length: 5 }, (_, i) => {
                   const h = dayHeader(days[i] ?? "", i);
                   return (
-                    <div key={i} className="timetable-cell timetable-day flex flex-col items-center justify-center py-2" style={{ background: 'var(--bg-elevated)' }}>
-                      <span className="timetable-day-name text-[10px] font-semibold" style={{ color: 'var(--text-primary)' }}>{h.name}</span>
-                      <span className="timetable-day-date text-[9px]" style={{ color: 'var(--text-muted)' }}>{h.date}</span>
+                    <div
+                      key={i}
+                      className="timetable-cell timetable-day flex flex-col items-center justify-center py-2"
+                      style={{ background: '#dceeff', border: '1px solid rgba(31, 126, 219, 0.14)' }}
+                    >
+                      <span className="timetable-day-name text-[11px] font-semibold" style={{ color: 'var(--brand-light)' }}>{h.name}</span>
+                      <span className="timetable-day-date text-[10px]" style={{ color: 'rgba(15,95,183,0.68)' }}>{h.date}</span>
                     </div>
                   );
                 })}
@@ -180,7 +196,10 @@ export default function TimetableWidget() {
               <div className="space-y-1 sm:space-y-2">
                 {Array.from({ length: 7 }, (_, p) => (
                   <div key={p} className="timetable-row gap-1 sm:gap-2">
-                    <div className="timetable-cell timetable-period flex items-center justify-center text-[11px] font-semibold" style={{ background: 'var(--brand-dim)', color: 'var(--brand)' }}>
+                    <div
+                      className="timetable-cell timetable-period flex items-center justify-center text-[12px] font-semibold"
+                      style={{ background: '#dceeff', color: 'var(--brand-light)', border: '1px solid rgba(31, 126, 219, 0.14)' }}
+                    >
                       {p + 1}
                     </div>
                     {Array.from({ length: 5 }, (_, c) => {
@@ -217,7 +236,7 @@ export default function TimetableWidget() {
       )}
 
       <div className="px-6 py-2 text-[10px]" style={{ background: 'var(--bg-elevated)', color: 'var(--text-secondary)', borderTop: '1px solid var(--border-subtle)' }}>
-        * 학년/반 설정을 통해 다른 학급의 시간표도 확인할 수 있습니다.
+        * 기본은 1학년 1반입니다. 마이페이지에서 학년/반을 저장하면 다음 접속부터 자동으로 해당 반 시간표가 표시됩니다.
       </div>
     </section>
   );

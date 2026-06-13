@@ -63,7 +63,7 @@ export default function NoticePage() {
                       <NoticeBadge />
                     </div>
                     <div className="col-span-7 min-w-0">
-                      <Link href={href} className="block truncate font-semibold text-amber-800" title={p.title}>
+                      <Link href={href} prefetch={false} className="block truncate font-semibold text-amber-800" title={p.title}>
                         {p.title} <span className="ml-1 font-semibold text-rose-600">[{p.view_count ?? 0}]</span>
                         {hasPoll ? <span className="ml-1">🗳️</span> : null}
                       </Link>

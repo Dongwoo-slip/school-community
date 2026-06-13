@@ -3,7 +3,6 @@ import { createClient as createAuthedClient } from "@/lib/supabase/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { awardPoints } from "@/lib/points";
 import { AUTHOR_PROFILE_SELECT } from "@/lib/authorDisplay";
-import { requireStudentVerifiedWriter } from "@/lib/studentVerification";
 
 function admin() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
@@ -11,7 +10,8 @@ function admin() {
   return createAdminClient(url, key, { auth: { persistSession: false } });
 }
 
-const COMMENT_RATE_LIMIT_MESSAGE = "1분당 댓글은 최대 2개까지 가능합니다.";
+const PUBLIC_AUTHOR_PROFILE_SELECT = "username, role, points";
+const COMMENT_RATE_LIMIT_MESSAGE = "10분당 댓글 10개 제한";
 
 type CommentInsertRow = {
   post_id: string;
@@ -25,7 +25,6 @@ export async function GET(req: Request) {
   const authed = await createAuthedClient();
   const { data: authData } = await authed.auth.getUser();
   const user = authData.user;
-  if (!user) return NextResponse.json({ error: "로그인이 필요합니다.", data: [] }, { status: 401 });
 
   const { searchParams } = new URL(req.url);
   const post_id = searchParams.get("post_id");
@@ -35,10 +34,29 @@ export async function GET(req: Request) {
   }
 
   const sb = admin();
+  let role = "guest";
+
+  if (user) {
+    const { data: profile } = await sb.from("profiles").select("role").eq("id", user.id).maybeSingle();
+    role = profile?.role ?? "user";
+  }
+
+  const { data: post, error: postError } = await sb
+    .from("posts")
+    .select("id,is_deleted")
+    .eq("id", post_id)
+    .maybeSingle();
+
+  if (postError) return NextResponse.json({ error: postError.message }, { status: 500 });
+  if (!post || (post.is_deleted && role !== "admin")) {
+    return NextResponse.json({ data: [] });
+  }
+
+  const profileSelect = role === "admin" ? AUTHOR_PROFILE_SELECT : PUBLIC_AUTHOR_PROFILE_SELECT;
 
   const { data: comments, error } = await sb
     .from("comments")
-    .select(`*, author:profiles(${AUTHOR_PROFILE_SELECT})`)
+    .select(`*, author:profiles(${profileSelect})`)
     .eq("post_id", post_id)
     .order("created_at", { ascending: true });
 
@@ -67,15 +85,7 @@ export async function POST(req: Request) {
   if (content.length < 1) return NextResponse.json({ error: "댓글을 입력해주세요." }, { status: 400 });
 
   const sb = admin();
-  const verification = await requireStudentVerifiedWriter(sb, user.id);
-  if (!verification.ok) {
-    return NextResponse.json(
-      { error: verification.error, code: "STUDENT_VERIFICATION_REQUIRED" },
-      { status: verification.status }
-    );
-  }
-
-  const oneMinuteAgo = new Date(Date.now() - 60 * 1000).toISOString();
+  const tenMinutesAgo = new Date(Date.now() - 10 * 60 * 1000).toISOString();
 
   const [{ count: recentCommentsCount, error: recentCommentsErr }, { count: recentDeletedCommentsCount, error: recentDeletedCommentsErr }] =
     await Promise.all([
@@ -83,19 +93,19 @@ export async function POST(req: Request) {
         .from("comments")
         .select("id", { count: "exact", head: true })
         .eq("author_id", user.id)
-        .gte("created_at", oneMinuteAgo),
+        .gte("created_at", tenMinutesAgo),
       sb
         .from("deleted_posts")
         .select("id", { count: "exact", head: true })
         .eq("author_id", user.id)
         .like("title", "[댓글 삭제]%")
-        .gte("deleted_at", oneMinuteAgo),
+        .gte("deleted_at", tenMinutesAgo),
     ]);
 
   if (recentCommentsErr) return NextResponse.json({ error: recentCommentsErr.message }, { status: 500 });
   if (recentDeletedCommentsErr) return NextResponse.json({ error: recentDeletedCommentsErr.message }, { status: 500 });
 
-  if ((recentCommentsCount ?? 0) + (recentDeletedCommentsCount ?? 0) >= 2) {
+  if ((recentCommentsCount ?? 0) + (recentDeletedCommentsCount ?? 0) >= 10) {
     return NextResponse.json({ error: COMMENT_RATE_LIMIT_MESSAGE }, { status: 429 });
   }
 

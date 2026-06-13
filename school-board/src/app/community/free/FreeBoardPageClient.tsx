@@ -53,7 +53,7 @@ export default function FreeBoardClient() {
             <div className="min-w-0 flex-1">
               <div className="w-full overflow-hidden border border-slate-300 bg-slate-100">
                 <img
-                  src="/imagebanner.jpg"
+                  src="/imagebanner-1200.webp"
                   alt="imagebanner"
                   className="h-[150px] w-full object-cover sm:h-[180px]"
                   loading="lazy"
@@ -141,6 +141,7 @@ export default function FreeBoardClient() {
                     <div className="col-span-6 sm:col-span-5 min-w-0">
                       <Link
                         href={href}
+                        prefetch={false}
                         className={"block min-w-0 truncate font-medium " + (isAdmin ? "text-amber-800" : "text-slate-900")}
                         title={p.title}
                       >

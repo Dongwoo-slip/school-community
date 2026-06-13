@@ -5,6 +5,26 @@ import { adminClient } from "@/lib/serverAuth";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
+type ProfileRow = {
+  username?: string | null;
+  role?: string | null;
+  grade?: number | null;
+  class_no?: number | null;
+  interests?: unknown;
+  points?: number | null;
+  badge?: unknown;
+  student_no?: string | null;
+  student_verified?: boolean | null;
+  student_verified_at?: string | null;
+};
+
+type VerificationRow = {
+  student_no?: string | null;
+  grade?: number | null;
+  class_no?: number | null;
+  used_at?: string | null;
+};
+
 export async function GET() {
   const sb = await createAuthedClient();
   const { data } = await sb.auth.getUser();
@@ -19,14 +39,15 @@ export async function GET() {
       classNo: null,
       interests: [],
       studentVerified: false,
-      studentName: null,
     });
   }
 
+  const admin = adminClient();
+
   // ✅ profiles에서 username/role/grade/class_no + interests/points/badge까지 가져오기
-  const { data: prof, error: profErr } = await sb
+  const { data: prof, error: profErr } = await admin
     .from("profiles")
-    .select("username, role, grade, class_no, interests, points, badge, student_no, student_name, student_verified, student_verified_at")
+    .select("username, role, grade, class_no, interests, points, badge, student_no, student_verified, student_verified_at")
     .eq("id", user.id)
     .maybeSingle();
 
@@ -34,12 +55,12 @@ export async function GET() {
     console.error("Profile Fetch Error:", profErr);
   }
 
-  const p: any = prof;
-  let verification: any = null;
+  const p = prof as ProfileRow | null;
+  let verification: VerificationRow | null = null;
   try {
-    const { data: verificationRow } = await adminClient()
+    const { data: verificationRow } = await admin
       .from("student_verification_codes")
-      .select("student_no, student_name, grade, class_no, used_at")
+      .select("student_no, grade, class_no, used_at")
       .eq("used_by", user.id)
       .maybeSingle();
     verification = verificationRow;
@@ -56,9 +77,8 @@ export async function GET() {
     interests: Array.isArray(p?.interests) ? p.interests : [],
     points: Number(p?.points) || 0,
     badge: Array.isArray(p?.badge) ? p.badge : [],
-    studentVerified: Boolean(verification?.student_name || p?.student_verified),
+    studentVerified: Boolean(verification || p?.student_verified || p?.student_no),
     studentNo: verification?.student_no ?? p?.student_no ?? null,
-    studentName: verification?.student_name ?? p?.student_name ?? null,
     verifiedGrade: verification?.grade ?? (p?.student_verified ? p?.grade : null) ?? null,
     verifiedClassNo: verification?.class_no ?? (p?.student_verified ? p?.class_no : null) ?? null,
     studentVerifiedAt: verification?.used_at ?? p?.student_verified_at ?? null,
@@ -78,6 +98,8 @@ export async function PATCH(req: Request) {
     return NextResponse.json({ error: "로그인이 필요합니다." }, { status: 401 });
   }
 
+  const admin = adminClient();
+
   const body = await req.json().catch(() => ({}));
   const grade = Number(body?.grade);
   const classNo = Number(body?.classNo);
@@ -89,15 +111,29 @@ export async function PATCH(req: Request) {
     return NextResponse.json({ error: "반은 1~11만 가능합니다." }, { status: 400 });
   }
 
-  // ✅ profiles에 update (대부분 row 존재)
-  // row가 없더라도 대비해서 upsert 시도
-  const { error: upsertErr } = await sb.from("profiles").upsert(
-    { id: user.id, grade, class_no: classNo },
-    { onConflict: "id" }
-  );
+  const { data: updated, error: updateErr } = await admin
+    .from("profiles")
+    .update({ grade, class_no: classNo })
+    .eq("id", user.id)
+    .select("id")
+    .maybeSingle();
 
-  if (upsertErr) {
-    return NextResponse.json({ error: upsertErr.message }, { status: 500 });
+  if (updateErr) {
+    return NextResponse.json({ error: updateErr.message }, { status: 500 });
+  }
+
+  if (!updated) {
+    const metadataUsername = String(user.user_metadata?.username ?? "").trim().toLowerCase();
+    const emailUsername = String(user.email ?? "").split("@")[0]?.trim().toLowerCase();
+    const username = metadataUsername || emailUsername || `user_${user.id.slice(0, 8)}`;
+
+    const { error: insertErr } = await admin
+      .from("profiles")
+      .insert({ id: user.id, username, grade, class_no: classNo });
+
+    if (insertErr) {
+      return NextResponse.json({ error: insertErr.message }, { status: 500 });
+    }
   }
 
   return Next_attachR(

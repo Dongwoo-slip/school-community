@@ -13,6 +13,8 @@ type PopupPost = {
 };
 
 const STORAGE_PREFIX = "school-popup-hidden-until:";
+const POPUP_CACHE_KEY = "school-popup-cache";
+const POPUP_CACHE_TTL_MS = 5 * 60 * 1000;
 const URL_RE = /(https?:\/\/[^\s]+)/g;
 
 function todayEndTimestamp() {
@@ -50,10 +52,7 @@ export default function PopupNotice() {
   const storageKey = useMemo(() => (popup?.id ? `${STORAGE_PREFIX}${popup.id}` : ""), [popup?.id]);
 
   useEffect(() => {
-    async function load() {
-      const res = await fetch("/api/popup", { cache: "no-store" }).catch(() => null);
-      const json = await res?.json().catch(() => ({}));
-      const next = json?.data ?? null;
+    function showIfVisible(next: PopupPost | null) {
       if (!next?.id) return;
 
       const key = `${STORAGE_PREFIX}${next.id}`;
@@ -62,6 +61,33 @@ export default function PopupNotice() {
 
       setPopup(next);
       setOpen(true);
+    }
+
+    async function load() {
+      try {
+        const cached = JSON.parse(window.sessionStorage.getItem(POPUP_CACHE_KEY) || "null");
+        if (cached?.expiresAt > Date.now()) {
+          showIfVisible(cached.data ?? null);
+          return;
+        }
+      } catch {
+        window.sessionStorage.removeItem(POPUP_CACHE_KEY);
+      }
+
+      const res = await fetch("/api/popup", { cache: "force-cache" }).catch(() => null);
+      const json = await res?.json().catch(() => ({}));
+      const next = json?.data ?? null;
+
+      try {
+        window.sessionStorage.setItem(
+          POPUP_CACHE_KEY,
+          JSON.stringify({ data: next, expiresAt: Date.now() + POPUP_CACHE_TTL_MS })
+        );
+      } catch {
+        // Storage is best-effort; the popup can still render without it.
+      }
+
+      showIfVisible(next);
     }
     load();
   }, []);

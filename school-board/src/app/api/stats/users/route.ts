@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
-import { requireAdmin } from "@/lib/serverAuth";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -12,9 +11,6 @@ function admin() {
 }
 
 export async function GET() {
-  const auth = await requireAdmin();
-  if (!auth.ok) return NextResponse.json({ error: auth.error }, { status: auth.status });
-
   try {
     const sb = admin();
 

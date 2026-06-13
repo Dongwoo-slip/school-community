@@ -12,7 +12,6 @@ type MeRes = {
   classNo: number | null;
   studentVerified?: boolean;
   studentNo?: string | null;
-  studentName?: string | null;
   verifiedGrade?: number | null;
   verifiedClassNo?: number | null;
   studentVerifiedAt?: string | null;
@@ -20,9 +19,6 @@ type MeRes = {
 
 type VerificationPreview = {
   studentNo?: string | null;
-  studentName: string;
-  grade: number;
-  classNo: number;
 };
 
 export default function MyInfoPage() {
@@ -90,12 +86,9 @@ export default function MyInfoPage() {
 
       const preview = {
         studentNo: json.studentNo ? String(json.studentNo) : null,
-        studentName: String(json.studentName ?? ""),
-        grade: Number(json.grade),
-        classNo: Number(json.classNo),
       };
       setVerificationPreview(preview);
-      setVerificationMsg("이름을 확인한 뒤 맞으면 인증하기를 눌러 주세요.");
+      setVerificationMsg("학번을 확인한 뒤 맞으면 인증하기를 눌러 주세요.");
     } finally {
       setVerificationLoading(false);
     }
@@ -110,7 +103,7 @@ export default function MyInfoPage() {
       return;
     }
     if (!verificationPreview) {
-      setVerificationMsg("먼저 인증코드 확인을 눌러 이름을 확인해 주세요.");
+      setVerificationMsg("먼저 인증코드 확인을 눌러 학번을 확인해 주세요.");
       return;
     }
 
@@ -140,7 +133,6 @@ export default function MyInfoPage() {
               classNo: nextClassNo,
               studentVerified: true,
               studentNo: json.studentNo ? String(json.studentNo) : verificationPreview.studentNo ?? null,
-              studentName: String(json.studentName ?? verificationPreview.studentName),
               verifiedGrade: nextGrade,
               verifiedClassNo: nextClassNo,
               studentVerifiedAt: new Date().toISOString(),
@@ -226,15 +218,14 @@ export default function MyInfoPage() {
 
                 {me.studentVerified ? (
                   <div className="mt-3 rounded-lg border border-sky-100 bg-white p-3 text-sm leading-6 text-slate-700">
-                    <div>
-                      이름: <span className="font-medium text-slate-950">{me.studentName ?? "확인됨"}</span>
-                    </div>
                     {me.studentNo ? (
-                      <div className="text-xs text-slate-500">학번 {me.studentNo}</div>
-                    ) : null}
+                      <div className="font-medium text-slate-950">학번 {me.studentNo}</div>
+                    ) : (
+                      <div className="font-medium text-slate-950">인증된 계정입니다.</div>
+                    )}
                     {me.verifiedGrade && me.verifiedClassNo ? (
                       <div className="text-xs text-slate-500">
-                        {me.verifiedGrade}학년 {me.verifiedClassNo}반으로 인증되어 있습니다.
+                        시간표는 인증 정보 기준으로 자동 설정됩니다.
                       </div>
                     ) : null}
                   </div>
@@ -267,11 +258,8 @@ export default function MyInfoPage() {
 
                     {verificationPreview ? (
                       <div className="rounded-lg border border-sky-100 bg-white p-3 text-sm leading-6 text-slate-700">
-                        <div>
-                          이름: <span className="font-medium text-slate-950">{verificationPreview.studentName}</span>
-                        </div>
-                        <div className="text-xs text-slate-500">
-                          {verificationPreview.studentNo ?? `${verificationPreview.grade}학년 ${verificationPreview.classNo}반`}
+                        <div className="font-medium text-slate-950">
+                          학번 {verificationPreview.studentNo ?? "학번 정보 없음"}
                         </div>
                         <button
                           type="button"
@@ -279,7 +267,7 @@ export default function MyInfoPage() {
                           onClick={onClaimVerification}
                           disabled={verificationSaving}
                         >
-                          {verificationSaving ? "인증 중..." : "이 학생으로 인증하기"}
+                          {verificationSaving ? "인증 중..." : "이 학번으로 인증하기"}
                         </button>
                       </div>
                     ) : null}
@@ -290,7 +278,7 @@ export default function MyInfoPage() {
                           "text-xs leading-5 " +
                           (verificationMsg.includes("완료")
                             ? "text-emerald-700"
-                            : verificationMsg.includes("이름을 확인")
+                            : verificationMsg.includes("학번을 확인")
                               ? "text-slate-600"
                               : "text-rose-600")
                         }

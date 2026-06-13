@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import React, { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import AnonymousChatBox from "@/components/AnonymousChatBox";
 import FloatingLeftAd from "@/components/FloatingLeftAd";
+import { SquareLogoLockup } from "@/components/SquareLogo";
 import { getTier, TIERS } from "@/lib/tiers";
 import { formatAdminStudentLabel, type AuthorIdentity } from "@/lib/authorDisplay";
 
@@ -21,7 +22,16 @@ type Post = {
   author_id?: string | null;
   author?: AuthorIdentity | null;
 };
-type Me = { userId: string | null; role: string; username: string | null; points: number; badge: string[] };
+type Me = {
+  userId: string | null;
+  role: string;
+  username: string | null;
+  points: number;
+  badge: string[];
+  studentVerified: boolean;
+  studentNo: string | null;
+  studentName: string | null;
+};
 type Noti = {
   id: string;
   type: string;
@@ -29,6 +39,11 @@ type Noti = {
   post_id: string | null;
   created_at: string;
   read: boolean;
+};
+type Dday = {
+  id: string;
+  eventName: string;
+  targetDate: string;
 };
 
 type Ctx = {
@@ -105,9 +120,104 @@ function fmtNotiTime(iso: string) {
   }
 }
 
+function kstTodayIndex() {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Seoul",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date());
+  const year = Number(parts.find((p) => p.type === "year")?.value ?? 0);
+  const month = Number(parts.find((p) => p.type === "month")?.value ?? 0);
+  const day = Number(parts.find((p) => p.type === "day")?.value ?? 0);
+  return Math.floor(Date.UTC(year, month - 1, day) / 86400000);
+}
+
+function targetDateIndex(value: string) {
+  const [year, month, day] = value.split("-").map(Number);
+  if (!year || !month || !day) return null;
+  return Math.floor(Date.UTC(year, month - 1, day) / 86400000);
+}
+
+function getDdayText(targetDate: string) {
+  const target = targetDateIndex(targetDate);
+  if (target === null) return "";
+  const diff = target - kstTodayIndex();
+  if (diff === 0) return "D-Day";
+  return diff > 0 ? `D-${diff}` : `D+${Math.abs(diff)}`;
+}
+
+function DdayBadges({ ddays, isAdmin }: { ddays: Dday[]; isAdmin: boolean }) {
+  const visible = ddays
+    .map((dday) => ({ ...dday, ddayText: getDdayText(dday.targetDate) }))
+    .filter((dday) => dday.eventName && dday.targetDate && dday.ddayText);
+
+  if (visible.length === 0) return null;
+
+  return (
+    <div className="dday-tab-list" aria-label="D-Day">
+      {visible.map((dday) => {
+        const content = (
+          <>
+            <span className="dday-event">{dday.eventName}</span>
+            <span className="dday-count">{dday.ddayText}</span>
+          </>
+        );
+
+        return isAdmin ? (
+          <Link key={dday.id} href="/community/free/admin/dday" className="dday-tab-badge" title="D-Day 관리">
+            {content}
+          </Link>
+        ) : (
+          <div key={dday.id} className="dday-tab-badge" title={`${dday.eventName} ${dday.ddayText}`}>
+            {content}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function HeaderActionIcon({ type }: { type: "message" | "notice" | "profile" }) {
+  if (type === "message") {
+    return (
+      <svg className="header-action-icon" viewBox="0 0 24 24" aria-hidden="true">
+        <rect x="4" y="6" width="16" height="12" rx="2" />
+        <path d="m5 8 7 5 7-5" />
+      </svg>
+    );
+  }
+
+  if (type === "notice") {
+    return (
+      <svg className="header-action-icon" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M18 9a6 6 0 0 0-12 0c0 6-2.2 7.2-2.2 8h16.4C20.2 16.2 18 15 18 9Z" />
+        <path d="M10 20h4" />
+      </svg>
+    );
+  }
+
+  return (
+    <svg className="header-action-icon" viewBox="0 0 24 24" aria-hidden="true">
+      <circle cx="12" cy="8.5" r="3.5" />
+      <path d="M5 19c1.5-3.3 12.5-3.3 14 0" />
+    </svg>
+  );
+}
+
 export default function FreeLayout({ children }: { children: ReactNode }) {
   const router = useRouter();
-  const [me, setMe] = useState<Me>({ userId: null, role: "guest", username: null, points: 0, badge: [] });
+  const pathname = usePathname();
+  const [me, setMe] = useState<Me>({
+    userId: null,
+    role: "guest",
+    username: null,
+    points: 0,
+    badge: [],
+    studentVerified: false,
+    studentNo: null,
+    studentName: null,
+  });
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [visitors, setVisitors] = useState<number | null>(null);
@@ -118,6 +228,7 @@ export default function FreeLayout({ children }: { children: ReactNode }) {
   const [unread, setUnread] = useState(0);
   const [dmUnread, setDmUnread] = useState(0);
   const [guideOpen, setGuideOpen] = useState(false);
+  const [ddays, setDdays] = useState<Dday[]>([]);
 
   async function loadMe() {
     const res = await fetch("/api/me", { cache: "no-store", credentials: "include" });
@@ -128,6 +239,9 @@ export default function FreeLayout({ children }: { children: ReactNode }) {
       username: json.username ?? null,
       points: Number(json.points) || 0,
       badge: Array.isArray(json.badge) ? json.badge : [],
+      studentVerified: Boolean(json.studentVerified),
+      studentNo: json.studentNo ?? null,
+      studentName: json.studentName ?? null,
     };
     setMe(next);
     return next;
@@ -142,14 +256,17 @@ export default function FreeLayout({ children }: { children: ReactNode }) {
     const json = await res.json().catch(() => ({}));
     if (typeof json.count === "number") setVisitors(json.count);
   }
-  async function loadMembers(role?: string) {
-    if (role !== "admin") {
-      setMembers(null);
-      return;
-    }
+  async function loadMembers() {
     const res = await fetch("/api/stats/users", { cache: "no-store", credentials: "include" });
     const json = await res.json().catch(() => ({}));
-    setMembers(typeof json.count === "number" ? json.count : 0);
+    setMembers(typeof json.count === "number" ? json.count : null);
+  }
+  async function loadDday() {
+    const res = await fetch("/api/dday", { cache: "force-cache" });
+    const json = await res.json().catch(() => ({}));
+    const data = json?.data;
+    const list = Array.isArray(data) ? data : data ? [data] : [];
+    setDdays(list.filter((row) => row?.eventName && row?.targetDate));
   }
   async function loadNotifications() {
     if (!me.userId) { setNotis([]); setUnread(0); return; }
@@ -176,7 +293,7 @@ export default function FreeLayout({ children }: { children: ReactNode }) {
   async function refreshAll() {
     setLoading(true);
     const nextMe = await loadMe();
-    await Promise.all([loadPosts(), loadVisitors(), loadMembers(nextMe.role)]);
+    await Promise.all([loadPosts(), loadVisitors(), loadMembers(), loadDday()]);
     setLoading(false);
   }
   async function onLogout() {
@@ -242,6 +359,7 @@ export default function FreeLayout({ children }: { children: ReactNode }) {
     if (me.role !== "admin") return 0;
     return (notis ?? []).filter((n) => n.type === "report" && n.read === false).length;
   }, [notis, me.role]);
+  const showMobileHomeChat = pathname === "/community/free";
 
   const ctxValue: Ctx = { me, posts, loading, visitors, members, query, setQuery, orderedPosts, numberMap, top3, refreshAll, onLogout };
 
@@ -255,13 +373,7 @@ export default function FreeLayout({ children }: { children: ReactNode }) {
 
             {/* Logo */}
             <Link href="/community/free" className="flex items-center gap-2.5 shrink-0 group">
-              <div style={{ background: 'var(--brand)', borderRadius: 6 }} className="flex h-8 w-8 items-center justify-center text-[11px] font-semibold text-white tracking-tight group-hover:opacity-90 transition-opacity">
-                SQ
-              </div>
-              <div className="hidden sm:flex flex-col leading-none">
-                <span className="text-[15px] font-semibold tracking-tight" style={{ color: 'var(--text-primary)' }}>Square</span>
-                <span style={{ color: 'var(--text-muted)', fontSize: '0.68rem' }} className="font-medium">청주고등학교</span>
-              </div>
+              <SquareLogoLockup markSize={34} compact className="community-header-logo transition-opacity group-hover:opacity-90" />
             </Link>
 
             {/* Search */}
@@ -282,8 +394,9 @@ export default function FreeLayout({ children }: { children: ReactNode }) {
             <div className="mobile-header-actions flex min-w-0 items-center justify-end gap-1" data-noti-root="1">
               {me.userId && (
                 <>
-                  <Link href="/community/free/messages" className="btn-ghost relative" title="쪽지" style={{ padding: '0.35rem 0.55rem', fontSize: '1rem' }}>
-                    ✉️
+                  <Link href="/community/free/messages" className="btn-ghost header-action-button relative" title="쪽지" aria-label="쪽지">
+                    <HeaderActionIcon type="message" />
+                    <span className="header-action-label">쪽지</span>
                     {dmUnread > 0 && <span className="absolute right-0.5 top-0.5 h-1.5 w-1.5 rounded-full" style={{ background: 'var(--accent-red)' }} />}
                   </Link>
                   <button
@@ -291,11 +404,13 @@ export default function FreeLayout({ children }: { children: ReactNode }) {
                       const next = !notiOpen; setNotiOpen(next);
                       if (next) { await loadNotifications(); await markNotificationsRead(); }
                     }}
-                    className="btn-ghost relative"
-                    style={{ padding: '0.35rem 0.55rem', fontSize: '1rem' }}
+                    className="btn-ghost header-action-button relative"
                     title="알림"
+                    aria-label="알림"
+                    type="button"
                   >
-                    {unread > 0 ? '🔔' : '🔕'}
+                    <HeaderActionIcon type="notice" />
+                    <span className="header-action-label">알림</span>
                     {unread > 0 && <span className="absolute right-0.5 top-0.5 h-1.5 w-1.5 rounded-full" style={{ background: 'var(--accent-red)' }} />}
                   </button>
 
@@ -309,14 +424,14 @@ export default function FreeLayout({ children }: { children: ReactNode }) {
                       >
                         {(() => {
                           const t = getTier(me.points, me.role);
-                          return (
-                            <>
-                              <span className="text-sm">{t.icon}</span>
-                              <div className="flex flex-col items-start leading-none gap-0.5">
-                                <span className={`text-[9px] font-semibold ${t.color}`}>{t.name}</span>
-                                <span className="text-[11px] font-bold" style={{ color: 'var(--text-primary)' }}>{me.points.toLocaleString()}<span className="ml-0.5 text-[8px]" style={{ color: 'var(--text-muted)' }}>EXP</span></span>
-                              </div>
-                            </>
+	                          return (
+	                            <>
+	                              <span className="header-tier-mark">EXP</span>
+	                              <div className="flex flex-col items-start leading-none gap-0.5">
+	                                <span className="text-[9px] font-semibold" style={{ color: 'var(--text-secondary)' }}>{t.name}</span>
+	                                <span className="text-[11px] font-bold" style={{ color: 'var(--text-primary)' }}>{me.points.toLocaleString()}<span className="ml-0.5 text-[8px]" style={{ color: 'var(--text-muted)' }}>EXP</span></span>
+	                              </div>
+	                            </>
                           );
                         })()}
                       </button>
@@ -324,7 +439,7 @@ export default function FreeLayout({ children }: { children: ReactNode }) {
                       {/* EXP Guide Dropdown */}
                       <div className={`absolute right-0 top-full mt-2 w-60 z-[100] transition-all ${guideOpen ? 'opacity-100 visible translate-y-0' : 'opacity-0 invisible translate-y-1 group-hover:opacity-100 group-hover:visible group-hover:translate-y-0'
                         }`} style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-mild)', borderRadius: 4, boxShadow: '0 12px 28px rgba(15,23,42,0.12)', padding: '1rem' }}>
-                        <div className="text-xs font-black mb-3" style={{ color: 'var(--text-primary)' }}>📊 활동 가이드</div>
+                        <div className="text-xs font-black mb-3" style={{ color: 'var(--text-primary)' }}>활동 가이드</div>
                         <div className="space-y-2 mb-3">
                           <div className="flex justify-between text-xs" style={{ color: 'var(--text-secondary)' }}>
                             <span>게시글 작성</span><span className="font-bold" style={{ color: 'var(--brand-light)' }}>+10 EXP</span>
@@ -349,7 +464,10 @@ export default function FreeLayout({ children }: { children: ReactNode }) {
                     </div>
                   </div>
 
-                  <Link href="/community/free/me" className="btn-ghost" title="내 정보" style={{ padding: '0.35rem 0.55rem', fontSize: '1rem' }}>👤</Link>
+                  <Link href="/community/free/me" className="btn-ghost header-action-button" title="내 정보" aria-label="내 정보">
+                    <HeaderActionIcon type="profile" />
+                    <span className="header-action-label">내 정보</span>
+                  </Link>
                 </>
               )}
 
@@ -375,13 +493,16 @@ export default function FreeLayout({ children }: { children: ReactNode }) {
           {/* Nav Tabs */}
           <nav className="flex items-center overflow-x-auto no-scrollbar" style={{ gap: 0, borderTop: '1px solid var(--border-subtle)' }}>
             <TabLink href="/community/free">메인</TabLink>
-            <TabLink href="/community/free/all">전체글</TabLink>
+            <TabLink href="/community/free/all">게시글</TabLink>
             <TabLink href="/community/free/jobs">구인구직</TabLink>
             <TabLink href="/community/free/meal">급식표</TabLink>
             <TabLink href="/community/free/best">베스트</TabLink>
             {me.role === "admin" && <TabLink href="/community/free/admin/dashboard">관리자</TabLink>}
             {me.role === "admin" && <TabLink href="/community/free/admin/popup">팝업관리</TabLink>}
             {me.role === "admin" && <TabLink href="/community/free/admin/ad">광고관리</TabLink>}
+            {me.role === "admin" && <TabLink href="/community/free/admin/dday">D-Day</TabLink>}
+            {me.role === "admin" && <TabLink href="/community/free/admin/verified">인증목록</TabLink>}
+            <DdayBadges ddays={ddays} isAdmin={me.role === "admin"} />
           </nav>
         </div>
 
@@ -415,10 +536,19 @@ export default function FreeLayout({ children }: { children: ReactNode }) {
 
       {/* ── Main Content ── */}
       <main className="community-main mx-auto max-w-6xl px-4 sm:px-6">
+        <div className="mobile-stats-strip lg:hidden">
+          <StatCard label="회원" value={members} />
+          <StatCard label="방문" value={visitors} />
+        </div>
         <div className="community-shell-grid grid grid-cols-1 lg:grid-cols-12">
           {/* Content */}
           <section className="lg:col-span-8 xl:col-span-9">
             {children}
+            {showMobileHomeChat ? (
+              <div className="mobile-chat-panel lg:hidden">
+                <AnonymousChatBox />
+              </div>
+            ) : null}
           </section>
 
           {/* Sidebar */}
@@ -438,6 +568,7 @@ export default function FreeLayout({ children }: { children: ReactNode }) {
                       <Link
                         key={p.id}
                         href={`/community/free/${p.id}`}
+                        prefetch={false}
                         className="glass-hover"
                         style={{ display: 'flex', alignItems: 'flex-start', gap: '0.6rem', padding: '0.6rem 0.5rem', borderRadius: 4 }}
                       >
@@ -451,7 +582,7 @@ export default function FreeLayout({ children }: { children: ReactNode }) {
                                 {formatAdminStudentLabel(p.author)}
                               </span>
                             )}
-                            <span style={{ marginLeft: '0.4rem' }}>👀 {p.view_count}</span>
+                            <span style={{ marginLeft: '0.4rem' }}>조회수 {p.view_count}</span>
                           </div>
                         </div>
                       </Link>
@@ -489,6 +620,15 @@ export default function FreeLayout({ children }: { children: ReactNode }) {
                     </Link>
                     <Link href="/community/free/admin/ad" className="btn-secondary" style={{ justifyContent: 'flex-start', fontSize: '0.75rem', padding: '0.45rem 0.65rem' }}>
                       광고 관리
+                    </Link>
+                    <Link href="/community/free/admin/dday" className="btn-secondary" style={{ justifyContent: 'flex-start', fontSize: '0.75rem', padding: '0.45rem 0.65rem' }}>
+                      D-Day 관리
+                    </Link>
+                    <Link href="/community/free/admin/verified" className="btn-secondary" style={{ justifyContent: 'flex-start', fontSize: '0.75rem', padding: '0.45rem 0.65rem' }}>
+                      인증 목록
+                    </Link>
+                    <Link href="/community/free/admin/dm" className="btn-secondary" style={{ justifyContent: 'flex-start', fontSize: '0.75rem', padding: '0.45rem 0.65rem' }}>
+                      쪽지 보내기
                     </Link>
                   </div>
                 </div>

@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { createClient as createAuthedClient } from "@/lib/supabase/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { formatAdminStudentLabel, type AuthorIdentity } from "@/lib/authorDisplay";
-import { requireStudentVerifiedWriter } from "@/lib/studentVerification";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -18,6 +17,27 @@ function makeAnonId(userId: string) {
   return `익명${s.slice(0, 4)}`;
 }
 
+async function isVerifiedChatter(sb: ReturnType<typeof admin>, userId: string) {
+  const { data: profile, error } = await sb
+    .from("profiles")
+    .select("role, student_verified, student_no, student_name")
+    .eq("id", userId)
+    .maybeSingle();
+
+  if (error) throw error;
+  if (profile?.role === "admin") return true;
+  if (profile?.student_verified || profile?.student_no || profile?.student_name) return true;
+
+  const { data: verification, error: verificationError } = await sb
+    .from("student_verification_codes")
+    .select("id")
+    .eq("used_by", userId)
+    .maybeSingle();
+
+  if (verificationError) throw verificationError;
+  return Boolean(verification?.id);
+}
+
 export async function GET(req: Request) {
   const url = new URL(req.url);
   const limit = Math.min(Number(url.searchParams.get("limit") ?? "25"), 50);
@@ -27,7 +47,6 @@ export async function GET(req: Request) {
   const authed = await createAuthedClient();
   const { data: authData } = await authed.auth.getUser();
   const user = authData.user;
-  if (!user) return NextResponse.json({ error: "로그인이 필요합니다.", data: [] }, { status: 401 });
 
   let isAdmin = false;
   if (user?.id) {
@@ -55,7 +74,7 @@ export async function GET(req: Request) {
     return NextResponse.json({
       data: sliced.map((m: any) => ({
         ...m,
-        user_id: m.user_id === user.id ? m.user_id : "",
+        user_id: user?.id && m.user_id === user.id ? m.user_id : "",
       })),
       hasMore,
     });
@@ -96,12 +115,17 @@ export async function POST(req: Request) {
   if (!content) return NextResponse.json({ error: "내용이 비었습니다." }, { status: 400 });
 
   const sb = admin();
-  const verification = await requireStudentVerifiedWriter(sb, user.id);
-  if (!verification.ok) {
-    return NextResponse.json(
-      { error: verification.error, code: "STUDENT_VERIFICATION_REQUIRED" },
-      { status: verification.status }
-    );
+
+  try {
+    const verified = await isVerifiedChatter(sb, user.id);
+    if (!verified) {
+      return NextResponse.json(
+        { error: "개별인증이 필요합니다. 마이페이지에서 인증코드를 등록한 뒤 익명채팅을 이용해 주세요.", code: "STUDENT_VERIFICATION_REQUIRED" },
+        { status: 403 }
+      );
+    }
+  } catch (e: any) {
+    return NextResponse.json({ error: e?.message ?? "인증 상태를 확인하지 못했습니다." }, { status: 500 });
   }
 
   // ✅ 도배 방지: 3초 이내 작성 여부 확인

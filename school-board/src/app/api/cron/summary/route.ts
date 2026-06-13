@@ -56,7 +56,7 @@ export async function GET(req: NextRequest) {
 
     const { siteUrl } = kakaoConfig();
     const today = kstToday();
-    const logoUrl = `${siteUrl}/logo.png`;
+    const profileLogoUrl = `${siteUrl}/logo-mark.png`;
 
     // ✅ 이 줄을 sum_op(굵고 큼)에서 빼고, items(기본 크기)로 넣을 거임
     const recentLine = `새글 ${np}개 · 새댓글 ${nc}개 · 신고 ${reports.newReports}건 · 미처리 ${reports.openReports}건`;
@@ -72,7 +72,7 @@ export async function GET(req: NextRequest) {
       item_content: {
         // ✅ 프로필처럼 로고만
         profile_text: "Square",
-        profile_image_url: logoUrl,
+        profile_image_url: profileLogoUrl,
 
         // ✅ 숫자 오른쪽 끝 유지(item_op)
         items: [

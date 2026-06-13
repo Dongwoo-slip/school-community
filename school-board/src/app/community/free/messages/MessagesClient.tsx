@@ -67,70 +67,66 @@ export default function MessagesClient() {
   }, [rows, me.userId, unreadServer]);
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-4">
       {/* Header Section */}
-      <section className="glass rounded-[2rem] p-8">
-        <div className="flex items-center justify-between">
+      <section className="glass p-4 sm:p-5">
+        <div className="flex items-center justify-between gap-3">
           <div>
-            <h2 className="text-2xl font-black text-white flex items-center gap-3">
-              <span className="text-3xl">✉️</span> 쪽지함
+            <h2 className="text-xl font-semibold" style={{ color: "var(--text-primary)" }}>
+              쪽지함
             </h2>
-            <p className="mt-1 text-xs font-bold text-slate-500 uppercase tracking-widest">
-              Private messages & Notifications
+            <p className="mt-1 text-xs font-medium" style={{ color: "var(--text-muted)" }}>
+              관리자에게 받은 안내와 보낸 쪽지를 확인합니다.
             </p>
           </div>
-          <div className="flex flex-col items-end">
-            <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">Unread</span>
-            <span className="text-2xl font-black text-sky-400">{unreadCount}</span>
+          <div className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-right">
+            <span className="block text-[10px] font-medium text-slate-500">안 읽은 쪽지</span>
+            <span className="block text-sm font-semibold text-slate-950">{unreadCount.toLocaleString()}개</span>
           </div>
         </div>
       </section>
 
       {/* Message List */}
-      <div className="space-y-4">
+      <div>
         {loading ? (
-          <div className="grid gap-4">
+          <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
             {Array.from({ length: 3 }).map((_, i) => (
-              <div key={i} className="h-24 animate-pulse rounded-2xl bg-white/5" />
+              <div key={i} className="h-20 animate-pulse border-b border-slate-100 bg-slate-50 last:border-b-0" />
             ))}
           </div>
         ) : err ? (
-          <div className="glass rounded-2xl p-8 text-center border-rose-500/20">
-            <p className="text-sm font-bold text-rose-400">{err}</p>
+          <div className="rounded-lg border border-rose-200 bg-white p-8 text-center">
+            <p className="text-sm font-semibold text-rose-600">{err}</p>
           </div>
         ) : rows.length === 0 ? (
-          <div className="glass rounded-[2rem] p-20 text-center">
-            <div className="text-5xl mb-6">🏜️</div>
-            <p className="text-sm font-medium text-slate-500 italic">
+          <div className="rounded-lg border border-slate-200 bg-white p-12 text-center">
+            <p className="text-sm font-medium text-slate-500">
               받거나 보낸 쪽지가 없습니다.
             </p>
           </div>
         ) : (
-          <div className="grid gap-4">
+          <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
             {rows.map((m) => {
               const recipient = (m.recipient_id ?? m.receiver_id) ?? "";
               const isReceived = recipient === me.userId;
               return (
                 <div
                   key={m.id}
-                  className={`glass-hover flex flex-col rounded-2xl p-6 transition-all ${!m.read && isReceived ? "bg-sky-500/5 ring-1 ring-sky-500/30" : "bg-white/[0.03]"
+                  className={`border-b border-slate-100 px-4 py-3 transition-colors last:border-b-0 hover:bg-slate-50 ${!m.read && isReceived ? "bg-sky-50" : "bg-white"
                     }`}
                 >
-                  <div className="mb-4 flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className={`h-8 w-8 rounded-lg flex items-center justify-center text-lg ${isReceived ? "bg-indigo-500/20 text-indigo-400" : "bg-sky-500/20 text-sky-400"}`}>
-                        {isReceived ? "📥" : "📤"}
-                      </div>
-                      <span className="text-xs font-black text-white uppercase tracking-wider">
+                  <div className="mb-1.5 flex items-center justify-between gap-3">
+                    <div className="flex min-w-0 items-center gap-2">
+                      <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${isReceived ? "bg-sky-100 text-sky-800" : "bg-slate-100 text-slate-600"}`}>
                         {isReceived ? "관리자로부터" : "내가 보냄"}
                       </span>
                       {!m.read && isReceived && (
-                        <span className="rounded-full bg-rose-500 px-2 py-0.5 text-[8px] font-black text-white uppercase">New</span>
+                        <span className="rounded-full bg-rose-50 px-2 py-0.5 text-[10px] font-semibold text-rose-600">새 쪽지</span>
                       )}
                     </div>
-                    <span className="text-[10px] font-bold text-slate-500">{fmtTime(m.created_at)}</span>
+                    <span className="shrink-0 text-[11px] font-medium text-slate-500">{fmtTime(m.created_at)}</span>
                   </div>
-                  <div className="text-sm font-medium leading-relaxed text-slate-300 whitespace-pre-wrap">
+                  <div className="whitespace-pre-wrap break-words text-sm font-normal leading-6 text-slate-700">
                     {m.content}
                   </div>
                 </div>

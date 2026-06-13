@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Square logo concepts</title>
+    <style>
+      :root {
+        --brand: #1f7edb;
+        --brand-light: #0f5fb7;
+        --bg: #f7f9fc;
+        --text: #182232;
+        --muted: #6b7b8f;
+        --line: rgba(15, 23, 42, 0.1);
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font-family: Inter, -apple-system, BlinkMacSystemFont, "Noto Sans KR", system-ui, sans-serif;
+      }
+      main {
+        max-width: 1080px;
+        margin: 0 auto;
+        padding: 42px 20px 64px;
+      }
+      h1 {
+        margin: 0 0 8px;
+        font-size: 28px;
+        line-height: 1.25;
+        letter-spacing: 0;
+      }
+      p {
+        margin: 0;
+        color: var(--muted);
+        line-height: 1.6;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 16px;
+        margin-top: 26px;
+      }
+      .panel {
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        background: #fff;
+        padding: 18px;
+      }
+      .title {
+        margin-bottom: 14px;
+        font-size: 14px;
+        font-weight: 700;
+      }
+      .logo-large {
+        display: grid;
+        min-height: 220px;
+        place-items: center;
+        border-radius: 12px;
+        background: linear-gradient(180deg, #ffffff, #eef3f8);
+      }
+      .logo-large img {
+        width: 156px;
+        height: 156px;
+      }
+      .samples {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        margin-top: 16px;
+        padding-top: 14px;
+        border-top: 1px solid var(--line);
+      }
+      .sample-box {
+        display: grid;
+        place-items: center;
+        width: 54px;
+        height: 54px;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        background: #fff;
+      }
+      .sample-box.small img {
+        width: 32px;
+        height: 32px;
+      }
+      .sample-box.medium img {
+        width: 44px;
+        height: 44px;
+      }
+      .header-preview {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 18px;
+        margin-top: 18px;
+        padding: 12px 14px;
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        background: rgba(255, 255, 255, 0.96);
+      }
+      .brand-lockup {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .brand-lockup img {
+        width: 32px;
+        height: 32px;
+      }
+      .brand-copy {
+        display: flex;
+        flex-direction: column;
+        line-height: 1.05;
+      }
+      .brand-copy strong {
+        font-size: 15px;
+      }
+      .brand-copy span {
+        margin-top: 4px;
+        color: var(--muted);
+        font-size: 11px;
+        font-weight: 600;
+      }
+      .tabs {
+        display: flex;
+        gap: 10px;
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 650;
+      }
+      .word-panel {
+        margin-top: 16px;
+      }
+      .word-panel img {
+        display: block;
+        width: min(100%, 620px);
+        margin-top: 14px;
+        border-radius: 18px;
+      }
+      @media (max-width: 820px) {
+        .grid {
+          grid-template-columns: 1fr;
+        }
+        .tabs {
+          display: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Square 로고 후보</h1>
+      <p>작은 상단 로고에서 읽히는지, 메인 배너에서 키웠을 때 너무 튀지 않는지 같이 보는 프리뷰입니다.</p>
+
+      <section class="grid">
+        <article class="panel">
+          <div class="title">A. 미니멀 앱 아이콘형</div>
+          <div class="logo-large"><img src="/logo-concepts/square-mark.svg" alt="Square mark" /></div>
+          <div class="samples">
+            <div class="sample-box small"><img src="/logo-concepts/square-mark.svg" alt="" /></div>
+            <div class="sample-box medium"><img src="/logo-concepts/square-mark.svg" alt="" /></div>
+            <p>상단 작은 로고에 제일 안정적</p>
+          </div>
+        </article>
+        <article class="panel">
+          <div class="title">B. 학교 방패형</div>
+          <div class="logo-large"><img src="/logo-concepts/square-shield.svg" alt="Square shield" /></div>
+          <div class="samples">
+            <div class="sample-box small"><img src="/logo-concepts/square-shield.svg" alt="" /></div>
+            <div class="sample-box medium"><img src="/logo-concepts/square-shield.svg" alt="" /></div>
+            <p>학교 느낌은 좋지만 작을 땐 덜 선명</p>
+          </div>
+        </article>
+        <article class="panel">
+          <div class="title">C. 입체 워드마크형</div>
+          <div class="logo-large"><img src="/logo-concepts/square-wordmark.svg" alt="Square wordmark" style="width: 260px; height: auto" /></div>
+          <div class="samples">
+            <div class="sample-box small"><img src="/logo-concepts/square-c-mark.svg" alt="" /></div>
+            <div class="sample-box medium"><img src="/logo-concepts/square-c-mark.svg" alt="" /></div>
+            <p>Q 꼬리 없이 정리한 C 버전</p>
+          </div>
+        </article>
+      </section>
+
+      <section class="header-preview">
+        <div class="brand-lockup">
+          <img src="/logo-concepts/square-c-mark.svg" alt="" />
+          <div class="brand-copy">
+            <strong>Square</strong>
+            <span>청주고등학교</span>
+          </div>
+        </div>
+        <nav class="tabs">
+          <span>메인</span>
+          <span>전체글</span>
+          <span>급식표</span>
+          <span>D-DAY</span>
+        </nav>
+      </section>
+
+      <section class="panel word-panel">
+        <div class="title">가로형 사용 예시</div>
+        <p>카카오 공유 이미지나 로그인 화면처럼 넓은 곳에서는 이 형태가 더 자연스럽습니다.</p>
+        <img src="/logo-concepts/square-wordmark.svg" alt="Square wordmark preview" />
+      </section>
+    </main>
+  </body>
+</html>

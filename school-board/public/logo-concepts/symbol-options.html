@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Square Symbol Options</title>
+    <style>
+      :root {
+        --bg: #f7f9fc;
+        --text: #182232;
+        --muted: #64748b;
+        --line: rgba(15, 23, 42, 0.1);
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font-family: Inter, -apple-system, BlinkMacSystemFont, "Noto Sans KR", system-ui, sans-serif;
+      }
+      main {
+        max-width: 1120px;
+        margin: 0 auto;
+        padding: 42px 20px 64px;
+      }
+      h1 {
+        margin: 0 0 8px;
+        font-size: 28px;
+        line-height: 1.25;
+        letter-spacing: 0;
+      }
+      p { margin: 0; color: var(--muted); line-height: 1.6; }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 16px;
+        margin-top: 26px;
+      }
+      .panel {
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        background: #fff;
+        padding: 18px;
+      }
+      .title {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        margin-bottom: 14px;
+        font-size: 14px;
+        font-weight: 760;
+      }
+      .badge {
+        border-radius: 999px;
+        background: #eff6ff;
+        color: #0f5fb7;
+        padding: 3px 8px;
+        font-size: 10px;
+        font-weight: 760;
+      }
+      .stage {
+        display: grid;
+        min-height: 210px;
+        place-items: center;
+        border-radius: 12px;
+        background: linear-gradient(180deg, #ffffff, #eef3f8);
+      }
+      .stage img {
+        width: 132px;
+        height: 132px;
+      }
+      .samples {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-top: 16px;
+        padding-top: 14px;
+        border-top: 1px solid var(--line);
+      }
+      .sample-box {
+        display: grid;
+        place-items: center;
+        width: 48px;
+        height: 48px;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        background: #fff;
+      }
+      .sample-box img { width: 30px; height: 30px; }
+      .header-preview {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-top: 18px;
+        padding: 12px 14px;
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        background: rgba(255, 255, 255, 0.96);
+      }
+      .header-preview img { width: 34px; height: 34px; }
+      .brand {
+        display: flex;
+        flex-direction: column;
+        line-height: 1.05;
+      }
+      .brand strong { font-size: 15px; }
+      .brand span {
+        margin-top: 4px;
+        color: var(--muted);
+        font-size: 11px;
+        font-weight: 650;
+      }
+      @media (max-width: 920px) {
+        .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      }
+      @media (max-width: 560px) {
+        .grid { grid-template-columns: 1fr; }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Square 심볼 후보</h1>
+      <p>사각형 배지는 빼고, Square의 “광장/네 방향/커뮤니티” 느낌만 문양으로 남긴 버전입니다.</p>
+      <section class="grid">
+        <article class="panel">
+          <div class="title">A. 현재안 <span class="badge">적용중</span></div>
+          <div class="stage"><img src="/logo-concepts/symbol-a-current.svg" alt="현재안" /></div>
+          <div class="samples"><div class="sample-box"><img src="/logo-concepts/symbol-a-current.svg" alt="" /></div><p>가장 단순하고 앱 아이콘 느낌</p></div>
+        </article>
+        <article class="panel">
+          <div class="title">B. 광장 방향형</div>
+          <div class="stage"><img src="/logo-concepts/symbol-b-plaza.svg" alt="광장 방향형" /></div>
+          <div class="samples"><div class="sample-box"><img src="/logo-concepts/symbol-b-plaza.svg" alt="" /></div><p>네 방향이 가운데로 모이는 느낌</p></div>
+        </article>
+        <article class="panel">
+          <div class="title">C. 프레임형</div>
+          <div class="stage"><img src="/logo-concepts/symbol-c-frame.svg" alt="프레임형" /></div>
+          <div class="samples"><div class="sample-box"><img src="/logo-concepts/symbol-c-frame.svg" alt="" /></div><p>사각형 의미가 가장 선명함</p></div>
+        </article>
+        <article class="panel">
+          <div class="title">D. 학교 게이트형</div>
+          <div class="stage"><img src="/logo-concepts/symbol-d-gate.svg" alt="학교 게이트형" /></div>
+          <div class="samples"><div class="sample-box"><img src="/logo-concepts/symbol-d-gate.svg" alt="" /></div><p>학교 건물/입구 느낌이 약간 있음</p></div>
+        </article>
+      </section>
+      <section class="header-preview">
+        <img src="/logo-concepts/symbol-a-current.svg" alt="" />
+        <div class="brand"><strong>Square</strong><span>청주고등학교 커뮤니티</span></div>
+      </section>
+    </main>
+  </body>
+</html>

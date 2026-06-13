@@ -61,7 +61,9 @@ const quickLinks = [
   { href: "/community/free/admin/edits", label: "수정 로그" },
   { href: "/community/free/admin/popup", label: "팝업 관리" },
   { href: "/community/free/admin/ad", label: "광고 관리" },
-  { href: "/community/free/admin/messages/new", label: "관리자 쪽지" },
+  { href: "/community/free/admin/dday", label: "D-Day 관리" },
+  { href: "/community/free/admin/verified", label: "인증 목록" },
+  { href: "/community/free/admin/dm", label: "관리자 쪽지" },
 ];
 
 function fmt(iso?: string | null) {
@@ -120,7 +122,7 @@ function PostList({ rows, empty }: { rows: PostRow[]; empty: string }) {
   return (
     <div className="divide-y divide-slate-100">
       {rows.map((p) => (
-        <Link key={p.id} href={`/community/free/${p.id}`} className="block px-4 py-3 hover:bg-slate-50">
+        <Link key={p.id} href={`/community/free/${p.id}`} prefetch={false} className="block px-4 py-3 hover:bg-slate-50">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
               <div className="truncate text-[13px] font-black text-slate-950">{p.title || "제목 없음"}</div>
@@ -224,7 +226,7 @@ export default function AdminDashboardPage() {
           {data?.recentReports?.length ? (
             <div className="divide-y divide-slate-100">
               {data.recentReports.map((r) => (
-                <Link key={r.id} href={r.post_id ? `/community/free/${r.post_id}` : "/community/free/reports"} className="flex items-center justify-between gap-3 px-4 py-3 hover:bg-slate-50">
+                <Link key={r.id} href={r.post_id ? `/community/free/${r.post_id}` : "/community/free/reports"} prefetch={false} className="flex items-center justify-between gap-3 px-4 py-3 hover:bg-slate-50">
                   <div>
                     <div className="text-[13px] font-black text-slate-950">{r.actor_username || "익명"} 신고</div>
                     <div className="mt-1 text-[11px] font-bold text-slate-500">{fmt(r.created_at)}</div>
