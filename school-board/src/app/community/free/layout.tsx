@@ -195,9 +195,6 @@ export default function FreeLayout({ children }: { children: ReactNode }) {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void loadNotifications();
     void loadDmUnread();
-    const t1 = setInterval(loadNotifications, 25000);
-    const t2 = setInterval(loadDmUnread, 20000);
-    return () => { clearInterval(t1); clearInterval(t2); };
   }, [me.userId]);
 
   useEffect(() => {
