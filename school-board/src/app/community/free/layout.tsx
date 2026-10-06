@@ -305,9 +305,13 @@ export default function FreeLayout({ children }: { children: ReactNode }) {
     setPosts(json.data ?? []);
   }
   async function loadVisitors() {
-    const res = await fetch("/api/stats/visitors", { method: "POST", credentials: "include" });
-    const json = await res.json().catch(() => ({}));
-    if (typeof json.count === "number") setVisitors(json.count);
+    const currentRes = await fetch("/api/stats/visitors", { cache: "no-store", credentials: "include" });
+    const current = await currentRes.json().catch(() => ({}));
+    if (typeof current.count === "number") setVisitors(current.count);
+
+    const countRes = await fetch("/api/stats/visitors", { method: "POST", credentials: "include" });
+    const counted = await countRes.json().catch(() => ({}));
+    if (typeof counted.count === "number") setVisitors(counted.count);
   }
   async function loadMembers() {
     const res = await fetch("/api/stats/users", { cache: "no-store", credentials: "include" });
