@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { kstDateString } from "@/lib/time";
+import { displayedVisitorCount } from "@/lib/visitorCount";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -30,7 +31,11 @@ async function readVisitorCounts(sb: ReturnType<typeof admin>) {
 
   if (todayError) throw new Error(todayError.message);
 
-  return { count: data?.value ?? 0, today: todayData?.value ?? 0 };
+  const actualCount = Number(data?.value ?? 0);
+  return {
+    count: displayedVisitorCount(actualCount),
+    today: Number(todayData?.value ?? 0),
+  };
 }
 
 // GET: 현재 누적값 조회

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import LinkedText from "@/components/LinkedText";
 
 type CommentRow = {
   id: string;
@@ -8,8 +9,22 @@ type CommentRow = {
   author_id: string;
   content: string;
   created_at: string;
+  parent_id?: string | null;
   author?: { username: string | null; role: string | null };
 };
+
+const REPLY_MARKER_RE = /^\s*\[\[square-reply-to:([0-9a-f-]{8}-[0-9a-f-]{4}-[0-9a-f-]{4}-[0-9a-f-]{4}-[0-9a-f-]{12})\]\]\s*/i;
+
+function normalizeComment(comment: CommentRow): CommentRow {
+  const match = String(comment.content ?? "").match(REPLY_MARKER_RE);
+  if (!match) return comment;
+
+  return {
+    ...comment,
+    parent_id: comment.parent_id ?? match[1],
+    content: String(comment.content ?? "").replace(REPLY_MARKER_RE, ""),
+  };
+}
 
 export default function Comments({
   postId,
@@ -31,7 +46,7 @@ export default function Comments({
     // ✅ post_id로 통일
     const res = await fetch(`/api/comments?post_id=${encodeURIComponent(postId)}`, { cache: "no-store" });
     const json = await res.json().catch(() => ({}));
-    setItems(json.data ?? []);
+    setItems(Array.isArray(json.data) ? json.data.map(normalizeComment) : []);
     setLoading(false);
   }
 
@@ -141,7 +156,9 @@ export default function Comments({
                       )}
                     </div>
 
-                    <div className="mt-2 whitespace-pre-wrap break-words text-sm text-slate-900">{c.content}</div>
+                    <div className="mt-2 whitespace-pre-wrap break-words text-sm text-slate-900">
+                      <LinkedText text={c.content} />
+                    </div>
                   </div>
                 </div>
               </li>

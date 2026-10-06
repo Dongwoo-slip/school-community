@@ -1,59 +1,60 @@
-import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
+import { NextResponse } from "next/server";
+import { createClient as createAuthedClient } from "@/lib/supabase/server";
+import { adminClient } from "@/lib/serverAuth";
 
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const SERVICE_ROLE = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
-function adminClient() {
-  if (!SUPABASE_URL || !SERVICE_ROLE) throw new Error("Missing env");
-  return createClient(SUPABASE_URL, SERVICE_ROLE, { auth: { persistSession: false } });
+async function getUserId() {
+  const authed = await createAuthedClient();
+  const { data } = await authed.auth.getUser();
+  return data.user?.id ?? null;
 }
 
-async function getMeFromApi(req: NextRequest) {
-  const origin = new URL(req.url).origin;
-  const cookie = req.headers.get("cookie") ?? "";
-  const res = await fetch(`${origin}/api/me`, { cache: "no-store", headers: { cookie } });
-  const json = await res.json().catch(() => ({}));
-  return { userId: json?.userId ?? null };
-}
-
-export async function POST(req: NextRequest) {
+export async function POST() {
+  const start = Date.now();
   try {
-    const me = await getMeFromApi(req);
-    if (!me.userId) return NextResponse.json({ error: "로그인이 필요합니다." }, { status: 401 });
+    const userId = await getUserId();
+    if (!userId) return NextResponse.json({ error: "로그인이 필요합니다." }, { status: 401 });
 
     const supa = adminClient();
 
     // receiver_id 방식 먼저
-    let updated = 0;
-
     {
-      const { data, error } = await supa
+      const { error } = await supa
         .from("messages")
         .update({ read: true })
-        .eq("receiver_id", me.userId)
-        .eq("read", false)
-        .select("id");
+        .eq("receiver_id", userId)
+        .eq("read", false);
 
-      if (!error) updated = Array.isArray(data) ? data.length : 0;
-      else if (String(error.message || "").toLowerCase().includes("receiver_id")) {
+      if (error && String(error.message || "").toLowerCase().includes("receiver_id")) {
         // recipient_id 방식
-        const { data: data2, error: error2 } = await supa
+        const { error: error2 } = await supa
           .from("messages")
           .update({ read: true })
-          .eq("recipient_id", me.userId)
-          .eq("read", false)
-          .select("id");
+          .eq("recipient_id", userId)
+          .eq("read", false);
 
         if (error2) return NextResponse.json({ error: error2.message }, { status: 500 });
-        updated = Array.isArray(data2) ? data2.length : 0;
-      } else {
+      } else if (error) {
         return NextResponse.json({ error: error.message }, { status: 500 });
       }
     }
 
-    return NextResponse.json({ ok: true, updated }, { status: 200 });
-  } catch (e: any) {
-    return NextResponse.json({ error: e?.message ?? "서버 오류" }, { status: 500 });
+    console.log(JSON.stringify({
+      level: "info",
+      route: "/api/messages/read",
+      ms: Date.now() - start,
+    }));
+
+    return NextResponse.json({ ok: true }, { status: 200 });
+  } catch (e: unknown) {
+    console.error(JSON.stringify({
+      level: "error",
+      route: "/api/messages/read",
+      ms: Date.now() - start,
+      error: e instanceof Error ? e.message : "서버 오류",
+    }));
+    return NextResponse.json({ error: e instanceof Error ? e.message : "서버 오류" }, { status: 500 });
   }
 }

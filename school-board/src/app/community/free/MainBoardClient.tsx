@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useFreeBoard } from "./layout";
 import { getTier } from "@/lib/tiers";
 import { formatAdminStudentLabel, type AuthorIdentity } from "@/lib/authorDisplay";
+import StudentCouncilHomeCard from "@/components/StudentCouncilHomeCard";
 
 type BoardPost = {
   id: string;
@@ -131,10 +132,14 @@ export default function MainBoardClient() {
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1.25rem' }}>
-
         <div id="today-timetable">
           <TimetableWidget />
         </div>
+
+        <StudentCouncilHomeCard
+          visible
+          privatePreview={false}
+        />
 
         <div style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)', borderRadius: 6, overflow: 'hidden' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.75rem 1rem', borderBottom: '1px solid var(--border-subtle)', background: '#fbfcfb' }}>

@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { createClient as createAuthedClient } from "@/lib/supabase/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { kstDateString } from "@/lib/time";
+import { displayedMemberCount } from "@/lib/memberCount";
+import { displayedVisitorCount } from "@/lib/visitorCount";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -182,9 +184,9 @@ export async function GET() {
       generated_at: new Date().toISOString(),
       today_start: today,
       cards: {
-        totalUsers,
+        totalUsers: displayedMemberCount(totalUsers),
         usersToday,
-        totalVisits,
+        totalVisits: displayedVisitorCount(totalVisits),
         todayVisits,
         totalPosts,
         visiblePosts,

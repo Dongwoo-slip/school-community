@@ -12,6 +12,14 @@ type AdData = {
 
 const AD_CACHE_KEY = "school-floating-ad-cache:v2";
 const AD_CACHE_TTL_MS = 5 * 60 * 1000;
+const ADSENSE_CLIENT_ID = process.env.NEXT_PUBLIC_GOOGLE_ADSENSE_CLIENT_ID;
+const ADSENSE_LEFT_SLOT_ID = process.env.NEXT_PUBLIC_GOOGLE_ADSENSE_LEFT_SLOT_ID;
+
+declare global {
+  interface Window {
+    adsbygoogle?: unknown[];
+  }
+}
 
 function getAdCfg(vw: number): AdCfg {
   const contentWidth = 1152;
@@ -35,6 +43,8 @@ export default function FloatingLeftAd({ topAnchorId }: { topAnchorId: string })
   const [cfg, setCfg] = React.useState<AdCfg>({ show: false, w: 0, h: 0, left: 0 });
   const [topPx, setTopPx] = React.useState(180);
   const [ad, setAd] = React.useState<AdData | null>(null);
+  const pushedAdKey = React.useRef<string | null>(null);
+  const useGoogleAd = Boolean(ADSENSE_CLIENT_ID && ADSENSE_LEFT_SLOT_ID);
 
   React.useEffect(() => {
     setMounted(true);
@@ -66,6 +76,11 @@ export default function FloatingLeftAd({ topAnchorId }: { topAnchorId: string })
   React.useEffect(() => {
     let alive = true;
     async function loadAd() {
+      if (useGoogleAd) {
+        setAd(null);
+        return;
+      }
+
       if (!cfg.show) {
         setAd(null);
         return;
@@ -101,10 +116,48 @@ export default function FloatingLeftAd({ topAnchorId }: { topAnchorId: string })
     return () => {
       alive = false;
     };
-  }, [cfg.show]);
+  }, [cfg.show, useGoogleAd]);
+
+  React.useEffect(() => {
+    if (!mounted || !cfg.show || !useGoogleAd) return;
+
+    const adKey = `${cfg.w}x${cfg.h}:${ADSENSE_LEFT_SLOT_ID}`;
+    if (pushedAdKey.current === adKey) return;
+
+    try {
+      window.adsbygoogle = window.adsbygoogle || [];
+      window.adsbygoogle.push({});
+      pushedAdKey.current = adKey;
+    } catch (error) {
+      console.warn("Google AdSense push failed", error);
+    }
+  }, [cfg.h, cfg.show, cfg.w, mounted, useGoogleAd]);
 
   if (!mounted) return null;
   if (!cfg.show) return null;
+
+  if (useGoogleAd) {
+    return (
+      <aside
+        className="fixed z-40 transition-transform duration-300 ease-out will-change-transform"
+        style={{ left: cfg.left, top: topPx, width: cfg.w }}
+        aria-label="Google advertisement"
+      >
+        <div className="overflow-hidden border border-slate-200 bg-white shadow-sm">
+          <div className="border-b border-slate-200 bg-slate-50 px-2 py-2 text-center text-[10px] font-semibold uppercase tracking-wide text-slate-500">
+            AD
+          </div>
+          <ins
+            key={`${cfg.w}x${cfg.h}:${ADSENSE_LEFT_SLOT_ID}`}
+            className="adsbygoogle"
+            style={{ display: "inline-block", width: cfg.w, height: cfg.h }}
+            data-ad-client={ADSENSE_CLIENT_ID}
+            data-ad-slot={ADSENSE_LEFT_SLOT_ID}
+          />
+        </div>
+      </aside>
+    );
+  }
 
   const image = Array.isArray(ad?.image_urls) ? ad?.image_urls[0] : null;
   if (!image) return null;

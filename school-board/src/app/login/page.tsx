@@ -36,6 +36,18 @@ export default function LoginPage() {
     try {
       const { error } = await supabase.auth.signInWithPassword({ email: toEmail(u), password });
       if (error) return setMsg("아이디 또는 비밀번호가 올바르지 않습니다.");
+      await fetch("/api/admin/login-logs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          userAgent: navigator.userAgent,
+          platform: navigator.platform,
+          screen: `${window.screen.width}x${window.screen.height}`,
+          language: navigator.language,
+          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        }),
+      }).catch(() => null);
       const params = new URLSearchParams(location.search);
       location.href = params.get("next") ?? "/community/free";
     } finally { setLoading(false); }

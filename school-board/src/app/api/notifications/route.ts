@@ -5,6 +5,10 @@ import { createClient as createAdminClient } from "@supabase/supabase-js";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
+type NotificationRow = {
+  read?: boolean | null;
+};
+
 function admin() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY!;
@@ -16,18 +20,18 @@ export async function GET() {
   const { data } = await authed.auth.getUser();
   const user = data.user;
 
-  if (!user) return NextResponse.json({ error: "로그인이 필요합니다.", data: [], unread: 0 }, { status: 401 });
+  if (!user) return NextResponse.json({ data: [], unread: 0 });
 
   const sb = admin();
   const { data: rows, error } = await sb
     .from("notifications")
-    .select("id,type,actor_username,post_id,created_at,read")
+    .select("id,type,actor_username,post_id,comment_id,board,post_title,metadata,created_at,read")
     .eq("recipient_id", user.id)
     .order("created_at", { ascending: false })
     .limit(50);
 
   if (error) return NextResponse.json({ data: [], unread: 0 });
 
-  const unread = (rows ?? []).filter((r: any) => r.read === false).length;
+  const unread = ((rows ?? []) as NotificationRow[]).filter((r) => r.read === false).length;
   return NextResponse.json({ data: rows ?? [], unread });
 }

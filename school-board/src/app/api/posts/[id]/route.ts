@@ -1,7 +1,11 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextResponse } from "next/server";
 import { createClient as createAuthedClient } from "@/lib/supabase/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { AUTHOR_PROFILE_SELECT } from "@/lib/authorDisplay";
+
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 function admin() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
@@ -11,6 +15,7 @@ function admin() {
 
 const EDIT_LOG_PREFIX = "[수정 로그]";
 const PUBLIC_AUTHOR_PROFILE_SELECT = "username, role, points";
+const DETAIL_COLUMNS = "id,board,title,content,created_at,updated_at,view_count,like_count,dislike_count,report_count,author_id,image_urls,poll,is_deleted";
 
 // ✅ Next 버전/환경에 따라 params가 Promise로 오는 경우가 있어서 안전 처리
 async function getParamId(ctx: any): Promise<string | null> {
@@ -33,6 +38,7 @@ async function getParamId(ctx: any): Promise<string | null> {
 
 // GET /api/posts/:id  (비로그인도 공개 게시글 상세 조회 가능)
 export async function GET(_req: Request, ctx: any) {
+  const start = Date.now();
   const id = await getParamId(ctx);
   if (!id) return NextResponse.json({ error: "missing id" }, { status: 400 });
 
@@ -51,15 +57,22 @@ export async function GET(_req: Request, ctx: any) {
 
   const { data: post, error } = await sb
     .from("posts")
-    .select(`*, author:profiles(${profileSelect})`)
+    .select(`${DETAIL_COLUMNS}, author:profiles(${profileSelect})`)
     .eq("id", id)
     .maybeSingle();
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  if (!post) return NextResponse.json({ error: "게시물을 찾을 수 없습니다." }, { status: 404 });
+  if (error) {
+    console.error(JSON.stringify({ level: "error", route: "/api/posts/[id]", id, ms: Date.now() - start, error: error.message }));
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+  if (!post) {
+    console.log(JSON.stringify({ level: "info", route: "/api/posts/[id]", id, ms: Date.now() - start, status: 404 }));
+    return NextResponse.json({ error: "게시물을 찾을 수 없습니다." }, { status: 404 });
+  }
 
   if (post.is_deleted) {
     if (role !== "admin") {
+      console.log(JSON.stringify({ level: "info", route: "/api/posts/[id]", id, ms: Date.now() - start, status: 404, deleted: true }));
       return NextResponse.json({ error: "게시물을 찾을 수 없습니다." }, { status: 404 });
     }
   }
@@ -69,6 +82,14 @@ export async function GET(_req: Request, ctx: any) {
   if (!post.is_deleted) {
     sb.from("posts").update({ view_count: nextView }).eq("id", id).then(() => { });
   }
+
+  console.log(JSON.stringify({
+    level: "info",
+    route: "/api/posts/[id]",
+    id,
+    ms: Date.now() - start,
+    role,
+  }));
 
   return NextResponse.json({
     data: {

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useFreeBoard } from "@/app/community/free/layout";
 
 type TT = {
   ok: boolean;
@@ -39,6 +40,7 @@ function clampInt(v: unknown, min: number, max: number) {
 }
 
 export default function TimetableWidget() {
+  const { me } = useFreeBoard();
   const [grade, setGrade] = useState("1");
   const [classNm, setClassNm] = useState("1");
   const [weekOffset, setWeekOffset] = useState(0);
@@ -50,25 +52,14 @@ export default function TimetableWidget() {
   const markTouched = () => { touchedRef.current = true; };
 
   useEffect(() => {
-    let ignore = false;
-    async function initFromMe() {
-      try {
-        const res = await fetch("/api/me", { cache: "no-store", credentials: "include" });
-        if (!res.ok) return;
-        const me = await res.json().catch(() => ({}));
-        const g = me?.verifiedGrade ?? me?.grade ?? me?.school_grade ?? null;
-        const c = me?.verifiedClassNo ?? me?.classNo ?? me?.class_no ?? me?.classNm ?? null;
-        const gg = clampInt(g, 1, 3);
-        const cc = clampInt(c, 1, 11);
-        if (!ignore && !touchedRef.current) {
-          if (gg !== null) setGrade(String(gg));
-          if (cc !== null) setClassNm(String(cc));
-        }
-      } catch { } finally { if (!ignore) setInitDone(true); }
+    if (!touchedRef.current) {
+      const gg = clampInt(me.verifiedGrade ?? me.grade, 1, 3);
+      const cc = clampInt(me.verifiedClassNo ?? me.classNo, 1, 11);
+      if (gg !== null) setGrade(String(gg));
+      if (cc !== null) setClassNm(String(cc));
     }
-    initFromMe();
-    return () => { ignore = true; };
-  }, []);
+    setInitDone(true);
+  }, [me.verifiedGrade, me.verifiedClassNo, me.grade, me.classNo]);
 
   const url = useMemo(() => `/api/timetable?grade=${grade}&class=${classNm}&weekOffset=${weekOffset}`, [grade, classNm, weekOffset]);
 
@@ -173,7 +164,7 @@ export default function TimetableWidget() {
               <div className="timetable-row gap-1 sm:gap-2 mb-1 sm:mb-2">
                 <div
                   className="timetable-cell timetable-day flex items-center justify-center py-2 text-[11px] font-semibold"
-                  style={{ background: '#eef6ff', color: 'var(--brand-light)', border: '1px solid rgba(31, 126, 219, 0.14)' }}
+                  style={{ background: '#eeeeee', color: 'var(--brand-light)', border: '1px solid rgba(0, 0, 0, 0.14)' }}
                 >
                   교시
                 </div>
@@ -183,10 +174,10 @@ export default function TimetableWidget() {
                     <div
                       key={i}
                       className="timetable-cell timetable-day flex flex-col items-center justify-center py-2"
-                      style={{ background: '#dceeff', border: '1px solid rgba(31, 126, 219, 0.14)' }}
+                      style={{ background: '#e2e2e2', border: '1px solid rgba(0, 0, 0, 0.14)' }}
                     >
                       <span className="timetable-day-name text-[11px] font-semibold" style={{ color: 'var(--brand-light)' }}>{h.name}</span>
-                      <span className="timetable-day-date text-[10px]" style={{ color: 'rgba(15,95,183,0.68)' }}>{h.date}</span>
+                      <span className="timetable-day-date text-[10px]" style={{ color: 'rgba(0,0,0,0.62)' }}>{h.date}</span>
                     </div>
                   );
                 })}
@@ -198,7 +189,7 @@ export default function TimetableWidget() {
                   <div key={p} className="timetable-row gap-1 sm:gap-2">
                     <div
                       className="timetable-cell timetable-period flex items-center justify-center text-[12px] font-semibold"
-                      style={{ background: '#dceeff', color: 'var(--brand-light)', border: '1px solid rgba(31, 126, 219, 0.14)' }}
+                      style={{ background: '#e2e2e2', color: 'var(--brand-light)', border: '1px solid rgba(0, 0, 0, 0.14)' }}
                     >
                       {p + 1}
                     </div>

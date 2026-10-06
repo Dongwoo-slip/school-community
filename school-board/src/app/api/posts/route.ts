@@ -1,13 +1,41 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextResponse } from "next/server";
 import { createClient as createAuthedClient } from "@/lib/supabase/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { awardPoints } from "@/lib/points";
 import { AUTHOR_PROFILE_SELECT } from "@/lib/authorDisplay";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 function admin() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY!;
   return createAdminClient(url, key, { auth: { persistSession: false } });
+}
+
+const PUBLIC_AUTHOR_PROFILE_SELECT = "username, role, points";
+const LIST_COLUMNS = "id,title,created_at,view_count,like_count,author_id,poll";
+const SUMMARY_COLUMNS = "id,title,created_at,view_count,like_count,author_id";
+let cachedAdminIds: { value: string[]; expiresAt: number } | null = null;
+
+async function getAdminIds(sb: ReturnType<typeof admin>) {
+  const now = Date.now();
+  if (cachedAdminIds && cachedAdminIds.expiresAt > now) return cachedAdminIds.value;
+
+  const { data, error } = await sb
+    .from("profiles")
+    .select("id")
+    .eq("role", "admin")
+    .limit(50);
+
+  if (error) throw error;
+  const value = (Array.isArray(data) ? data : [])
+    .map((row) => String(row?.id ?? ""))
+    .filter(Boolean);
+
+  cachedAdminIds = { value, expiresAt: now + 5 * 60 * 1000 };
+  return value;
 }
 
 async function isVerifiedWriter(sb: ReturnType<typeof admin>, userId: string) {
@@ -33,24 +61,244 @@ async function isVerifiedWriter(sb: ReturnType<typeof admin>, userId: string) {
 
 // GET /api/posts?board=free
 export async function GET(req: Request) {
+  const start = Date.now();
   try {
     const { searchParams } = new URL(req.url);
     const board = (searchParams.get("board") ?? "free").trim() || "free";
+    const limitRaw = searchParams.get("limit");
+    const offsetRaw = searchParams.get("offset");
+    const limit = limitRaw === null ? null : Math.min(Math.max(Number(limitRaw) || 15, 1), 100);
+    const offset = Math.max(Number(offsetRaw ?? "0") || 0, 0);
+    const q = (searchParams.get("q") ?? "").trim();
+    const mine = searchParams.get("mine") === "1";
+    const pinAdmin = searchParams.get("pinAdmin") === "1";
+    const summary = searchParams.get("summary") === "1";
+    const countMode = searchParams.get("count") ?? "exact";
 
     const sb = admin();
+    const authed = await createAuthedClient();
+    const { data: authData } = await authed.auth.getUser();
+    const user = authData.user;
+
+    let role = "guest";
+    if (user) {
+      const { data: profile } = await sb.from("profiles").select("role").eq("id", user.id).maybeSingle();
+      role = profile?.role ?? "user";
+    }
+
+    const profileSelect = role === "admin" ? AUTHOR_PROFILE_SELECT : PUBLIC_AUTHOR_PROFILE_SELECT;
+    const columns = summary ? SUMMARY_COLUMNS : LIST_COLUMNS;
+
+    function applyCommon(query: any) {
+      let next = query
+        .eq("board", board)
+        .eq("is_deleted", false);
+
+      if (q) next = next.ilike("title", `%${q.replaceAll("%", "\\%").replaceAll("_", "\\_")}%`);
+      if (mine) next = user ? next.eq("author_id", user.id) : next.eq("author_id", "__no_user__");
+      return next;
+    }
+
+    function applyAuthorKind(query: any, kind: "admin" | "normal" | null, adminIds: string[]) {
+      if (!kind) return query;
+      if (adminIds.length === 0) {
+        return kind === "admin" ? query.eq("author_id", "__no_admin__") : query;
+      }
+      const idList = `(${adminIds.join(",")})`;
+      if (kind === "admin") return query.in("author_id", adminIds);
+      return query.not("author_id", "in", idList);
+    }
+
+    async function countSegment(kind?: "admin" | "normal", adminIds: string[] = []) {
+      let query = sb
+        .from("posts")
+        .select("id", { count: countMode === "planned" ? "planned" : "exact", head: true });
+
+      query = applyCommon(query);
+      query = applyAuthorKind(query, kind ?? null, adminIds);
+
+      const { count, error } = await query;
+      if (error) throw error;
+      return count ?? 0;
+    }
+
+    async function fetchSegment(kind: "admin" | "normal" | null, segmentOffset: number, segmentLimit: number, adminIds: string[] = []) {
+      if (segmentLimit <= 0) return [];
+
+      let query = sb
+        .from("posts")
+        .select(`${columns}, author:profiles(${profileSelect})`);
+
+      query = applyCommon(query);
+      query = applyAuthorKind(query, kind, adminIds);
+
+      const { data, error } = await query
+        .order("created_at", { ascending: false })
+        .range(segmentOffset, segmentOffset + segmentLimit - 1);
+
+      if (error) throw error;
+      return Array.isArray(data) ? data : [];
+    }
+
+    if (limit !== null) {
+      if (countMode === "none") {
+        if (pinAdmin && !mine) {
+          const adminIds = await getAdminIds(sb);
+          const adminRows = await fetchSegment("admin", 0, 100, adminIds);
+          const rows: any[] = [];
+
+          if (offset < adminRows.length) {
+            rows.push(...adminRows.slice(offset, offset + limit));
+          }
+
+          const remaining = limit - rows.length;
+          let hasMore = offset + rows.length < adminRows.length;
+
+          if (remaining > 0) {
+            const normalOffset = Math.max(0, offset - adminRows.length);
+            const normalRows = await fetchSegment("normal", normalOffset, remaining + 1, adminIds);
+            rows.push(...normalRows.slice(0, remaining));
+            hasMore = normalRows.length > remaining;
+          }
+
+          console.log(JSON.stringify({
+            level: "info",
+            route: "/api/posts",
+            mode: "paged-pinned-no-count",
+            ms: Date.now() - start,
+            board,
+            limit,
+            offset,
+            rows: rows.length,
+            hasMore,
+          }));
+
+          return NextResponse.json({
+            data: rows,
+            count: null,
+            hasMore,
+            limit,
+            offset,
+          });
+        }
+
+        const rowsPlusOne = await fetchSegment(null, offset, limit + 1);
+        const rows = rowsPlusOne.slice(0, limit);
+        const hasMore = rowsPlusOne.length > limit;
+
+        console.log(JSON.stringify({
+          level: "info",
+          route: "/api/posts",
+          mode: "paged-no-count",
+          ms: Date.now() - start,
+          board,
+          limit,
+          offset,
+          rows: rows.length,
+          hasMore,
+        }));
+
+        return NextResponse.json({
+          data: rows,
+          count: null,
+          hasMore,
+          limit,
+          offset,
+        });
+      }
+
+      if (pinAdmin && !mine) {
+        const adminIds = await getAdminIds(sb);
+        const [adminCount, normalCount] = await Promise.all([
+          countSegment("admin", adminIds),
+          countSegment("normal", adminIds),
+        ]);
+        const total = adminCount + normalCount;
+        const rows: any[] = [];
+
+        if (offset < adminCount) {
+          const adminLimit = Math.min(limit, adminCount - offset);
+          rows.push(...await fetchSegment("admin", offset, adminLimit, adminIds));
+        }
+
+        const remaining = limit - rows.length;
+        if (remaining > 0) {
+          const normalOffset = Math.max(0, offset - adminCount);
+          rows.push(...await fetchSegment("normal", normalOffset, remaining, adminIds));
+        }
+
+        console.log(JSON.stringify({
+          level: "info",
+          route: "/api/posts",
+          mode: "paged-pinned",
+          ms: Date.now() - start,
+          board,
+          limit,
+          offset,
+          rows: rows.length,
+          total,
+        }));
+
+        return NextResponse.json({
+          data: rows,
+          count: total,
+          hasMore: offset + rows.length < total,
+          limit,
+          offset,
+        });
+      }
+
+      const total = await countSegment();
+      const rows = await fetchSegment(null, offset, limit);
+
+      console.log(JSON.stringify({
+        level: "info",
+        route: "/api/posts",
+        mode: "paged",
+        ms: Date.now() - start,
+        board,
+        limit,
+        offset,
+        rows: rows.length,
+        total,
+      }));
+
+      return NextResponse.json({
+        data: rows,
+        count: total,
+        hasMore: offset + rows.length < total,
+        limit,
+        offset,
+      });
+    }
 
     const { data: posts, error } = await sb
       .from("posts")
-      .select(`*, author:profiles(${AUTHOR_PROFILE_SELECT})`)
+      .select(`*, author:profiles(${profileSelect})`)
       .eq("board", board)
       .eq("is_deleted", false)
       .order("created_at", { ascending: false });
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
+    console.log(JSON.stringify({
+      level: "info",
+      route: "/api/posts",
+      mode: "legacy-full",
+      ms: Date.now() - start,
+      board,
+      rows: posts?.length ?? 0,
+    }));
+
     return NextResponse.json({ data: posts ?? [] });
-  } catch (e: any) {
-    return NextResponse.json({ error: e?.message ?? "unknown error" }, { status: 500 });
+  } catch (e: unknown) {
+    console.error(JSON.stringify({
+      level: "error",
+      route: "/api/posts",
+      ms: Date.now() - start,
+      error: e instanceof Error ? e.message : "unknown error",
+    }));
+    return NextResponse.json({ error: e instanceof Error ? e.message : "unknown error" }, { status: 500 });
   }
 }
 

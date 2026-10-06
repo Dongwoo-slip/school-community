@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient as createAuthedClient } from "@/lib/supabase/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { requireUser } from "@/lib/serverAuth";
+import { notifyPostActivity } from "@/lib/postActivityNotifications";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -163,14 +164,20 @@ export async function POST(req: Request) {
       .maybeSingle();
 
     let toggled: "on" | "off" = "on";
+    let reactionId: string | null = null;
 
     if (!existing) {
-      const { error } = await sb.from("post_reactions").insert({
-        post_id: postId,
-        user_id: user.id,
-        action,
-      });
+      const { data: inserted, error } = await sb
+        .from("post_reactions")
+        .insert({
+          post_id: postId,
+          user_id: user.id,
+          action,
+        })
+        .select("id")
+        .maybeSingle();
       if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+      reactionId = inserted?.id ?? null;
       toggled = "on";
     } else {
       if (existing.action === action) {
@@ -180,22 +187,23 @@ export async function POST(req: Request) {
       } else {
         const { error } = await sb.from("post_reactions").update({ action }).eq("id", existing.id);
         if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+        reactionId = existing.id;
         toggled = "on";
       }
     }
 
     // ✅ 좋아요만 작성자에게 알림(싫어요는 알림 X)
     if (action === "like" && toggled === "on") {
-      const authorId = await getPostAuthorId(sb, postId);
-      if (authorId && authorId !== user.id) {
-        await sb.from("notifications").insert({
-          recipient_id: authorId,
-          actor_id: user.id,
-          actor_username: actorUsername,
+      try {
+        await notifyPostActivity({
+          sb,
+          postId,
+          actor: user,
           type: "like",
-          post_id: postId,
-          read: false,
-        }); // type_check에 like 없으면 여기서 에러 -> SQL A 필수
+          reactionId,
+        });
+      } catch (e) {
+        console.error("Failed to create like notification:", e);
       }
     }
 

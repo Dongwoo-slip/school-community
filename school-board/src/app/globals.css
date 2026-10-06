@@ -1,28 +1,28 @@
 @import "tailwindcss";
 
 :root {
-  --bg-base: #f7f9fc;
+  --bg-base: #f3f3f3;
   --bg-surface: #ffffff;
-  --bg-elevated: #eef3f8;
-  --bg-hover: #e5edf5;
+  --bg-elevated: #e9e9e9;
+  --bg-hover: #dedede;
 
-  --border-subtle: rgba(15, 23, 42, 0.10);
-  --border-mild: rgba(15, 23, 42, 0.16);
-  --border-strong: rgba(15, 23, 42, 0.28);
+  --border-subtle: rgba(0, 0, 0, 0.10);
+  --border-mild: rgba(0, 0, 0, 0.18);
+  --border-strong: rgba(0, 0, 0, 0.32);
 
-  --brand: #1f7edb;
-  --brand-light: #0f5fb7;
-  --brand-dim: rgba(31, 126, 219, 0.10);
+  --brand: #282828;
+  --brand-light: #111111;
+  --brand-dim: rgba(0, 0, 0, 0.08);
 
   --accent-green: #16834a;
   --accent-orange: #c45a10;
   --accent-red: #c82d3f;
   --accent-mint: #087b63;
 
-  --text-primary: #182232;
-  --text-secondary: #4f6177;
-  --text-muted: #7a899b;
-  --text-faint: #b7c2ce;
+  --text-primary: #161616;
+  --text-secondary: #4a4a4a;
+  --text-muted: #737373;
+  --text-faint: #ababab;
 
   --radius: 6px;
 }
@@ -301,6 +301,19 @@ a {
   text-decoration: none;
 }
 
+a.linkified-url {
+  color: #2563eb !important;
+  text-decoration-line: underline !important;
+  text-decoration-color: #2563eb !important;
+  text-decoration-thickness: 2px !important;
+  text-underline-offset: 2px !important;
+}
+
+a.linkified-url:hover {
+  color: #1d4ed8 !important;
+  text-decoration-color: #1d4ed8 !important;
+}
+
 /* ─── Badges ────────────────────────────────────── */
 .badge {
   display: inline-flex;
@@ -563,6 +576,8 @@ a {
 
 .timetable-grid {
   min-width: 0;
+  width: min(100%, 720px);
+  margin-inline: auto;
 }
 
 .timetable-row {
@@ -991,6 +1006,61 @@ a {
 [style*="background: var(--brand)"],
 [style*="background:var(--brand)"] {
   color: #ffffff !important;
+}
+
+/* CJConnect2 monochrome theme */
+a.linkified-url,
+a.linkified-url:hover {
+  color: #262626 !important;
+  text-decoration-color: #737373 !important;
+}
+
+.post-row.notice-post-row,
+.post-row.notice-post-row:hover,
+.anonymous-chat-panel,
+.anonymous-chat-header,
+.anonymous-chat-messages,
+.anonymous-chat-footer {
+  background: #ededed !important;
+  border-color: rgba(0, 0, 0, 0.14) !important;
+}
+
+.square-logo-symbol {
+  filter: drop-shadow(0 calc(var(--sq-logo-size) * 0.06) calc(var(--sq-logo-size) * 0.12) rgba(0, 0, 0, 0.22));
+}
+
+.square-logo-tile,
+.square-logo-core {
+  background: linear-gradient(145deg, #555555 0%, #111111 100%) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.24), inset 0 -2px 4px rgba(0, 0, 0, 0.22) !important;
+}
+
+[class*="text-sky-"],
+[class*="text-blue-"],
+[class*="text-indigo-"],
+[class*="text-cyan-"] {
+  color: #262626 !important;
+}
+
+[class*="bg-sky-"],
+[class*="bg-blue-"],
+[class*="bg-indigo-"],
+[class*="bg-cyan-"] {
+  background-color: #e7e7e7 !important;
+}
+
+[class*="border-sky-"],
+[class*="border-blue-"],
+[class*="border-indigo-"],
+[class*="border-cyan-"] {
+  border-color: #a8a8a8 !important;
+}
+
+[class*="ring-sky-"],
+[class*="ring-blue-"],
+[class*="ring-indigo-"],
+[class*="ring-cyan-"] {
+  --tw-ring-color: rgba(0, 0, 0, 0.20) !important;
 }
 
 /* ─── Responsive polish for phone and tablet ───── */

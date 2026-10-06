@@ -13,6 +13,8 @@ type Dm = {
   read: boolean;
 };
 
+const PAGE_SIZE = 50;
+
 function fmtTime(iso: string) {
   const d = new Date(iso);
   const mm = String(d.getMonth() + 1).padStart(2, "0");
@@ -34,26 +36,43 @@ export default function MessagesClient() {
   const [rows, setRows] = useState<Dm[]>([]);
   const [err, setErr] = useState<string | null>(null);
   const [unreadServer, setUnreadServer] = useState<number>(0);
+  const [hasMore, setHasMore] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
 
-  async function load() {
-    setLoading(true);
+  async function load({ append = false }: { append?: boolean } = {}) {
+    if (append) setLoadingMore(true);
+    else setLoading(true);
     setErr(null);
     try {
-      const res = await fetch("/api/messages/inbox", { cache: "no-store", credentials: "include" });
+      const offset = append ? rows.length : 0;
+      const res = await fetch(`/api/messages/inbox?limit=${PAGE_SIZE}&offset=${offset}`, { cache: "no-store", credentials: "include" });
       const json = await res.json().catch(() => ({}));
       if (!res.ok) {
         setErr(json?.error ?? "불러오기 실패");
-        setRows([]);
-        setUnreadServer(0);
+        if (!append) {
+          setRows([]);
+          setUnreadServer(0);
+          setHasMore(false);
+        }
         return;
       }
       const arr = (Array.isArray(json?.data) ? json.data : []).map(norm);
-      setRows(arr);
+      setRows((prev) => append ? [...prev, ...arr] : arr);
       setUnreadServer(typeof json?.unread === "number" ? json.unread : 0);
+      setHasMore(Boolean(json?.hasMore));
+      if (!append) setLoading(false);
 
-      await fetch("/api/messages/read", { method: "POST", credentials: "include" }).catch(() => null);
+      if (!append && (json?.unread ?? 0) > 0) {
+        void fetch("/api/messages/read", { method: "POST", credentials: "include" })
+          .then(() => {
+            setRows((prev) => prev.map((row) => ({ ...row, read: true })));
+            setUnreadServer(0);
+          })
+          .catch(() => null);
+      }
     } finally {
-      setLoading(false);
+      if (append) setLoadingMore(false);
+      else setLoading(false);
     }
   }
 
@@ -76,7 +95,7 @@ export default function MessagesClient() {
               쪽지함
             </h2>
             <p className="mt-1 text-xs font-medium" style={{ color: "var(--text-muted)" }}>
-              관리자에게 받은 안내와 보낸 쪽지를 확인합니다.
+              관리자에게 받은 안내와 내가 보낸 문의를 확인합니다.
             </p>
           </div>
           <div className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-right">
@@ -105,34 +124,50 @@ export default function MessagesClient() {
             </p>
           </div>
         ) : (
-          <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
-            {rows.map((m) => {
-              const recipient = (m.recipient_id ?? m.receiver_id) ?? "";
-              const isReceived = recipient === me.userId;
-              return (
-                <div
-                  key={m.id}
-                  className={`border-b border-slate-100 px-4 py-3 transition-colors last:border-b-0 hover:bg-slate-50 ${!m.read && isReceived ? "bg-sky-50" : "bg-white"
-                    }`}
-                >
-                  <div className="mb-1.5 flex items-center justify-between gap-3">
-                    <div className="flex min-w-0 items-center gap-2">
-                      <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${isReceived ? "bg-sky-100 text-sky-800" : "bg-slate-100 text-slate-600"}`}>
-                        {isReceived ? "관리자로부터" : "내가 보냄"}
-                      </span>
-                      {!m.read && isReceived && (
-                        <span className="rounded-full bg-rose-50 px-2 py-0.5 text-[10px] font-semibold text-rose-600">새 쪽지</span>
-                      )}
+          <>
+            <div className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+              {rows.map((m) => {
+                const recipient = (m.recipient_id ?? m.receiver_id) ?? "";
+                const isReceived = recipient === me.userId;
+                const isSentByMe = m.sender_id === me.userId;
+                const isSentInquiry = isSentByMe && m.content.startsWith("[문의]");
+                return (
+                  <div
+                    key={m.id}
+                    className={`border-b border-slate-100 px-4 py-3 transition-colors last:border-b-0 hover:bg-slate-50 ${!m.read && isReceived ? "bg-sky-50" : "bg-white"
+                      }`}
+                  >
+                    <div className="mb-1.5 flex items-center justify-between gap-3">
+                      <div className="flex min-w-0 items-center gap-2">
+                        <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${isReceived ? "bg-sky-100 text-sky-800" : "bg-slate-100 text-slate-600"}`}>
+                          {isReceived ? "관리자로부터" : isSentInquiry ? "내가 보낸 문의" : "내가 보냄"}
+                        </span>
+                        {!m.read && isReceived && (
+                          <span className="rounded-full bg-rose-50 px-2 py-0.5 text-[10px] font-semibold text-rose-600">새 쪽지</span>
+                        )}
+                      </div>
+                      <span className="shrink-0 text-[11px] font-medium text-slate-500">{fmtTime(m.created_at)}</span>
                     </div>
-                    <span className="shrink-0 text-[11px] font-medium text-slate-500">{fmtTime(m.created_at)}</span>
+                    <div className="whitespace-pre-wrap break-words text-sm font-normal leading-6 text-slate-700">
+                      {m.content}
+                    </div>
                   </div>
-                  <div className="whitespace-pre-wrap break-words text-sm font-normal leading-6 text-slate-700">
-                    {m.content}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+            {hasMore && (
+              <div className="mt-3 flex justify-center">
+                <button
+                  type="button"
+                  onClick={() => void load({ append: true })}
+                  disabled={loadingMore}
+                  className="rounded-md border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {loadingMore ? "불러오는 중..." : "더 보기"}
+                </button>
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>

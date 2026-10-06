@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient as createAuthedClient } from "@/lib/supabase/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
+import { notifyPostActivity } from "@/lib/postActivityNotifications";
 
 function admin() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
@@ -116,15 +117,21 @@ export async function POST(req: Request, ctx: any) {
   if (eErr) return NextResponse.json({ error: eErr.message }, { status: 500 });
 
   let myReaction: Kind | null = null;
+  let reactionId: string | null = null;
 
   if (!existing) {
     // 신규 반응
-    const { error: insErr } = await sb.from("post_reactions").insert({
-      post_id: postId,
-      user_id: user.id,
-      kind,
-    });
+    const { data: inserted, error: insErr } = await sb
+      .from("post_reactions")
+      .insert({
+        post_id: postId,
+        user_id: user.id,
+        kind,
+      })
+      .select("id")
+      .maybeSingle();
     if (insErr) return NextResponse.json({ error: insErr.message }, { status: 500 });
+    reactionId = inserted?.id ?? null;
 
     if (kind === "like") like += 1;
     else dislike += 1;
@@ -143,6 +150,7 @@ export async function POST(req: Request, ctx: any) {
     // like <-> dislike 변경
     const { error: updErr } = await sb.from("post_reactions").update({ kind }).eq("id", existing.id);
     if (updErr) return NextResponse.json({ error: updErr.message }, { status: 500 });
+    reactionId = existing.id;
 
     if (existing.kind === "like") like = Math.max(0, like - 1);
     if (existing.kind === "dislike") dislike = Math.max(0, dislike - 1);
@@ -156,6 +164,20 @@ export async function POST(req: Request, ctx: any) {
   // posts 카운트 반영
   const { error: uErr } = await sb.from("posts").update({ like_count: like, dislike_count: dislike }).eq("id", postId);
   if (uErr) return NextResponse.json({ error: uErr.message }, { status: 500 });
+
+  if (kind === "like" && myReaction === "like") {
+    try {
+      await notifyPostActivity({
+        sb,
+        postId,
+        actor: user,
+        type: "like",
+        reactionId,
+      });
+    } catch (e) {
+      console.error("Failed to create like notification:", e);
+    }
+  }
 
   return NextResponse.json({ data: { like_count: like, dislike_count: dislike, myReaction } });
 }

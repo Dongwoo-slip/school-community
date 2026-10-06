@@ -31,12 +31,20 @@ type Me = {
   studentVerified: boolean;
   studentNo: string | null;
   studentName: string | null;
+  grade: number | null;
+  classNo: number | null;
+  verifiedGrade: number | null;
+  verifiedClassNo: number | null;
 };
 type Noti = {
   id: string;
   type: string;
   actor_username: string | null;
   post_id: string | null;
+  comment_id?: string | null;
+  board?: string | null;
+  post_title?: string | null;
+  metadata?: Record<string, unknown> | null;
   created_at: string;
   read: boolean;
 };
@@ -120,6 +128,32 @@ function fmtNotiTime(iso: string) {
   }
 }
 
+function notificationLabel(n: Noti) {
+  if (n.board === "calendar") return "새 마감 일정 승인 요청";
+  if (n.type === "comment") return "내 게시글에 새 댓글이 달렸습니다.";
+  if (n.type === "reply" || n.type === "comment_reply") return "내 댓글에 새 답글이 달렸습니다.";
+  if (n.type === "like") return "내 게시글에 좋아요가 눌렸습니다.";
+  if (n.type === "dm") return "새 쪽지가 도착했습니다.";
+  if (n.type === "report") return "새 신고 알림이 있습니다.";
+  return "새 알림이 있습니다.";
+}
+
+function isCalendarReviewNotification(n: Noti) {
+  return n.board === "calendar" && Boolean(n.post_id);
+}
+
+function notificationSubLabel(n: Noti) {
+  const title = n.post_title ? String(n.post_title).trim() : "";
+  if (n.board === "calendar") {
+    const actor = n.actor_username ? `${n.actor_username} · ` : "";
+    const suffix = n.metadata?.approvedAt ? "승인 완료" : "확인 시 작성자에게 20P 지급";
+    if (!title) return `${actor}${suffix} · ${fmtNotiTime(n.created_at)}`;
+    return `${actor}${title.slice(0, 26)}${title.length > 26 ? "..." : ""} · ${suffix}`;
+  }
+  if (!title) return fmtNotiTime(n.created_at);
+  return `${title.slice(0, 32)}${title.length > 32 ? "..." : ""} · ${fmtNotiTime(n.created_at)}`;
+}
+
 function kstTodayIndex() {
   const parts = new Intl.DateTimeFormat("en-CA", {
     timeZone: "Asia/Seoul",
@@ -178,7 +212,7 @@ function DdayBadges({ ddays, isAdmin }: { ddays: Dday[]; isAdmin: boolean }) {
   );
 }
 
-function HeaderActionIcon({ type }: { type: "message" | "notice" | "profile" }) {
+function HeaderActionIcon({ type }: { type: "message" | "notice" | "profile" | "inquiry" }) {
   if (type === "message") {
     return (
       <svg className="header-action-icon" viewBox="0 0 24 24" aria-hidden="true">
@@ -193,6 +227,16 @@ function HeaderActionIcon({ type }: { type: "message" | "notice" | "profile" }) 
       <svg className="header-action-icon" viewBox="0 0 24 24" aria-hidden="true">
         <path d="M18 9a6 6 0 0 0-12 0c0 6-2.2 7.2-2.2 8h16.4C20.2 16.2 18 15 18 9Z" />
         <path d="M10 20h4" />
+      </svg>
+    );
+  }
+
+  if (type === "inquiry") {
+    return (
+      <svg className="header-action-icon" viewBox="0 0 24 24" aria-hidden="true">
+        <circle cx="12" cy="12" r="8" />
+        <path d="M9.8 9a2.4 2.4 0 0 1 4.4 1.4c0 1.8-2.2 2-2.2 3.4" />
+        <path d="M12 17h.01" />
       </svg>
     );
   }
@@ -217,6 +261,10 @@ export default function FreeLayout({ children }: { children: ReactNode }) {
     studentVerified: false,
     studentNo: null,
     studentName: null,
+    grade: null,
+    classNo: null,
+    verifiedGrade: null,
+    verifiedClassNo: null,
   });
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
@@ -229,6 +277,7 @@ export default function FreeLayout({ children }: { children: ReactNode }) {
   const [dmUnread, setDmUnread] = useState(0);
   const [guideOpen, setGuideOpen] = useState(false);
   const [ddays, setDdays] = useState<Dday[]>([]);
+  const [chatReady, setChatReady] = useState(false);
 
   async function loadMe() {
     const res = await fetch("/api/me", { cache: "no-store", credentials: "include" });
@@ -242,12 +291,16 @@ export default function FreeLayout({ children }: { children: ReactNode }) {
       studentVerified: Boolean(json.studentVerified),
       studentNo: json.studentNo ?? null,
       studentName: json.studentName ?? null,
+      grade: typeof json.grade === "number" ? json.grade : null,
+      classNo: typeof json.classNo === "number" ? json.classNo : null,
+      verifiedGrade: typeof json.verifiedGrade === "number" ? json.verifiedGrade : null,
+      verifiedClassNo: typeof json.verifiedClassNo === "number" ? json.verifiedClassNo : null,
     };
     setMe(next);
     return next;
   }
   async function loadPosts() {
-    const res = await fetch("/api/posts?board=free", { cache: "no-store" });
+    const res = await fetch("/api/posts?board=free&limit=20&summary=1&pinAdmin=1&count=none", { cache: "no-store", credentials: "include" });
     const json = await res.json().catch(() => ({}));
     setPosts(json.data ?? []);
   }
@@ -281,20 +334,47 @@ export default function FreeLayout({ children }: { children: ReactNode }) {
     setNotis((prev) => prev.map((n) => ({ ...n, read: true })));
     setUnread(0);
   }
+  async function approveCalendarNotification(n: Noti) {
+    if (!n.post_id || me.role !== "admin") return;
+    const res = await fetch("/api/calendar/approve", {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: n.post_id, notificationId: n.id }),
+    });
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      alert(json?.error ?? "일정 확인 실패");
+      return;
+    }
+    setNotis((prev) => prev.map((item) => (
+      item.id === n.id
+        ? {
+            ...item,
+            read: true,
+            metadata: {
+              ...(item.metadata ?? {}),
+              approvedAt: new Date().toISOString(),
+              pointsAwarded: json?.points ?? 20,
+            },
+          }
+        : item
+    )));
+    alert(json?.alreadyApproved ? "이미 확인된 일정입니다." : "확인 완료! 작성자에게 20포인트를 지급했습니다.");
+  }
   async function loadDmUnread() {
     if (!me.userId) { setDmUnread(0); return; }
-    const res = await fetch("/api/messages/inbox?limit=50", { cache: "no-store", credentials: "include" });
+    const res = await fetch("/api/messages/inbox?countOnly=1", { cache: "no-store", credentials: "include" });
     const json = await res.json().catch(() => ({}));
     if (typeof json?.unread === "number") { setDmUnread(json.unread); return; }
-    const arr: Array<{ read?: boolean }> = Array.isArray(json?.data) ? json.data : [];
-    const cnt = arr.filter((x) => x?.read === false).length;
-    setDmUnread(cnt);
+    setDmUnread(0);
   }
   async function refreshAll() {
     setLoading(true);
-    const nextMe = await loadMe();
-    await Promise.all([loadPosts(), loadVisitors(), loadMembers(), loadDday()]);
+    await loadMe();
+    await loadPosts();
     setLoading(false);
+    void Promise.all([loadVisitors(), loadMembers(), loadDday()]).catch(() => null);
   }
   async function onLogout() {
     await fetch("/logout", { method: "POST", credentials: "include" }).catch(() => null);
@@ -304,15 +384,42 @@ export default function FreeLayout({ children }: { children: ReactNode }) {
   }
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     void refreshAll();
   }, []);
+
+  useEffect(() => {
+    function refreshOnReturn() {
+      void loadNotifications();
+      void loadDmUnread();
+    }
+
+    function refreshWhenVisible() {
+      if (document.visibilityState === "visible") refreshOnReturn();
+    }
+
+    window.addEventListener("focus", refreshOnReturn);
+    window.addEventListener("pageshow", refreshOnReturn);
+    document.addEventListener("visibilitychange", refreshWhenVisible);
+
+    return () => {
+      window.removeEventListener("focus", refreshOnReturn);
+      window.removeEventListener("pageshow", refreshOnReturn);
+      document.removeEventListener("visibilitychange", refreshWhenVisible);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   useEffect(() => {
     if (!me.userId) return;
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void loadNotifications();
     void loadDmUnread();
   }, [me.userId]);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setChatReady(true), 900);
+    return () => window.clearTimeout(timer);
+  }, []);
 
   useEffect(() => {
     function onDocDown(e: MouseEvent) {
@@ -359,6 +466,7 @@ export default function FreeLayout({ children }: { children: ReactNode }) {
     if (me.role !== "admin") return 0;
     return (notis ?? []).filter((n) => n.type === "report" && n.read === false).length;
   }, [notis, me.role]);
+  const notificationAttentionCount = Math.max(unread, dmUnread);
   const showMobileHomeChat = pathname === "/community/free";
 
   const ctxValue: Ctx = { me, posts, loading, visitors, members, query, setQuery, orderedPosts, numberMap, top3, refreshAll, onLogout };
@@ -399,6 +507,10 @@ export default function FreeLayout({ children }: { children: ReactNode }) {
                     <span className="header-action-label">쪽지</span>
                     {dmUnread > 0 && <span className="absolute right-0.5 top-0.5 h-1.5 w-1.5 rounded-full" style={{ background: 'var(--accent-red)' }} />}
                   </Link>
+                  <Link href="/community/free/inquiry" className="btn-ghost header-action-button" title="문의하기" aria-label="문의하기">
+                    <HeaderActionIcon type="inquiry" />
+                    <span className="header-action-label">문의</span>
+                  </Link>
                   <button
                     onClick={async () => {
                       const next = !notiOpen; setNotiOpen(next);
@@ -411,7 +523,14 @@ export default function FreeLayout({ children }: { children: ReactNode }) {
                   >
                     <HeaderActionIcon type="notice" />
                     <span className="header-action-label">알림</span>
-                    {unread > 0 && <span className="absolute right-0.5 top-0.5 h-1.5 w-1.5 rounded-full" style={{ background: 'var(--accent-red)' }} />}
+                    {notificationAttentionCount > 0 && (
+                      <span
+                        className="absolute -right-1 -top-1 flex min-w-4 items-center justify-center rounded-full px-1 text-[9px] font-bold leading-4 text-white"
+                        style={{ background: 'var(--accent-red)' }}
+                      >
+                        {notificationAttentionCount > 99 ? "99+" : notificationAttentionCount}
+                      </span>
+                    )}
                   </button>
 
                   {/* EXP Pill */}
@@ -494,14 +613,17 @@ export default function FreeLayout({ children }: { children: ReactNode }) {
           <nav className="flex items-center overflow-x-auto no-scrollbar" style={{ gap: 0, borderTop: '1px solid var(--border-subtle)' }}>
             <TabLink href="/community/free">메인</TabLink>
             <TabLink href="/community/free/all">게시글</TabLink>
+            <TabLink href="/community/free/student-council">학생회 소통</TabLink>
             <TabLink href="/community/free/jobs">구인구직</TabLink>
             <TabLink href="/community/free/meal">급식표</TabLink>
+            <TabLink href="/community/free/calendar">마감캘린더</TabLink>
             <TabLink href="/community/free/best">베스트</TabLink>
             {me.role === "admin" && <TabLink href="/community/free/admin/dashboard">관리자</TabLink>}
             {me.role === "admin" && <TabLink href="/community/free/admin/popup">팝업관리</TabLink>}
             {me.role === "admin" && <TabLink href="/community/free/admin/ad">광고관리</TabLink>}
             {me.role === "admin" && <TabLink href="/community/free/admin/dday">D-Day</TabLink>}
             {me.role === "admin" && <TabLink href="/community/free/admin/verified">인증목록</TabLink>}
+            {me.role === "admin" && <TabLink href="/community/free/admin/login-logs">로그인 로그</TabLink>}
             <DdayBadges ddays={ddays} isAdmin={me.role === "admin"} />
           </nav>
         </div>
@@ -511,21 +633,62 @@ export default function FreeLayout({ children }: { children: ReactNode }) {
           <div className="notification-popover absolute z-50 overflow-hidden" style={{ background: 'var(--bg-surface)', border: '1px solid var(--border-mild)', borderRadius: 4, boxShadow: '0 12px 28px rgba(15,23,42,0.12)' }}>
             <div className="px-4 py-2.5" style={{ borderBottom: '1px solid var(--border-subtle)', fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)' }}>알림</div>
             <div className="max-h-64 overflow-y-auto">
-              {notis.length === 0 ? (
+              {notis.length === 0 && dmUnread === 0 ? (
                 <div className="p-6 text-center text-xs" style={{ color: 'var(--text-muted)' }}>새 알림이 없습니다.</div>
               ) : (
                 <div>
-                  {notis.map(n => (
+                  {dmUnread > 0 && (
                     <Link
-                      key={n.id}
-                      href={n.post_id ? `/community/free/${n.post_id}` : '/community/free'}
+                      href="/community/free/messages"
                       className="block px-4 py-3 transition-colors"
                       style={{ borderBottom: '1px solid var(--border-subtle)' }}
                       onClick={() => setNotiOpen(false)}
                     >
-                      <div className="text-sm" style={{ color: 'var(--text-primary)' }}>{n.type} 관련 새로운 소식</div>
-                      <div className="text-[10px] mt-0.5" style={{ color: 'var(--text-muted)' }}>{fmtNotiTime(n.created_at)}</div>
+                      <div className="text-sm" style={{ color: 'var(--text-primary)' }}>새 쪽지가 도착했습니다.</div>
+                      <div className="text-[10px] mt-0.5" style={{ color: 'var(--text-muted)' }}>
+                        안 읽은 쪽지 {dmUnread > 99 ? "99+" : dmUnread}개 · 쪽지함으로 이동
+                      </div>
                     </Link>
+                  )}
+                  {notis.map(n => (
+                    isCalendarReviewNotification(n) && me.role === "admin" ? (
+                      <div
+                        key={n.id}
+                        className="px-4 py-3 transition-colors"
+                        style={{ borderBottom: '1px solid var(--border-subtle)' }}
+                      >
+                        <div className="text-sm" style={{ color: 'var(--text-primary)' }}>{notificationLabel(n)}</div>
+                        <div className="text-[10px] mt-0.5" style={{ color: 'var(--text-muted)' }}>{notificationSubLabel(n)}</div>
+                        <div className="mt-2 flex items-center gap-2">
+                          <Link
+                            href="/community/free/calendar"
+                            className="rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] font-semibold text-slate-600 hover:bg-slate-50"
+                            onClick={() => setNotiOpen(false)}
+                          >
+                            캘린더 보기
+                          </Link>
+                          <button
+                            type="button"
+                            disabled={Boolean(n.metadata?.approvedAt)}
+                            onClick={() => approveCalendarNotification(n)}
+                            className="rounded-md border border-sky-700 bg-sky-700 px-2.5 py-1.5 text-[11px] font-semibold text-white hover:bg-sky-600 disabled:cursor-default disabled:border-emerald-200 disabled:bg-emerald-50 disabled:text-emerald-700"
+                          >
+                            {n.metadata?.approvedAt ? "확인 완료" : "확인 +20P"}
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <Link
+                        key={n.id}
+                        href={n.board === "calendar" ? "/community/free/calendar" : n.post_id ? `/community/free/${n.post_id}` : '/community/free'}
+                        className="block px-4 py-3 transition-colors"
+                        style={{ borderBottom: '1px solid var(--border-subtle)' }}
+                        onClick={() => setNotiOpen(false)}
+                      >
+                        <div className="text-sm" style={{ color: 'var(--text-primary)' }}>{notificationLabel(n)}</div>
+                        <div className="text-[10px] mt-0.5" style={{ color: 'var(--text-muted)' }}>{notificationSubLabel(n)}</div>
+                      </Link>
+                    )
                   ))}
                 </div>
               )}
@@ -546,7 +709,7 @@ export default function FreeLayout({ children }: { children: ReactNode }) {
             {children}
             {showMobileHomeChat ? (
               <div className="mobile-chat-panel lg:hidden">
-                <AnonymousChatBox />
+                {chatReady ? <AnonymousChatBox /> : null}
               </div>
             ) : null}
           </section>
@@ -606,6 +769,9 @@ export default function FreeLayout({ children }: { children: ReactNode }) {
                     <Link href="/community/free/admin/dashboard" className="btn-secondary" style={{ justifyContent: 'flex-start', fontSize: '0.75rem', padding: '0.45rem 0.65rem' }}>
                       운영 통계
                     </Link>
+                    <Link href="/community/free/admin/student-council" className="btn-secondary" style={{ justifyContent: 'flex-start', fontSize: '0.75rem', padding: '0.45rem 0.65rem' }}>
+                      학생회 소통 관리
+                    </Link>
                     <Link href="/community/free/admin/archive" className="btn-secondary" style={{ justifyContent: 'flex-start', fontSize: '0.75rem', padding: '0.45rem 0.65rem' }}>
                       보관함
                     </Link>
@@ -627,6 +793,9 @@ export default function FreeLayout({ children }: { children: ReactNode }) {
                     <Link href="/community/free/admin/verified" className="btn-secondary" style={{ justifyContent: 'flex-start', fontSize: '0.75rem', padding: '0.45rem 0.65rem' }}>
                       인증 목록
                     </Link>
+                    <Link href="/community/free/admin/login-logs" className="btn-secondary" style={{ justifyContent: 'flex-start', fontSize: '0.75rem', padding: '0.45rem 0.65rem' }}>
+                      로그인 로그
+                    </Link>
                     <Link href="/community/free/admin/dm" className="btn-secondary" style={{ justifyContent: 'flex-start', fontSize: '0.75rem', padding: '0.45rem 0.65rem' }}>
                       쪽지 보내기
                     </Link>
@@ -635,7 +804,7 @@ export default function FreeLayout({ children }: { children: ReactNode }) {
               )}
 
               {/* Chat */}
-              <AnonymousChatBox />
+              {chatReady ? <AnonymousChatBox /> : null}
             </div>
           </aside>
         </div>

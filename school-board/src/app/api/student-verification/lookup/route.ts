@@ -8,6 +8,10 @@ function normalizeCode(value: unknown) {
   return String(value ?? "").trim().replace(/\s+/g, "").toUpperCase();
 }
 
+function isTemporaryVerificationCode(code: string) {
+  return code === "CJTEMP2026";
+}
+
 function setupError(message?: string) {
   return /student_verification_codes|student_no|does not exist|schema cache/i.test(message ?? "");
 }
@@ -18,6 +22,14 @@ export async function POST(req: Request) {
 
   if (code.length < 4 || code.length > 40) {
     return NextResponse.json({ error: "인증코드를 올바르게 입력해 주세요." }, { status: 400 });
+  }
+
+  if (isTemporaryVerificationCode(code)) {
+    return NextResponse.json({
+      ok: true,
+      studentNo: "임시 인증",
+      temporary: true,
+    });
   }
 
   const { data, error } = await adminClient()

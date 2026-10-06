@@ -26,7 +26,7 @@ export default function DmCenterClient() {
     const toTrim = to.trim();
     const msg = content.trim();
 
-    if (!toTrim) return setMsg("받는 사람 아이디를 입력하세요.");
+    if (!toTrim) return setMsg("받는 사람 username을 입력하세요.");
     if (!msg) return setMsg("쪽지 내용을 입력하세요.");
 
     setBusy(true);
@@ -75,7 +75,7 @@ export default function DmCenterClient() {
       <div className="flex items-center justify-between gap-2">
         <div className="px-4 py-4">
           <div className="text-base font-semibold text-slate-950">관리자 쪽지 보내기</div>
-          <div className="mt-1 text-xs font-medium text-slate-500">아이디(username) 또는 user UUID로 학생에게 쪽지를 보냅니다.</div>
+          <div className="mt-1 text-xs font-medium text-slate-500">받는 사람 username을 입력해서 학생에게 쪽지를 보냅니다.</div>
           {presetPost ? (
             <div className="mt-0.5 text-[11px] text-slate-500">
               참고 게시글: <span className="font-semibold">{presetPost}</span>
@@ -93,21 +93,31 @@ export default function DmCenterClient() {
 
       <div className="grid grid-cols-1 gap-3 border-t border-slate-100 bg-slate-50 px-4 py-4">
         <div>
-          <div className="mb-1 text-[12px] font-semibold text-slate-700">받는 사람 아이디</div>
+          <label htmlFor="admin-dm-to" className="mb-1 block text-[12px] font-semibold text-slate-700">
+            받는 사람 username
+          </label>
           <input
+            id="admin-dm-to"
+            name="to"
+            type="text"
             value={to}
             onChange={(e) => setTo(e.target.value)}
-            className="w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-[12px] text-slate-900 outline-none"
-            placeholder="예: student01 또는 user UUID"
+            className="w-full rounded-md border border-slate-300 bg-white px-3 py-2.5 text-sm font-medium text-slate-950 outline-none transition-colors placeholder:text-slate-400 focus:border-sky-500 focus:ring-2 focus:ring-sky-100"
+            placeholder="예: gg12"
           />
+          <div className="mt-1 text-[11px] font-medium text-slate-500">게시글 작성자 이름에 보이는 아이디를 그대로 입력하면 됩니다.</div>
         </div>
 
         <div>
-          <div className="mb-1 text-[12px] font-semibold text-slate-700">내용</div>
+          <label htmlFor="admin-dm-content" className="mb-1 block text-[12px] font-semibold text-slate-700">
+            쪽지 내용
+          </label>
           <textarea
+            id="admin-dm-content"
+            name="content"
             value={content}
             onChange={(e) => setContent(e.target.value)}
-            className="min-h-[150px] w-full resize-none rounded-md border border-slate-200 bg-white px-3 py-2 text-[12px] leading-5 text-slate-900 outline-none"
+            className="min-h-[150px] w-full resize-none rounded-md border border-slate-300 bg-white px-3 py-2.5 text-sm leading-6 text-slate-950 outline-none transition-colors placeholder:text-slate-400 focus:border-sky-500 focus:ring-2 focus:ring-sky-100"
             rows={7}
             placeholder="쪽지 내용 입력…"
           />
@@ -118,7 +128,7 @@ export default function DmCenterClient() {
           <button
             type="button"
             onClick={send}
-            disabled={busy}
+            disabled={busy || !to.trim() || !content.trim()}
             className="btn-primary px-4 py-2 text-[12px] disabled:opacity-60"
           >
             {busy ? "전송 중..." : "전송"}

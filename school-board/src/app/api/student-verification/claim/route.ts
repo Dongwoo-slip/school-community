@@ -9,6 +9,10 @@ function normalizeCode(value: unknown) {
   return String(value ?? "").trim().replace(/\s+/g, "").toUpperCase();
 }
 
+function isTemporaryVerificationCode(code: string) {
+  return code === "CJTEMP2026";
+}
+
 function setupError(message?: string) {
   return /student_verification_codes|student_verified|verification_code_id|student_no|student_name|does not exist|schema cache|permission denied/i.test(message ?? "");
 }
@@ -30,6 +34,63 @@ export async function POST(req: Request) {
   }
 
   const sb = adminClient();
+
+  if (isTemporaryVerificationCode(code)) {
+    const now = new Date().toISOString();
+    const { data: currentProfile } = await sb
+      .from("profiles")
+      .select("grade, class_no")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    const grade = Number(currentProfile?.grade) || 2;
+    const classNo = Number(currentProfile?.class_no) || 7;
+    const profilePatch = {
+      grade,
+      class_no: classNo,
+      student_verified: true,
+      student_no: null,
+      student_name: "임시인증",
+      student_verified_at: now,
+      verification_code_id: null,
+    };
+
+    const { data: updatedProfile, error: updateProfileError } = await sb
+      .from("profiles")
+      .update(profilePatch)
+      .eq("id", user.id)
+      .select("id")
+      .maybeSingle();
+
+    let profileError = updateProfileError;
+
+    if (!profileError && !updatedProfile) {
+      const metadataUsername = String(user.user_metadata?.username ?? "").trim().toLowerCase();
+      const emailUsername = String(user.email ?? "").split("@")[0]?.trim().toLowerCase();
+      const username = metadataUsername || emailUsername || `user_${user.id.slice(0, 8)}`;
+
+      const { error: insertProfileError } = await sb
+        .from("profiles")
+        .insert({ id: user.id, username, ...profilePatch });
+
+      profileError = insertProfileError;
+    }
+
+    if (profileError) {
+      console.error("Temporary student verification profile sync failed:", profileError);
+      return NextResponse.json({ error: profileError.message }, { status: 500 });
+    }
+
+    return NextResponse.json({
+      ok: true,
+      studentNo: null,
+      grade,
+      classNo,
+      temporary: true,
+      profileSynced: true,
+    });
+  }
+
   const { data: alreadyClaimed, error: alreadyError } = await sb
     .from("student_verification_codes")
     .select("id, code, student_no, student_name, grade, class_no, used_at")

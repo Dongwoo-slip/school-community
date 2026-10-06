@@ -42,16 +42,28 @@ export default function MyInfoPage() {
     setMsg(null);
     try {
       const res = await fetch("/api/me", { cache: "no-store", credentials: "include" });
-      const json: MeRes = await res.json().catch(() => ({} as any));
-      setMe(json);
+      const json = (await res.json().catch(() => ({}))) as Partial<MeRes>;
+      const next: MeRes = {
+        userId: json.userId ?? null,
+        username: json.username ?? null,
+        role: json.role ?? "guest",
+        grade: json.grade ?? null,
+        classNo: json.classNo ?? null,
+        studentVerified: Boolean(json.studentVerified),
+        studentNo: json.studentNo ?? null,
+        verifiedGrade: json.verifiedGrade ?? null,
+        verifiedClassNo: json.verifiedClassNo ?? null,
+        studentVerifiedAt: json.studentVerifiedAt ?? null,
+      };
+      setMe(next);
 
-      if (!json?.userId) {
+      if (!next.userId) {
         setMsg("로그인이 필요합니다.");
         return;
       }
 
-      setGrade(typeof json.grade === "number" ? json.grade : 2);
-      setClassNo(typeof json.classNo === "number" ? json.classNo : 7);
+      setGrade(typeof next.grade === "number" ? next.grade : 2);
+      setClassNo(typeof next.classNo === "number" ? next.classNo : 7);
     } finally {
       setLoading(false);
     }
@@ -199,6 +211,21 @@ export default function MyInfoPage() {
               <div className="text-sm text-slate-700">
                 아이디: <span className="font-medium">{me.username ?? "unknown"}</span>
               </div>
+
+              <section className="rounded-lg border border-sky-100 bg-sky-50 p-4">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <h2 className="text-sm font-semibold text-slate-950">관리자 문의</h2>
+                    <p className="mt-1 text-xs leading-5 text-slate-600">계정, 인증, 게시글 관련 문의를 관리자에게 보낼 수 있습니다.</p>
+                  </div>
+                  <Link
+                    href="/community/free/inquiry"
+                    className="inline-flex shrink-0 items-center justify-center rounded-lg bg-sky-700 px-3 py-2 text-sm font-semibold text-white hover:bg-sky-600"
+                  >
+                    문의하기
+                  </Link>
+                </div>
+              </section>
 
               <section className="rounded-lg border border-slate-200 bg-slate-50 p-4">
                 <div className="flex items-start justify-between gap-3">

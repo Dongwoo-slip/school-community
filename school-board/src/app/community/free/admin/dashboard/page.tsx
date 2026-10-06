@@ -55,6 +55,7 @@ const cardLabels: { key: string; label: string; tone?: "red" | "blue" | "green" 
 ];
 
 const quickLinks = [
+  { href: "/community/free/admin/student-council", label: "학생회 소통" },
   { href: "/community/free/reports", label: "신고함" },
   { href: "/community/free/admin/archive", label: "보관함" },
   { href: "/community/free/admin/deleted", label: "삭제 로그" },
@@ -63,6 +64,7 @@ const quickLinks = [
   { href: "/community/free/admin/ad", label: "광고 관리" },
   { href: "/community/free/admin/dday", label: "D-Day 관리" },
   { href: "/community/free/admin/verified", label: "인증 목록" },
+  { href: "/community/free/admin/login-logs", label: "로그인 로그" },
   { href: "/community/free/admin/dm", label: "관리자 쪽지" },
 ];
 
@@ -154,8 +156,8 @@ export default function AdminDashboardPage() {
       const json = await res.json().catch(() => ({}));
       if (!res.ok || !json?.ok) throw new Error(json?.error ?? "불러오기 실패");
       setData(json.data);
-    } catch (e: any) {
-      setError(e?.message ?? "불러오기 실패");
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "불러오기 실패");
     } finally {
       setLoading(false);
     }

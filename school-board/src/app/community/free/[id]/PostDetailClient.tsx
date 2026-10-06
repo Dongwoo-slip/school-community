@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import AdminDmButton from "@/components/AdminDmButton";
+import LinkedText from "@/components/LinkedText";
 import { useFreeBoard } from "../layout";
 
 type Post = {
@@ -148,7 +149,9 @@ export default function PostDetailClient({ postId }: { postId: string }) {
 
       {/* 본문 */}
       <div className="px-4 py-4">
-        <div className="whitespace-pre-wrap break-words text-[13px] leading-relaxed text-slate-900">{post.content ?? ""}</div>
+        <div className="whitespace-pre-wrap break-words text-[13px] leading-relaxed text-slate-900">
+          <LinkedText text={post.content} />
+        </div>
 
         {/* 이미지 */}
         {Array.isArray(post.image_urls) && post.image_urls.length > 0 ? (

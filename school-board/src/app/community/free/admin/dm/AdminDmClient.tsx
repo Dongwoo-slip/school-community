@@ -12,9 +12,9 @@ export default function AdminDmClient({ presetTo, presetPostId }: { presetTo: st
 
   async function send() {
     if (me.role !== "admin") return alert("관리자만 가능합니다.");
-    const recipient_id = to.trim();
+    const recipientUsername = to.trim();
     const text = content.trim();
-    if (!recipient_id) return alert("recipient_id를 입력하세요.");
+    if (!recipientUsername) return alert("받는 사람 username을 입력하세요.");
     if (!text) return alert("내용을 입력하세요.");
 
     setBusy(true);
@@ -23,7 +23,7 @@ export default function AdminDmClient({ presetTo, presetPostId }: { presetTo: st
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ recipient_id, content: text, post_id: presetPostId || null }),
+        body: JSON.stringify({ to: recipientUsername, content: text, post_id: presetPostId || null }),
       });
       const json = await res.json().catch(() => ({}));
       if (!res.ok) return alert(json?.error ?? "전송 실패");
@@ -40,7 +40,7 @@ export default function AdminDmClient({ presetTo, presetPostId }: { presetTo: st
       <div className="flex items-center justify-between border-b border-slate-100 px-4 py-4">
         <div>
           <div className="text-base font-semibold text-slate-950">관리자 쪽지 보내기</div>
-          <div className="mt-1 text-xs font-medium text-slate-500">상대 user id로 쪽지를 보냅니다.</div>
+          <div className="mt-1 text-xs font-medium text-slate-500">상대 username으로 쪽지를 보냅니다.</div>
         </div>
         <Link href="/community/free/messages" className="rounded-md border border-slate-200 bg-white px-3 py-2 text-[12px] font-semibold text-slate-700 hover:bg-slate-50">
           쪽지함
@@ -48,12 +48,12 @@ export default function AdminDmClient({ presetTo, presetPostId }: { presetTo: st
       </div>
 
       <div className="grid gap-3 bg-slate-50 px-4 py-4">
-        <label className="text-[12px] font-semibold text-slate-700">받는 사람 userId</label>
+        <label className="text-[12px] font-semibold text-slate-700">받는 사람 username</label>
         <input
           value={to}
           onChange={(e) => setTo(e.target.value)}
-          className="rounded-md border border-slate-200 bg-white px-3 py-2 text-[12px]"
-          placeholder="예: 123e4567-e89b-12d3-a456-426614174000"
+          className="rounded-md border border-slate-300 bg-white px-3 py-2 text-[12px] text-slate-950 outline-none"
+          placeholder="예: gg12"
         />
 
         <label className="text-[12px] font-semibold text-slate-700">내용</label>

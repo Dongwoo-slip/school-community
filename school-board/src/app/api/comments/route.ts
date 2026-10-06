@@ -3,6 +3,10 @@ import { createClient as createAuthedClient } from "@/lib/supabase/server";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { awardPoints } from "@/lib/points";
 import { AUTHOR_PROFILE_SELECT } from "@/lib/authorDisplay";
+import { notifyPostActivity } from "@/lib/postActivityNotifications";
+
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 function admin() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
@@ -12,6 +16,9 @@ function admin() {
 
 const PUBLIC_AUTHOR_PROFILE_SELECT = "username, role, points";
 const COMMENT_RATE_LIMIT_MESSAGE = "10분당 댓글 10개 제한";
+const COMMENT_LIST_COLUMNS = "id,post_id,content,created_at,author_id,parent_id";
+const REPLY_MARKER_PREFIX = "[[square-reply-to:";
+const REPLY_MARKER_RE = /^\s*\[\[square-reply-to:([0-9a-f-]{8}-[0-9a-f-]{4}-[0-9a-f-]{4}-[0-9a-f-]{4}-[0-9a-f-]{12})\]\]\s*/i;
 
 type CommentInsertRow = {
   post_id: string;
@@ -20,8 +27,29 @@ type CommentInsertRow = {
   parent_id?: string;
 };
 
+function encodeReplyContent(parentId: string, content: string) {
+  return `${REPLY_MARKER_PREFIX}${parentId}]]\n${content}`;
+}
+
+function normalizeCommentRow<T extends { content?: string | null; parent_id?: string | null }>(comment: T): T {
+  const content = String(comment.content ?? "");
+  const match = content.match(REPLY_MARKER_RE);
+  if (!match) return comment;
+
+  return {
+    ...comment,
+    parent_id: comment.parent_id ?? match[1],
+    content: content.replace(REPLY_MARKER_RE, ""),
+  };
+}
+
+function shouldRetryReplyWithoutParentId(errorMessage: string) {
+  return /notifications_type_check|violates check constraint|new row for relation "notifications"/i.test(errorMessage);
+}
+
 // GET /api/comments?post_id=...
 export async function GET(req: Request) {
+  const start = Date.now();
   const authed = await createAuthedClient();
   const { data: authData } = await authed.auth.getUser();
   const user = authData.user;
@@ -47,8 +75,12 @@ export async function GET(req: Request) {
     .eq("id", post_id)
     .maybeSingle();
 
-  if (postError) return NextResponse.json({ error: postError.message }, { status: 500 });
+  if (postError) {
+    console.error(JSON.stringify({ level: "error", route: "/api/comments", post_id, ms: Date.now() - start, error: postError.message }));
+    return NextResponse.json({ error: postError.message }, { status: 500 });
+  }
   if (!post || (post.is_deleted && role !== "admin")) {
+    console.log(JSON.stringify({ level: "info", route: "/api/comments", post_id, ms: Date.now() - start, rows: 0 }));
     return NextResponse.json({ data: [] });
   }
 
@@ -56,12 +88,22 @@ export async function GET(req: Request) {
 
   const { data: comments, error } = await sb
     .from("comments")
-    .select(`*, author:profiles(${profileSelect})`)
+    .select(`${COMMENT_LIST_COLUMNS}, author:profiles(${profileSelect})`)
     .eq("post_id", post_id)
     .order("created_at", { ascending: true });
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ data: comments ?? [] });
+  if (error) {
+    console.error(JSON.stringify({ level: "error", route: "/api/comments", post_id, ms: Date.now() - start, error: error.message }));
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+  console.log(JSON.stringify({
+    level: "info",
+    route: "/api/comments",
+    post_id,
+    ms: Date.now() - start,
+    rows: comments?.length ?? 0,
+  }));
+  return NextResponse.json({ data: (comments ?? []).map(normalizeCommentRow) });
 }
 
 // POST /api/comments  (로그인 필요)
@@ -143,9 +185,34 @@ export async function POST(req: Request) {
   const insertRow: CommentInsertRow = { post_id, content, author_id: user.id };
   if (parent_id) insertRow.parent_id = parent_id;
 
-  const { data, error } = await sb.from("comments").insert(insertRow).select("id").single();
+  let { data, error } = await sb.from("comments").insert(insertRow).select("id").single();
+
+  if (error && parent_id && shouldRetryReplyWithoutParentId(error.message)) {
+    console.warn("Reply insert with parent_id failed; retrying with encoded reply marker:", error.message);
+    const fallbackRow: CommentInsertRow = {
+      post_id,
+      content: encodeReplyContent(parent_id, content),
+      author_id: user.id,
+    };
+    const fallback = await sb.from("comments").insert(fallbackRow).select("id").single();
+    data = fallback.data;
+    error = fallback.error;
+  }
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (!data?.id) return NextResponse.json({ error: "댓글 등록 결과를 확인하지 못했습니다." }, { status: 500 });
+
+  try {
+    await notifyPostActivity({
+      sb,
+      postId: post_id,
+      actor: user,
+      type: "comment",
+      commentId: data.id,
+    });
+  } catch (e) {
+    console.error("Failed to create comment notification:", e);
+  }
 
   // ✅ 포인트 증정 (+5)
   try {
